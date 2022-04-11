@@ -358,7 +358,6 @@ class OT_gaolib(bpy.types.Operator):
     bl_label = "GaoLib"
 
     def execute(self, context):
-        print('here')
         run_timed_modal_gaolib_operator()
         return {'FINISHED'}
 
@@ -628,13 +627,12 @@ def register():
         bpy.utils.register_class(cls)
 
     bpy.types.Scene.gaolib_tool =  bpy.props.PointerProperty(type=GaolibCustomProperties)
-    print('Register end')
+    
   
 
 
 def unregister():
     del bpy.types.Scene.gaolib_tool
-    cls.reverse()
     for cls in preference_classes:
         bpy.utils.unregister_class(cls)
 
