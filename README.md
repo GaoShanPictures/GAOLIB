@@ -25,6 +25,7 @@ In case there is any problem with the installed dependencies, an 'Uninstall depe
 See the Demo here : https://vimeo.com/698120055/2228caa23d
 
 After installing, the GAOLIB Pannel should now be available in Blender 3D View.
+
 WARNING : The user has to define a non empty path in the Blender preferences, File Paths section for Temporary files. If not, he/she won't be able to create new items in the library.
 
 ![image](https://user-images.githubusercontent.com/103406493/162702699-6e96c988-5fd8-4b09-b8e6-ad86f8cd86e4.png)
