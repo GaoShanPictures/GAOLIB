@@ -18,6 +18,8 @@ In case there is any problem with the installed dependencies, an 'Uninstall depe
 
 ## Usage
 The GAOLIB Pannel should now be available in Blender 3D View. 
+![image](https://user-images.githubusercontent.com/103406493/162702699-6e96c988-5fd8-4b09-b8e6-ad86f8cd86e4.png)
+
 Four operators are available : 
 
 - GAOLIB  : Starts the main window of the tool. On the first use, you will be asked to define the location of the root folder of your library. A ROOT directory will be created in the given location.
@@ -32,6 +34,9 @@ To use after the following actions in the main window.
 The animation is created if the selected object in the scene is an armature and the mode is set to Pose Mode. The pose only contains the selected bones.
 
 - Show overlay hidden : After creating a pose/animation, some overlays can be hidden for its preview to be clean. This button sets back the deactivated overlays.
+
+![image](https://user-images.githubusercontent.com/103406493/162702462-737643c8-a262-46e4-9ba4-3dd6838f4a92.png)
+
 
 ## Note
 This project is the first version of a work in progress. We are aware that some things can be improved and we are still looking for a way to change them. Amongst them : 
