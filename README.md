@@ -1,11 +1,14 @@
 # GAOLIB
 
-GAOLIB is a GAO SHAN PICTURES Blender add-on developped to manage a library of poses and animations. This tool will help you store and re-use animations and poses in from and to different Blender files. 
+GAOLIB Copyright (C) 2022 GAO SHAN PICTURES is a GAO SHAN PICTURES Blender add-on developped to manage a library of poses and animations. This tool will help you store and re-use animations and poses in from and to different Blender files. 
 
 ## Prerequisite
 GAOLIB works with Blender 2.93. It has not fully been tested on Blender 3, but the first tests seem to be working as well. To install it, please visit the Blender Download web page : https://www.blender.org/download/.
 
 ## Installation
+
+See the installation tuto here : https://vimeo.com/698120255/b6e66c4152
+
 Download the zip of the add-on and install it in the 'Add-ons' section of the Blender preferences : 
 
 Edit > Preferences > Add-ons > Install... > Select the zip file in your files > Install Add-on.
@@ -17,8 +20,9 @@ In case there is any problem with the installed dependencies, an 'Uninstall depe
 
 
 ## Usage
-The GAOLIB Pannel should now be available in Blender 3D View.
+See the Demo here : https://vimeo.com/698120055/2228caa23d
 
+After installing, the GAOLIB Pannel should now be available in Blender 3D View.
 
 ![image](https://user-images.githubusercontent.com/103406493/162702699-6e96c988-5fd8-4b09-b8e6-ad86f8cd86e4.png)
 
@@ -65,7 +69,7 @@ This project is the first version of a work in progress. We are aware that some 
 Published under GPLv3 license.
 
 ## Author
-Anne Beurard
+Anne Beurard for GAO SHAN PICTURES
 
 Note :
 
