@@ -44,8 +44,8 @@ The animation is created if the selected object in the scene is an armature and 
 
 - Show overlay hidden : After creating a pose/animation, some overlays can be hidden for its preview to be clean. This button sets back the deactivated overlays.
 
+![image](https://user-images.githubusercontent.com/103406493/162738690-006e8049-826a-43b1-9f1b-ea4fec5c2bf3.png)
 
-![image](https://user-images.githubusercontent.com/103406493/162702462-737643c8-a262-46e4-9ba4-3dd6838f4a92.png)
 
 
 ## Note
