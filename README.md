@@ -74,7 +74,8 @@ Published under GPLv3 license.
 
 ## Author
 Anne Beurard for GAO SHAN PICTURES
-With the help of Beorn Leonard www.patazanimation.com
+
+With the help of Beorn Leonard : www.patazanimation.com
 
 Note :
 
