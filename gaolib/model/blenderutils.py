@@ -252,7 +252,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                         value = kp.co.y
                         frame = frameIn + sourceFrame - sourceFrameIn
 
-                        bpy.context.scene.frame_current = frame
+                        bpy.context.scene.frame_current = int(frame)
                         try:
                             index = fc.array_index
                             cmd = ('selectedObject.' + data_path + '[' + str(index) + '] = ' + str(value))

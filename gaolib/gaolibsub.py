@@ -365,12 +365,18 @@ class GaoLib(QtWidgets.QMainWindow):
 
     def applyPose(self, anim=False):
         """Paste animation/pose from the library to the selected object of the scene"""
-        if anim:
-            frameIn = self.infoWidget.fromRangeSpinBox.value()
-            frameOut = self.infoWidget.toRangeSpinBox.value()
-            pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
-        else:
-            pastePose(self.currentListItem.path)
+        try:
+            if anim:
+                frameIn = self.infoWidget.fromRangeSpinBox.value()
+                frameOut = self.infoWidget.toRangeSpinBox.value()
+                pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
+            else:
+                pastePose(self.currentListItem.path)
+        except Exception as e:
+            QtWidgets.QMessageBox.about(self,
+                                        'Abort action',
+                                        'An error has occured, check Console : ' + str(e))
+            raise
 
     def writejson(self, name, directory, anim=False):
         """Create json file corresponding to pose/animation item"""
