@@ -26,6 +26,8 @@ See the Demo here : https://vimeo.com/698120055/2228caa23d
 
 After installing, the GAOLIB Pannel should now be available in Blender 3D View.
 
+WARNING : The user has to define a non empty path in the Blender preferences, File Paths section for Temporary files. If not, he/she won't be able to create new items in the library.
+
 ![image](https://user-images.githubusercontent.com/103406493/162702699-6e96c988-5fd8-4b09-b8e6-ad86f8cd86e4.png)
 
 
@@ -44,8 +46,8 @@ The animation is created if the selected object in the scene is an armature and 
 
 - Show overlay hidden : After creating a pose/animation, some overlays can be hidden for its preview to be clean. This button sets back the deactivated overlays.
 
+![image](https://user-images.githubusercontent.com/103406493/162738690-006e8049-826a-43b1-9f1b-ea4fec5c2bf3.png)
 
-![image](https://user-images.githubusercontent.com/103406493/162702462-737643c8-a262-46e4-9ba4-3dd6838f4a92.png)
 
 
 ## Note
@@ -72,6 +74,8 @@ Published under GPLv3 license.
 
 ## Author
 Anne Beurard for GAO SHAN PICTURES
+
+With the help of Beorn Leonard : www.patazanimation.com
 
 Note :
 
