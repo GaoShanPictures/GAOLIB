@@ -412,6 +412,9 @@ class OT_CreatePose(bpy.types.Operator):
             ShowMessageBox("PLEASE, SELECT EXACTLY ONE OBJECT.", 'ABORT')
             return{'CANCELLED'}
         # Count bones
+        if not len(bpy.context.selected_pose_bones):
+            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", 'ABORT')
+            return {'CANCELLED'}
         data = {
             'bones': len(bpy.context.selected_pose_bones),
             'boneNames': [bone.name for bone in bpy.context.selected_pose_bones],
@@ -471,6 +474,9 @@ class OT_CreateAnimation(bpy.types.Operator):
             ShowMessageBox("PLEASE, SELECT EXACTLY ONE OBJECT.", 'ABORT')
             return{'CANCELLED'}
         # Count bones
+        if not len(bpy.context.selected_pose_bones):
+            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", 'ABORT')
+            return {'CANCELLED'}
         data = {
             'bones': len(bpy.context.selected_pose_bones),
             'boneNames': [bone.name for bone in bpy.context.selected_pose_bones],
