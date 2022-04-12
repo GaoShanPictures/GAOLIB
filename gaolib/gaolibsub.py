@@ -418,6 +418,14 @@ class GaoLib(QtWidgets.QMainWindow):
                                         'Abort action',
                                         'Please add a valid path for Blender temporary files in : Edit > Preferences > File Paths > Temporary Files')
             return
+        self.thumbTempPath = os.path.join(
+            bpy.context.preferences.filepaths.temporary_directory, 
+            'temp',
+            'thumbnail.png')
+        self.jsonTempPath = os.path.join(
+            bpy.context.preferences.filepaths.temporary_directory,
+            'temp',
+            'temp.json')
         bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
         bpy.context.scene.gaolib_tool.gaolibNewPose = False
         if self.beginCreateThumb:
