@@ -407,6 +407,11 @@ class GaoLib(QtWidgets.QMainWindow):
 
     def createThumbnail(self, anim=False):
         """Create the animation/pose thumbnail"""
+        if not os.path.exists(bpy.context.preferences.filepaths.temporary_directory):
+            QtWidgets.QMessageBox.about(self,
+                                        'Abort action',
+                                        'Please add a valid path for Blender temporary files in : Edit > Preferences > File Paths > Temporary Files')
+            return
         bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
         bpy.context.scene.gaolib_tool.gaolibNewPose = False
         if self.beginCreateThumb:
