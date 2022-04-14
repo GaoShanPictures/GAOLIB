@@ -61,8 +61,6 @@ class GaoLib(QtWidgets.QMainWindow):
     resized = QtCore.Signal()
 
     def __init__(self, parent=None):
-        # BUG TO FIX : From the moment the line below is run, impossible to remove
-        # the whole addon if Gaolib has been opened in the blender session 
         QtWidgets.QMainWindow.__init__(self, parent)
 
         loadUi(os.path.join(os.path.dirname(

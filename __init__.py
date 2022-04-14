@@ -312,10 +312,7 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
 
     def execute(self, context):
         from .gaolib.gaolibsub import GaoLib
-        """Process the event loop of the Qt app."""
-
-        # BUG TO FIX : From the moment the line below is run, impossible to remove
-        # the whole addon if Gaolib has been opened in the blender session 
+        """Process the event loop of the Qt app.""" 
         self._window = GaoLib()
 
         self._window.show()
@@ -617,6 +614,8 @@ classes = [OT_gaolib,
 def register():
     global dependencies_installed
     dependencies_installed = False
+
+    os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gaolib'))
 
     for cls in preference_classes:
         bpy.utils.register_class(cls)
