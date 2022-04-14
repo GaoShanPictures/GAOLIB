@@ -43,6 +43,7 @@ from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 from gaolib.ui.settingsdialogui import Ui_Dialog as SettingsDialog
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
+
 try:
     import bpy
     from gaolib.model.blenderutils import (copyPose,

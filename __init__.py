@@ -645,3 +645,5 @@ def unregister():
     if dependencies_installed:
         for cls in classes:
             bpy.utils.unregister_class(cls)
+
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
