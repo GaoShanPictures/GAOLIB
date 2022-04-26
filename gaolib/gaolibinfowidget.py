@@ -126,7 +126,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
     def showInfos(self):
         """Display thumbnail and infos from json file"""
-        self.progressWidget.setVisible(False)
         self.parent.infoGroupBox.setTitle(self.item.itemType)
         self.nameLabel.setText(self.item.name)
         self.ownerLabel.setText(self.item.owner)
@@ -140,7 +139,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.selectBonesPushButton.setEnabled(False)
 
         if self.item.itemType == 'POSE':
-            self.optionsGroupBox.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
             self.frameRangeWidget.setVisible(False)
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
@@ -159,6 +158,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.selectBonesPushButton.setVisible(False)
         
         if self.item.itemType == 'ANIMATION':
+            self.poseOptionsWidget.setVisible(False)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(QtGui.QPixmap("icons/anim2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self.applyPushButton.setIcon(icon1)
