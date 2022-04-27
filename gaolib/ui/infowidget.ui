@@ -569,7 +569,7 @@ QPlainTextEdit {
           <number>0</number>
          </property>
          <item>
-          <widget class="QCheckBox" name="checkBox">
+          <widget class="QCheckBox" name="flippedCheckBox">
            <property name="text">
             <string>Flipped on X-Axis</string>
            </property>

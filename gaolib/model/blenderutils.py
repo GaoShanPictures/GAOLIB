@@ -314,7 +314,7 @@ def copyPose(poseDir):
     shutil.copyfile(tempPose, tempCopy)
 
 
-def pastePose(poseDir):
+def pastePose(poseDir, flipped=False):
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
     # Remember selection
     selection =  getSelectedBones()

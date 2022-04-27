@@ -44,7 +44,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if self.item.itemType == 'ANIMATION':
             self.thumbpath = self.item.thumbpath.replace('png','gif')
         self.showInfos()
-
         # Connect functions
         self.trashPushButton.released.connect(self.delete)
         self.selectBonesPushButton.released.connect(self.selectBones)
@@ -140,7 +139,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
         if self.item.itemType == 'POSE':
             self.animOptionsWidget.setVisible(False)
-            self.frameRangeWidget.setVisible(False)
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
 

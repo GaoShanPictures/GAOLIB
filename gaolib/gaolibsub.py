@@ -362,7 +362,7 @@ class GaoLib(QtWidgets.QMainWindow):
         self.listView.selectionModel().clear()
         self.listView.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
 
-    def applyPose(self, anim=False):
+    def applyPose(self, anim=False, flipped=False):
         """Paste animation/pose from the library to the selected object of the scene"""
         try:
             if anim:
@@ -370,7 +370,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
             else:
-                pastePose(self.currentListItem.path)
+                pastePose(self.currentListItem.path, flipped=flipped)
         except Exception as e:
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',
@@ -583,7 +583,7 @@ class GaoLib(QtWidgets.QMainWindow):
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
         if selectedItem.itemType == 'POSE':
-            self.infoWidget.applyPushButton.released.connect(self.applyPose)
+            self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(flipped=self.infoWidget.flippedCheckBox.isChecked()))
         elif selectedItem.itemType == 'ANIMATION':
             self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(anim=True))
 
