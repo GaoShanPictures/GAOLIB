@@ -2,10 +2,10 @@
 
 GAOLIB Copyright (C) 2022 GAO SHAN PICTURES is a GAO SHAN PICTURES Blender add-on developped to manage a library of poses and animations. This tool will help you store and re-use animations and poses in from and to different Blender files. 
 
-The design of the user interface of this project, and its main purpose are inspired by Studio Library for Maya : https://www.studiolibrary.com/.
+The design of the user interface of this project, and its main purpose are inspired by Studio Library for Maya
 
 ## Prerequisite
-GAOLIB works with Blender 2.93. It has not fully been tested on Blender 3, but the first tests seem to be working as well. To install it, please visit the Blender Download web page : https://www.blender.org/download/.
+GAOLIB works with Blender 2.93. It has not fully been tested on Blender 3, but the first tests seem to be working as well. 
 
 ## Installation
 
@@ -78,7 +78,7 @@ Published under GPLv3 license.
 ## Author
 Anne Beurard for GAO SHAN PICTURES
 
-With the help of Beorn Leonard : www.patazanimation.com
+With the help of Beorn Leonard 
 
 Note :
 
