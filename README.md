@@ -4,6 +4,9 @@ GAOLIB Copyright (C) 2022 GAO SHAN PICTURES is a GAO SHAN PICTURES Blender add-o
 
 The design of the user interface of this project, and its main purpose are inspired by Studio Library for Maya : https://www.studiolibrary.com/.
 
+## Latest Updates
+- A new item type is now available in GAOLIB : the Selection set to store a list of bones. 
+
 ## Prerequisite
 GAOLIB works with Blender 2.93. It has not fully been tested on Blender 3, but the first tests seem to be working as well. To install it, please visit the Blender Download web page : https://www.blender.org/download/.
 
