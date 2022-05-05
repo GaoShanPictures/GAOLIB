@@ -45,10 +45,16 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
         item = self.__items[row]
 
         if role == QtCore.Qt.DisplayRole:
-            if len(item.name) > 18:
-                return item.name[:15] + '...'
-            else:
-                return item.name
+            itemName = item.name
+            if itemName.endswith('.anim'):
+                itemName = itemName[:-5]
+            elif itemName.endswith ('.selection'):
+                itemName = itemName[:-10]
+            elif itemName.endswith('.pose'):
+                itemName = itemName[:-5]
+            if len(itemName) > 18:
+                itemName = itemName[:15] + '...'
+            return itemName
 
         elif role == QtCore.Qt.DecorationRole:
             return QtGui.QIcon(QtGui.QPixmap(item.thumbpath).scaled(300, 300))
@@ -57,6 +63,8 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
                 return QtGui.QColor(200, 125, 42, 200)
             elif item.itemType == 'ANIMATION':
                 return QtGui.QColor(37, 172, 182, 200)
+            elif item.itemType == 'SELECTION SET':
+                return QtGui.QColor(163, 46, 142, 200)
 
         elif role == QtCore.Qt.UserRole:
             return item

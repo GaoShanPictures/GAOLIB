@@ -147,6 +147,45 @@ def getSelectedBones():
     return bones
 
 
+def updateSelectionSet(infoWidget, add=True):
+    # Get item json file 
+    item = infoWidget.item
+    itemPath = item.path
+    jsonFile = None
+    for file in os.listdir(itemPath):
+        if file == 'selection_set.json':
+            jsonPath = os.path.join(itemPath, file)
+    if not jsonPath:
+        QtWidgets.QMessageBox.about(None,
+                                    'Abort action',
+                                    'Found no selection_set.json in ' + itemPath)
+    # Rend json
+    itemdata = {}
+    with open(jsonPath) as file:
+        itemdata = json.load(file)
+    # Init bones list with bones from json file
+    bones = []
+    for key in itemdata['metadata'].keys():
+        if key == 'boneNames':
+            bones = itemdata['metadata']['boneNames']
+    # Modify bones list with selected bones
+    selectedBones = [bone.name for bone in getSelectedBones()]
+    for bone in selectedBones:
+        if add and bone not in bones:
+            bones.append(bone)
+        elif not add and bone in bones:
+            bones.remove(bone)
+    # Modify json datas
+    itemdata['metadata']['boneNames'] = bones
+    itemdata['metadata']['content'] = str(len(bones)) + ' bone(s)'
+    # write json
+    with open(jsonPath, 'w') as file:
+        json.dump(itemdata, file, indent=4, sort_keys=True)
+    # Update displayed informations
+    infoWidget.contentLabel.setText(itemdata['metadata']['content'])
+    selectBones(jsonPath)
+
+
 def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     # Remember selection
     selection = getSelectedBones()
@@ -230,9 +269,9 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             gaolibAction = bpy.data.actions.new('gaolib_action')
             selectedObject.animation_data.action = gaolibAction
 
-        # Keep track of the pasting progress
-        progressStep = 95/len(action.fcurves)
-        onePurcent = int(1/progressStep)
+        # # Keep track of the pasting progress
+        # progressStep = 95/len(action.fcurves)
+        # onePurcent = int(1/progressStep)
         
         count_op = 0
         # Retrieve source action keyframe points and copy them into target action
@@ -279,9 +318,9 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                             return
                         count_op += 1
                         selectedObject.keyframe_insert(data_path=data_path, index=index, frame=frame)
-            if i % onePurcent == 0:
-                # Print progress in concole
-                print(str(int(i * progressStep) + 5) + ' %')
+            # if onePurcent != 0 and i % onePurcent == 0:
+            #     # Print progress in concole
+            #     print(str(int(i * progressStep) + 5) + ' %')
         print('operations : ' + str(count_op))
         
         # Group channels by bones
@@ -312,7 +351,6 @@ def copyPose(poseDir):
     tempCopy = os.path.join(poseDir,
                             'pose.blend')
     shutil.copyfile(tempPose, tempCopy)
-
 
 def pastePose(poseDir, flipped=False):
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
@@ -346,21 +384,18 @@ def pastePose(poseDir, flipped=False):
         for selectedbone in selection:
             if posebone.name == selectedbone.name:
                 rotationMode = posebone.rotation_mode
-                print(rotationMode)
                 selectedbone.rotation_mode = posebone.rotation_mode
                 for axis in range(3):
                     if not selectedbone.lock_location[axis]:
                         selectedbone.location[axis] = posebone.location[axis]
                     if rotationMode != 'QUATERNION':
                         if not selectedbone.lock_rotation[axis]:
-                            print('euler')
                             selectedbone.rotation_euler[axis] = posebone.rotation_euler[axis]
                     if not selectedbone.lock_scale[axis]:
                         selectedbone.scale[axis] = posebone.scale[axis]
                 if rotationMode == 'QUATERNION':
                     for axis in range(3):
                         if not selectedbone.lock_rotation[axis]:
-                            print('quaternion')
                             selectedbone.rotation_quaternion[0] = posebone.rotation_quaternion[0]
                             selectedbone.rotation_quaternion[axis + 1] = posebone.rotation_quaternion[axis + 1 ]
 

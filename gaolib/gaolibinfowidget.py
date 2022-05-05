@@ -26,7 +26,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from gaolib.ui.infowidgetui import Ui_Form as InfoWidget
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 
-from gaolib.model.blenderutils import selectBones
+from gaolib.model.blenderutils import selectBones, updateSelectionSet
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
@@ -47,7 +47,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         # Connect functions
         self.trashPushButton.released.connect(self.delete)
         self.selectBonesPushButton.released.connect(self.selectBones)
-    
+        self.addToSetPushButton.released.connect(lambda: updateSelectionSet(self, add=True))
+        self.rmFromSetPushButton.released.connect(lambda: updateSelectionSet(self, add=False))
+
     def delete(self):
         """Delete selected item"""
         # Confirm delete dialog
@@ -102,14 +104,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             try:
                 if self.item.itemType == 'ANIMATION':
                     os.remove(os.path.join(path, 'thumbnail.gif'))
-                elif self.item.itemType == 'POSE':
+                elif self.item.itemType in ['POSE', 'SELECTION SET']:
                     os.remove(os.path.join(path, 'thumbnail.png'))
             except Exception as e:
                 if self.item.itemType == 'ANIMATION':
                     QtWidgets.QMessageBox.about(self,
                                                 'Abort action',
                                                 'Cannot remove ' + os.path.join(path, 'thumbnail.gif') + ' : ' + str(e))
-                elif self.item.itemType == 'POSE':
+                elif self.item.itemType in ['POSE', 'SELECTION SET']:
                     os.remove(os.path.join(path, 'thumbnail.png'))
                 return
             shutil.rmtree(path)
@@ -139,6 +141,20 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
         if self.item.itemType == 'POSE':
             self.animOptionsWidget.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
+            self.selectionSetOptionsWidget.setVisible(False)
+            # self.flippedCheckBox.setEnabled(False)
+            # for file in os.listdir(self.item.path):
+            #     if file == 'flipped_pose.blend':
+            #         self.flippedCheckBox.setEnabled(True)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+
+        if self.item.itemType == 'SELECTION SET':
+            self.applyPushButton.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
 
@@ -156,6 +172,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.selectBonesPushButton.setVisible(False)
         
         if self.item.itemType == 'ANIMATION':
+            self.selectionSetOptionsWidget.setVisible(False)
             self.poseOptionsWidget.setVisible(False)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(QtGui.QPixmap("icons/anim2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
