@@ -96,7 +96,10 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
             return QtGui.QColor(QtCore.Qt.gray)
 
         elif role == QtCore.Qt.DecorationRole:
-            folderPicture = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../icons/folder2.png')
+            if elem.thumbnail:
+                folderPicture = elem.thumbnail
+            else:
+                folderPicture = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../icons/folder2.png')
             return QtGui.QIcon(QtGui.QPixmap(folderPicture))
 
         elif role == QtCore.Qt.UserRole:

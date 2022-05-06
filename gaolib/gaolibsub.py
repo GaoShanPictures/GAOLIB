@@ -171,6 +171,20 @@ class GaoLib(QtWidgets.QMainWindow):
         dialog = QtWidgets.QDialog(self)
         dialog.ui = NewFolderDialog()
         dialog.ui.setupUi(dialog)
+        
+        thumbpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/folder2.png')
+        dialog.ui.iconLabel.setPixmap((QtGui.QPixmap(thumbpath).scaled(80, 80)))
+        folderIcons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/folder_icons')
+        if os.path.isdir(folderIcons):
+            for iconFile in os.listdir(folderIcons):
+                iconPath = os.path.join(folderIcons, iconFile)
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(iconPath))
+                dialog.ui.iconComboBox.addItem(icon,iconFile)
+        dialog.ui.iconComboBox.currentIndexChanged.connect(
+            lambda: dialog.ui.iconLabel.setPixmap(
+                QtGui.QPixmap(os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())).scaled(80, 80))
+        )
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
         name = dialog.ui.lineEdit.text()
@@ -195,7 +209,12 @@ class GaoLib(QtWidgets.QMainWindow):
                         ancestorNames.append(ances.name)
 
                     path = os.path.join(parentItem.path, name)
-
+                    # Copy thumbnail
+                    folderIconPath = os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())
+                    print(folderIconPath)
+                    if os.path.isfile(folderIconPath):
+                        thumbnailPath = os.path.join(path, 'thumbnail.png')
+                        shutil.copyfile(folderIconPath, thumbnailPath)
                     newItem = GaoLibTreeItem(name, ancestors=ancestors, path=path)
                     parentItem.addChild(newItem)
  
@@ -636,7 +655,7 @@ class GaoLib(QtWidgets.QMainWindow):
 
         for directory in os.listdir(itemPath):
             directoryPath = os.path.join(itemPath, directory)
-            if os.path.isdir(directoryPath) and '.anim' not in directory and '.pose' not in directory and directory != 'trash' and not directory.startswith('.'):
+            if os.path.isdir(directoryPath) and '.anim' not in directory and '.selection' not in directory and '.pose' not in directory and directory != 'trash' and not directory.startswith('.'):
                 # Create Item
                 item = GaoLibTreeItem(directory, ancestors=ancestors, path=directoryPath)
                 parentItem.addChild(item)
@@ -651,15 +670,22 @@ class GaoLib(QtWidgets.QMainWindow):
         folderPath = os.path.join(self.rootPath, ancestors, folder)
         items = {}
         # Parse folder
-        for i, it in enumerate(os.listdir(folderPath)):
+        i = 0
+        for it in os.listdir(folderPath):
             itPath = os.path.join(folderPath, it)
-            if os.path.isdir(itPath) and not it.endswith('.anim') and not it.endswith('.pose') and not it.endswith('.selection') :
-                thumbpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'icons/folder2.png')
-            else:
-                thumbpath = os.path.join(itPath, 'thumbnail.png')
-            # Create Item
-            gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
-            items[i] = gaoLibItem
+            if os.path.isdir(itPath):
+                thumbnailPath = os.path.join(itPath, 'thumbnail.png')
+                if os.path.isfile(thumbnailPath):
+                    thumbpath = thumbnailPath
+                elif os.path.isdir(itPath) and not it.endswith('.anim') and not it.endswith('.pose') and not it.endswith('.selection') :
+                    thumbpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'icons/folder2.png')
+                else:
+                    thumbpath = None
+                    
+                # Create Item
+                gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
+                items[i] = gaoLibItem
+                i += 1
         return items
 
     def selectChildItemInTree(self, itemName):
@@ -667,6 +693,7 @@ class GaoLib(QtWidgets.QMainWindow):
         parent =  self.currentTreeElement
         for child in parent.children:
             if child.name == itemName:
+                print(child.name)
                 indexes = self.hierarchyTreeView.selectionModel().selection().indexes()
                 if not indexes:
                     indexes = [self.hierarchyTreeView.rootIndex()]
@@ -683,6 +710,7 @@ class GaoLib(QtWidgets.QMainWindow):
         itemName = self.currentListItem.name
         index = None
         if itemType == 'FOLDER':
+            print(itemName)
             self.selectChildItemInTree(itemName)
 
     def setListView(self):
@@ -722,6 +750,7 @@ class GaoLib(QtWidgets.QMainWindow):
             self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
             self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
             self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
+            self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
             self.selectChildItemInTree('ROOT')
 

@@ -1,21 +1,3 @@
-#   Copyright (C) 2022 GAO SHAN PICTURES
-
-#   This file is a part of GAOLIB.
-
-#   GAOLIB is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 3 of the License, or
-#   (at your option) any later version.
-
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-#   GNU General Public License for more details.
-
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <https://www.gnu.org/licenses/>
-
-
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'newfolderdialog.ui'
@@ -32,9 +14,9 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(486, 120)
+        Dialog.resize(486, 163)
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("../icons/folder.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        icon.addPixmap(QtGui.QPixmap("icons/folder.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         Dialog.setWindowIcon(icon)
         Dialog.setStyleSheet("QMainWindow{\n"
 "    color: #b1b1b1;\n"
@@ -268,21 +250,32 @@ class Ui_Dialog(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.widget = QtWidgets.QWidget(Dialog)
         self.widget.setObjectName("widget")
-        self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.widget)
-        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.gridLayout = QtWidgets.QGridLayout(self.widget)
+        self.gridLayout.setObjectName("gridLayout")
         self.label = QtWidgets.QLabel(self.widget)
         self.label.setMaximumSize(QtCore.QSize(16777215, 40))
         self.label.setTextFormat(QtCore.Qt.RichText)
         self.label.setAlignment(QtCore.Qt.AlignBottom|QtCore.Qt.AlignLeading|QtCore.Qt.AlignLeft)
         self.label.setObjectName("label")
-        self.verticalLayout_2.addWidget(self.label)
+        self.gridLayout.addWidget(self.label, 0, 0, 1, 1)
         self.lineEdit = QtWidgets.QLineEdit(self.widget)
         self.lineEdit.setMinimumSize(QtCore.QSize(0, 30))
         font = QtGui.QFont()
         font.setPointSize(9)
         self.lineEdit.setFont(font)
         self.lineEdit.setObjectName("lineEdit")
-        self.verticalLayout_2.addWidget(self.lineEdit)
+        self.gridLayout.addWidget(self.lineEdit, 1, 0, 1, 1)
+        self.iconComboBox = QtWidgets.QComboBox(self.widget)
+        self.iconComboBox.setMinimumSize(QtCore.QSize(0, 40))
+        self.iconComboBox.setObjectName("iconComboBox")
+        self.iconComboBox.addItem("")
+        self.gridLayout.addWidget(self.iconComboBox, 2, 0, 1, 1)
+        self.iconLabel = QtWidgets.QLabel(self.widget)
+        self.iconLabel.setMinimumSize(QtCore.QSize(80, 80))
+        self.iconLabel.setMaximumSize(QtCore.QSize(80, 80))
+        self.iconLabel.setText("")
+        self.iconLabel.setObjectName("iconLabel")
+        self.gridLayout.addWidget(self.iconLabel, 1, 1, 2, 1)
         self.verticalLayout.addWidget(self.widget)
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
@@ -299,3 +292,4 @@ class Ui_Dialog(object):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", "New Folder"))
         self.label.setText(_translate("Dialog", "<html><head/><body><p><span style=\" font-size:9pt; font-weight:600;\">Please, choose a name for the new folder</span></p></body></html>"))
+        self.iconComboBox.setItemText(0, _translate("Dialog", "Choose icon"))
