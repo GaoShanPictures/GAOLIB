@@ -61,7 +61,6 @@ class GaoLibTreeItem(object):
     def row(self):
         """Return the item row"""
         if self.parent is not None:
-            print(self.parent.children.index(self))
             return self.parent.children.index(self)
 
     def child(self, row):

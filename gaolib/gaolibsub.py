@@ -211,7 +211,6 @@ class GaoLib(QtWidgets.QMainWindow):
                     path = os.path.join(parentItem.path, name)
                     # Copy thumbnail
                     folderIconPath = os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())
-                    print(folderIconPath)
                     if os.path.isfile(folderIconPath):
                         thumbnailPath = os.path.join(path, 'thumbnail.png')
                         shutil.copyfile(folderIconPath, thumbnailPath)
@@ -693,7 +692,6 @@ class GaoLib(QtWidgets.QMainWindow):
         parent =  self.currentTreeElement
         for child in parent.children:
             if child.name == itemName:
-                print(child.name)
                 indexes = self.hierarchyTreeView.selectionModel().selection().indexes()
                 if not indexes:
                     indexes = [self.hierarchyTreeView.rootIndex()]
@@ -710,7 +708,6 @@ class GaoLib(QtWidgets.QMainWindow):
         itemName = self.currentListItem.name
         index = None
         if itemType == 'FOLDER':
-            print(itemName)
             self.selectChildItemInTree(itemName)
 
     def setListView(self):
@@ -744,7 +741,7 @@ class GaoLib(QtWidgets.QMainWindow):
             self.treeItemProxyModel = TreeItemFilterProxyModel()
             
             self.treeItemProxyModel.setSourceModel(model)
-            #self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
+            self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
             self.hierarchyTreeView.setModel(self.treeItemProxyModel)
             
             self.treeSelectionModel = self.hierarchyTreeView.selectionModel()

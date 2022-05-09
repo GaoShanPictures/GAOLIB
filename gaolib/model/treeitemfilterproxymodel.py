@@ -48,6 +48,6 @@ class TreeItemFilterProxyModel(QtCore.QSortFilterProxyModel):
 
     def lessThan(self, left, right):
         """Items comparator"""
-        leftData = self.sourceModel().data(left)
-        rightData = self.sourceModel().data(right)
+        leftData = self.sourceModel().lower().data(left)
+        rightData = self.sourceModel().lower().data(right)
         return leftData < rightData
