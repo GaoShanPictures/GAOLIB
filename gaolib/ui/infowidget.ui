@@ -458,30 +458,8 @@ QPlainTextEdit {
        <number>12</number>
       </property>
       <item>
-       <widget class="QComboBox" name="startFrameComboBox">
-        <item>
-         <property name="text">
-          <string>From current frame</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>From start frame</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>From source start</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item>
-       <widget class="QWidget" name="frameRangeWidget" native="true">
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <property name="spacing">
-          <number>3</number>
-         </property>
+       <widget class="QWidget" name="animOptionsWidget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_4">
          <property name="leftMargin">
           <number>0</number>
          </property>
@@ -495,33 +473,80 @@ QPlainTextEdit {
           <number>0</number>
          </property>
          <item>
-          <widget class="QLabel" name="label_6">
+          <widget class="QComboBox" name="startFrameComboBox">
+           <item>
+            <property name="text">
+             <string>From current frame</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>From start frame</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>From source start</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="frameRangeWidget_2" native="true">
+           <layout class="QHBoxLayout" name="horizontalLayout_4">
+            <property name="spacing">
+             <number>3</number>
+            </property>
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QLabel" name="label_9">
+              <property name="text">
+               <string>Source from</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="fromRangeSpinBox">
+              <property name="maximum">
+               <number>1000000</number>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="label_10">
+              <property name="text">
+               <string>to</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QSpinBox" name="toRangeSpinBox">
+              <property name="maximum">
+               <number>1000000</number>
+              </property>
+              <property name="value">
+               <number>100</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="quickPasteCheckBox">
            <property name="text">
-            <string>Source from</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QSpinBox" name="fromRangeSpinBox">
-           <property name="maximum">
-            <number>1000000</number>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="label_7">
-           <property name="text">
-            <string>to</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QSpinBox" name="toRangeSpinBox">
-           <property name="maximum">
-            <number>1000000</number>
-           </property>
-           <property name="value">
-            <number>100</number>
+            <string>Quick Paste Action</string>
            </property>
           </widget>
          </item>
@@ -529,10 +554,70 @@ QPlainTextEdit {
        </widget>
       </item>
       <item>
-       <widget class="QCheckBox" name="quickPasteCheckBox">
-        <property name="text">
-         <string>Quick Paste Action</string>
-        </property>
+       <widget class="QWidget" name="poseOptionsWidget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_5">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QCheckBox" name="flippedCheckBox">
+           <property name="text">
+            <string>Flipped on X-Axis</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="selectionSetOptionsWidget" native="true">
+        <layout class="QGridLayout" name="gridLayout_2">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item row="1" column="2">
+          <widget class="QPushButton" name="rmFromSetPushButton">
+           <property name="text">
+            <string>Remove from Set</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0" colspan="3">
+          <widget class="QLabel" name="label_6">
+           <property name="text">
+            <string>Selected Bones</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="2">
+          <widget class="QPushButton" name="addToSetPushButton">
+           <property name="text">
+            <string>Add  To Set</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </widget>
       </item>
      </layout>
@@ -590,41 +675,6 @@ QPlainTextEdit {
       <iconset>
        <normaloff>../icons/pose2.png</normaloff>../icons/pose2.png</iconset>
      </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QWidget" name="progressWidget" native="true">
-     <layout class="QVBoxLayout" name="verticalLayout_3">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <item>
-       <widget class="QLabel" name="label_8">
-        <property name="font">
-         <font>
-          <weight>75</weight>
-          <bold>true</bold>
-         </font>
-        </property>
-        <property name="text">
-         <string>Pasting Animation ...</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QProgressBar" name="progressBar">
-        <property name="value">
-         <number>24</number>
-        </property>
-       </widget>
-      </item>
-     </layout>
     </widget>
    </item>
    <item>

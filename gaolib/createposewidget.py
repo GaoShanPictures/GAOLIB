@@ -26,16 +26,19 @@ from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidget
 
 class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
     """Manage pose/animation item creation"""
-    def __init__(self, itemtype='POSE', parent=None):
+    def __init__(self, itemType='POSE', parent=None):
         super(CreatePoseWidget, self).__init__(parent=parent)
         self.parent = parent
         self.setupUi(self)
-        self.type = itemtype
+        self.type = itemType
         self.movie = None
 
         self.parent.infoGroupBox.setTitle(self.type)
         if self.type == 'POSE':
             self.frameRangeWidget.setVisible(False)
+        elif self.type == 'SELECTION SET' :
+            self.frameRangeWidget.setVisible(False)
+            self.applyPushButton.setText('SAVE SELECTION SET')
         elif self.type == 'ANIMATION':
             self.applyPushButton.setText('SAVE ANIMATION')
             self.pushButton.installEventFilter(self)

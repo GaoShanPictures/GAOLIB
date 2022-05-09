@@ -41,6 +41,9 @@ class GaoLibItem(object):
         elif self.name.endswith('.anim'):
             jsonPath = os.path.join(self.path,  'animation.json')
             self.itemType = 'ANIMATION'
+        elif self.name.endswith('.selection'):
+            jsonPath = os.path.join(self.path,  'selection_set.json')
+            self.itemType = 'SELECTION SET'
         else:
             jsonPath = None
             self.itemType = 'FOLDER'

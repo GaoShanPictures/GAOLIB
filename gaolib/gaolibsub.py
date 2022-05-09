@@ -94,6 +94,8 @@ class GaoLib(QtWidgets.QMainWindow):
         createMenu.addAction(poseIcon,'New Pose', self.createPose)
         animIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder,'anim2.png')))
         createMenu.addAction(animIcon, 'New Animation', self.createAnim)
+        selectIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder,'selectionset.png')))
+        createMenu.addAction(selectIcon, 'New Selection Set', self.createSelectionSet)
         folderIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder,'folder2.png')))
         createMenu.addAction(folderIcon, 'New Folder', self.createFolder)
         self.newPushButton.setMenu(createMenu)
@@ -169,6 +171,20 @@ class GaoLib(QtWidgets.QMainWindow):
         dialog = QtWidgets.QDialog(self)
         dialog.ui = NewFolderDialog()
         dialog.ui.setupUi(dialog)
+        
+        thumbpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/folder2.png')
+        dialog.ui.iconLabel.setPixmap((QtGui.QPixmap(thumbpath).scaled(80, 80)))
+        folderIcons = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons/folder_icons')
+        if os.path.isdir(folderIcons):
+            for iconFile in os.listdir(folderIcons):
+                iconPath = os.path.join(folderIcons, iconFile)
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(iconPath))
+                dialog.ui.iconComboBox.addItem(icon,iconFile)
+        dialog.ui.iconComboBox.currentIndexChanged.connect(
+            lambda: dialog.ui.iconLabel.setPixmap(
+                QtGui.QPixmap(os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())).scaled(80, 80))
+        )
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
         name = dialog.ui.lineEdit.text()
@@ -193,7 +209,11 @@ class GaoLib(QtWidgets.QMainWindow):
                         ancestorNames.append(ances.name)
 
                     path = os.path.join(parentItem.path, name)
-
+                    # Copy thumbnail
+                    folderIconPath = os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())
+                    if os.path.isfile(folderIconPath):
+                        thumbnailPath = os.path.join(path, 'thumbnail.png')
+                        shutil.copyfile(folderIconPath, thumbnailPath)
                     newItem = GaoLibTreeItem(name, ancestors=ancestors, path=path)
                     parentItem.addChild(newItem)
  
@@ -211,7 +231,7 @@ class GaoLib(QtWidgets.QMainWindow):
                                         'Folder name must not be empty.')
 
     def createGenericItem(self):
-        """Create new animation/pose item"""
+        """Create new animation/pose/selection set item"""
 
         # Temporary path for thumnail
         self.thumbTempPath = os.path.join(
@@ -239,47 +259,70 @@ class GaoLib(QtWidgets.QMainWindow):
 
     def createAnim(self):
         """Sets the UI to Create new animation item"""
+        itemType = 'ANIMATION'
         self.createGenericItem()
-        # Create widget for create pose
-        self.createPosewidget = CreatePoseWidget(itemtype='ANIMATION', parent=self)
+        # Create widget for create anim
+        self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
         self.verticalLayout_5.addWidget(self.createPosewidget)
 
         self.beginCreateThumb = True # remember step of createThumbnail
-        self.createPosewidget.pushButton.released.connect(lambda: self.createThumbnail(anim=True))
-        self.createPosewidget.applyPushButton.released.connect(lambda: self.savePose(anim=True))
+        self.createPosewidget.pushButton.released.connect(lambda: self.createThumbnail(itemType=itemType))
+        self.createPosewidget.applyPushButton.released.connect(lambda: self.savePose(itemType=itemType))
         self.createPosewidget.fromRangeSpinBox.setProperty("value", bpy.context.scene.frame_start)
         self.createPosewidget.toRangeSpinBox.setProperty("value", bpy.context.scene.frame_end)
 
     def createPose(self):
         """Sets the UI to Create new pose item"""
+        itemType = 'POSE'
         self.createGenericItem()
         # Create widget for create pose
-        self.createPosewidget = CreatePoseWidget(itemtype='POSE', parent=self)
+        self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
         self.verticalLayout_5.addWidget(self.createPosewidget)
         
         self.beginCreateThumb = True # remember step of createThumbnail
-        self.createPosewidget.pushButton.released.connect(lambda: self.createThumbnail(anim=False))
-        self.createPosewidget.applyPushButton.released.connect(self.savePose)
+        self.createPosewidget.pushButton.released.connect(lambda: self.createThumbnail(itemType=itemType))
+        self.createPosewidget.applyPushButton.released.connect(lambda: self.savePose(itemType=itemType))
 
-    def savePose(self, anim=False):
+
+    def createSelectionSet(self):
+        """Sets the UI to Create new selection set item"""
+        self.createGenericItem()
+        itemType = 'SELECTION SET'
+        # Create widget for create selection set
+        self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
+        self.verticalLayout_5.addWidget(self.createPosewidget)
+
+        self.beginCreateThumb = True # remember step of createThumbnail
+        self.createPosewidget.pushButton.released.connect(lambda: self.createThumbnail(itemType=itemType))
+        self.createPosewidget.applyPushButton.released.connect(lambda: self.savePose(itemType=itemType))
+
+
+    def savePose(self, itemType='POSE'):
         """Save a new item in the library"""
+        if itemType == 'ANIMATION':
+            itemTypeStr = 'anim'
+            thumbTempPath = self.thumbTempPath.replace('.png', '.gif')
+        elif itemType == 'POSE':
+            itemTypeStr = 'pose'
+            thumbTempPath = self.thumbTempPath
+        elif itemType == 'SELECTION SET':
+            itemTypeStr = 'selection'
+            thumbTempPath = self.thumbTempPath
 
-        itemType = 'pose' if not anim else 'anim'
-        thumbTempPath = self.thumbTempPath.replace('.png', '.gif') if anim else self.thumbTempPath
         # Check if valid name
         name = self.createPosewidget.nameLineEdit.text()
         if name.replace(' ', '') != '':
-            name = name.replace(' ', '_') + '.' + itemType
+            name = name.replace(' ', '_') + '.' + itemTypeStr
         else:
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',
-                                        'Cannot save ' + itemType + ', Invalid name : \"' + name + '\".')
+                                        'Cannot save ' + itemTypeStr + ', Invalid name : \"' + name + '\".')
             return
         # Check if thumbnail exists
         if not os.path.exists(thumbTempPath):
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',
-                                        'Cannot save ' + itemType + ', Please create one.')
+                                        'Cannot save ' + itemTypeStr + ', Please create one.')
             return
         # Create pose directory
         parentDir = self.currentTreeElement.path
@@ -310,7 +353,7 @@ class GaoLib(QtWidgets.QMainWindow):
             print('OSError : ' + str(e))
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',
-                                        'Cannot save ' + itemType + ', Invalid name : \"' + name + '\".')
+                                        'Cannot save ' + itemTypeStr + ', Invalid name : \"' + name + '\".')
             return
         except Exception as e:
             QtWidgets.QMessageBox.about(self,
@@ -320,7 +363,7 @@ class GaoLib(QtWidgets.QMainWindow):
             return
 
         # Copy thumbnail in pose directory
-        if anim:
+        if itemType == 'ANIMATION':
             pngThumb = os.path.join(poseDir, 'thumbnail.png')
             tempPngDir = os.path.join(os.path.dirname(self.thumbTempPath), 'sequence')
             tempPng = None
@@ -332,16 +375,19 @@ class GaoLib(QtWidgets.QMainWindow):
 
             thumbPath = os.path.join(poseDir, 'thumbnail.gif')
             shutil.copyfile(thumbTempPath, thumbPath)
-        else:
+            # Copy blend in pose directory
+            copyAnim(poseDir)
+        elif itemType == 'POSE':
             thumbPath = os.path.join(poseDir, 'thumbnail.png')
             shutil.copyfile(thumbTempPath, thumbPath)
-        # Copy blend in pose directory
-        if anim:
-            copyAnim(poseDir)
-        else:
+            # Copy blend in pose directory
             copyPose(poseDir)
+        elif itemType == 'SELECTION SET':
+            thumbPath = os.path.join(poseDir, 'thumbnail.png')
+            shutil.copyfile(thumbTempPath, thumbPath)
+            
         # Create json in pose directory
-        self.writejson(name, poseDir, anim=anim)
+        self.writejson(name, poseDir, itemType=itemType)
 
         # Refresh view
         oldItems = self.items
@@ -362,28 +408,29 @@ class GaoLib(QtWidgets.QMainWindow):
         self.listView.selectionModel().clear()
         self.listView.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
 
-    def applyPose(self, anim=False):
+    def applyPose(self, itemType='POSE', flipped=False):
         """Paste animation/pose from the library to the selected object of the scene"""
         try:
-            if anim:
+            if itemType == 'ANIMATION':
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
-            else:
-                pastePose(self.currentListItem.path)
+            elif itemType == 'POSE':
+                pastePose(self.currentListItem.path, flipped=flipped)
         except Exception as e:
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',
                                         'An error has occured, check Console : ' + str(e))
             raise
 
-    def writejson(self, name, directory, anim=False):
+    def writejson(self, name, directory, itemType='POSE'):
         """Create json file corresponding to pose/animation item"""
-        if anim:
+        if itemType == 'ANIMATION':
             jsonFile = os.path.join(directory, 'animation.json')
-        else:
+        elif itemType == 'POSE':
             jsonFile = os.path.join(directory, 'pose.json')
-        itemType = 'ANIMATION' if anim else 'POSE'
+        elif itemType == 'SELECTION SET':
+            jsonFile = os.path.join(directory, 'selection_set.json')
 
         if os.path.exists(self.jsonTempPath):
             with open(self.jsonTempPath) as file:
@@ -410,7 +457,7 @@ class GaoLib(QtWidgets.QMainWindow):
             json.dump(data, file, indent=4, sort_keys=True)
 
 
-    def createThumbnail(self, anim=False):
+    def createThumbnail(self, itemType='POSE'):
         """Create the animation/pose thumbnail"""
         if not os.path.exists(bpy.context.preferences.filepaths.temporary_directory):
             QtWidgets.QMessageBox.about(self,
@@ -427,26 +474,32 @@ class GaoLib(QtWidgets.QMainWindow):
             'temp.json')
         bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
         bpy.context.scene.gaolib_tool.gaolibNewPose = False
+        bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
         if self.beginCreateThumb:
-            self.createThumbnailBegin(anim=anim)
+            self.createThumbnailBegin(itemType=itemType)
             self.beginCreateThumb = False
         else:
-            self.createThumbnailEnd(anim=anim)
+            self.createThumbnailEnd(itemType=itemType)
             self.beginCreateThumb = True
 
 
-    def createThumbnailBegin(self, anim=False):
+    def createThumbnailBegin(self, itemType='POSE'):
         """First click on the create thumbnail button, prepare the scene for creating the animation/pose files"""
-        if anim:
+        if itemType == 'ANIMATION':
             bpy.context.scene.gaolib_tool.gaolibNewAnimation = True
             self.createPosewidget.movie = None
             photoButtonText = 'Please use the Create\nAnimation Tool in Blender\nWhen it is done\nclick HERE again'
             renderpath = os.path.join(os.path.dirname(self.thumbTempPath), 'sequence', 'thumbnail.####.png')
             bpy.context.scene.gaolib_tool.gaolibKeyLastFrame = self.createPosewidget.keyLastCheckBox.isChecked()
-        else:
+        elif itemType == 'POSE':
             bpy.context.scene.gaolib_tool.gaolibNewPose = True
             photoButtonText = 'Please use the Create\nPose Tool in Blender\nWhen it is done\nclick HERE again'
-            renderpath = self.thumbTempPath 
+            renderpath = self.thumbTempPath
+        elif itemType == 'SELECTION SET':
+            bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = True
+            photoButtonText = 'Please use the Create\nSelection Set \nTool in Blender\nWhen it is done\nclick HERE again'
+            renderpath = self.thumbTempPath
+
         self.createPosewidget.pushButton.setText(photoButtonText)
         self.createPosewidget.pushButton.setIcon(QtGui.QIcon())
         # Remember current render settings
@@ -467,17 +520,19 @@ class GaoLib(QtWidgets.QMainWindow):
 
         bpy.context.scene.render.resolution_x = 200
         bpy.context.scene.render.resolution_y = 200
-        if anim:
+        if itemType == 'ANIMATION':
             bpy.context.scene.frame_step = self.createPosewidget.spinBox.value()
             bpy.context.scene.frame_start = self.createPosewidget.fromRangeSpinBox.value()
             bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
 
-    def createThumbnailEnd(self, anim=False):
+    def createThumbnailEnd(self, itemType='POSE'):
         """Second click on the create thumbnail button,create item files"""
-        if anim:
+        if itemType == 'ANIMATION':
             bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
-        else:
+        elif itemType == 'POSE':
             bpy.context.scene.gaolib_tool.gaolibNewPose = False
+        elif itemType == 'SELECTION SET':
+            bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
         # unhide hidden overlay params
         try:
             for area in bpy.context.screen.areas:
@@ -512,17 +567,17 @@ class GaoLib(QtWidgets.QMainWindow):
 
         self.createPosewidget.pushButton.setText('')
         icon = QtGui.QIcon()
-        if anim:
+        if itemType == 'ANIMATION':
             thumbpath = os.path.join(os.path.dirname(self.thumbTempPath), 'sequence')
             # Create GIF
             try:
                 thumbpath = generateGif(thumbpath)
             except:
                 print('No images to generate GIF from')
-        else:
+        elif itemType == 'POSE' or itemType == 'SELECTION SET':
             thumbpath = self.thumbTempPath
         if os.path.isfile(thumbpath):
-            if anim:
+            if itemType == 'ANIMATION':
                 movie = QtGui.QMovie(thumbpath, QtCore.QByteArray(), self)
                 movie.frameChanged.connect(self.createPosewidget.updateMovie)   
                 movie.setCacheMode(QtGui.QMovie.CacheAll) 
@@ -532,7 +587,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 movie.stop()
                 icon = QtGui.QIcon(movie.currentPixmap())
                 self.createPosewidget.pushButton.setIcon(icon)
-            else:
+            elif itemType == 'POSE' or itemType == 'SELECTION SET':
                 icon.addPixmap(QtGui.QPixmap(thumbpath), QtGui.QIcon.Normal, QtGui.QIcon.Off)
                 self.createPosewidget.pushButton.setIcon(icon)
         else:
@@ -546,7 +601,7 @@ class GaoLib(QtWidgets.QMainWindow):
         bpy.context.scene.render.resolution_y = self.yres
         bpy.context.scene.render.use_stamp = self.use_stamp
         bpy.context.scene.render.image_settings.color_mode = self.color_mode
-        if anim:
+        if itemType == 'ANIMATION':
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
@@ -583,9 +638,9 @@ class GaoLib(QtWidgets.QMainWindow):
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
         if selectedItem.itemType == 'POSE':
-            self.infoWidget.applyPushButton.released.connect(self.applyPose)
+            self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType, flipped=self.infoWidget.flippedCheckBox.isChecked()))
         elif selectedItem.itemType == 'ANIMATION':
-            self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(anim=True))
+            self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType))
 
     def treeElementSelected(self, selectedItem):
         """Manage selection in tree view"""
@@ -599,7 +654,7 @@ class GaoLib(QtWidgets.QMainWindow):
 
         for directory in os.listdir(itemPath):
             directoryPath = os.path.join(itemPath, directory)
-            if os.path.isdir(directoryPath) and '.anim' not in directory and '.pose' not in directory and directory != 'trash' and not directory.startswith('.'):
+            if os.path.isdir(directoryPath) and '.anim' not in directory and '.selection' not in directory and '.pose' not in directory and directory != 'trash' and not directory.startswith('.'):
                 # Create Item
                 item = GaoLibTreeItem(directory, ancestors=ancestors, path=directoryPath)
                 parentItem.addChild(item)
@@ -614,15 +669,22 @@ class GaoLib(QtWidgets.QMainWindow):
         folderPath = os.path.join(self.rootPath, ancestors, folder)
         items = {}
         # Parse folder
-        for i, it in enumerate(os.listdir(folderPath)):
+        i = 0
+        for it in os.listdir(folderPath):
             itPath = os.path.join(folderPath, it)
-            if os.path.isdir(itPath) and not it.endswith('.anim') and not it.endswith('.pose'):
-                thumbpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'icons/folder2.png')
-            else:
-                thumbpath = os.path.join(itPath, 'thumbnail.png')
-            # Create Item
-            gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
-            items[i] = gaoLibItem
+            if os.path.isdir(itPath):
+                thumbnailPath = os.path.join(itPath, 'thumbnail.png')
+                if os.path.isfile(thumbnailPath):
+                    thumbpath = thumbnailPath
+                elif os.path.isdir(itPath) and not it.endswith('.anim') and not it.endswith('.pose') and not it.endswith('.selection') :
+                    thumbpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'icons/folder2.png')
+                else:
+                    thumbpath = None
+                    
+                # Create Item
+                gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
+                items[i] = gaoLibItem
+                i += 1
         return items
 
     def selectChildItemInTree(self, itemName):
@@ -679,12 +741,13 @@ class GaoLib(QtWidgets.QMainWindow):
             self.treeItemProxyModel = TreeItemFilterProxyModel()
             
             self.treeItemProxyModel.setSourceModel(model)
-            #self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
+            self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
             self.hierarchyTreeView.setModel(self.treeItemProxyModel)
             
             self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
             self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
             self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
+            self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
             self.selectChildItemInTree('ROOT')
 

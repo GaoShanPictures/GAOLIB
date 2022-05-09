@@ -4,6 +4,7 @@ GAOLIB Copyright (C) 2022 GAO SHAN PICTURES is a GAO SHAN PICTURES Blender add-o
 
 The design of the user interface of this project, and its main purpose are inspired by Studio Library for Maya
 
+
 ## Prerequisite
 GAOLIB works with Blender 2.93. It has not fully been tested on Blender 3, but the first tests seem to be working as well. 
 
@@ -67,9 +68,13 @@ This project is the first version of a work in progress. We are aware that some 
 	
 	-- One click on the Save Pose/Animation button in the Gaolib window : Actually stores the files related to the pose/animation item in the library.
 
+- To install a new version of GAOLIB, you have to remove the previous version from the addons and install the new zip you've downloaded here. Note that Blender takes the new changed into account if in the same session the old version of GAOLIB hasn't been used. The first time you install a new version, if some things don't work properly, try to close Blender and reopen it. 
+
 ## Updates
 
 - Former note : 'In order to remove properly the add-on from Blender, the user has to do it from a Blender session in which the Gaolib main window has not been opened. Otherwise, when trying to remove the add-on it will raise an Error in Windows (WinError 32:  The process cannot access the file because it is being used by another process).' bug has been fixed !
+
+- A new item type is now available in GAOLIB : the Selection set to store a list of bones. 
 
 
 ## License

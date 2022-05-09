@@ -17,6 +17,7 @@
 
 __author__ = "Anne Beurard"
 
+import os
 
 class GaoLibTreeItem(object):
     """Description of one item of the Tree View"""
@@ -28,6 +29,12 @@ class GaoLibTreeItem(object):
         self.children = []
         if self.parent is not None:
             self.parent.addChild(self)
+        thumbnailPath = os.path.join(path, 'thumbnail.png')
+        if os.path.isfile(thumbnailPath):
+            self.thumbnail = thumbnailPath
+        else:
+            self.thumbnail = None
+        
 
     def parent(self):
         """Return the parent of the item"""

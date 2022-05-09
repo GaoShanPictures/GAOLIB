@@ -383,6 +383,60 @@ class OT_ShowOverlayParams(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class OT_CreateSelectionSet(bpy.types.Operator):
+    """Create a Json file with the selection set informations and render"""
+    bl_idname = 'development.create_selection_set'
+    bl_label = 'Create Selection Set'
+
+    def execute(self, context):
+        from .gaolib.model.blenderutils import ShowMessageBox
+
+        # Make sure this tool is used after a 'New Selection Set' action in the GAOLIB window
+        if not bpy.context.scene.gaolib_tool.gaolibNewSelectionSet:
+            ShowMessageBox("This tool can ONLY be used with GAOLIB after creating a new Selection Set. (Camera Button)", 'ABORT')
+            return{'CANCELLED'}
+
+        # Check if selected object is in pose mode
+        if bpy.context.object.mode != 'POSE':
+            ShowMessageBox("PLEASE, SET POSE MODE.", 'ABORT')
+            return{'CANCELLED'}
+
+        # Get Name of selection
+        selectedObjects = []
+        for o in bpy.context.selected_objects:
+            selectedObjects.append(o.name)
+        if len(selectedObjects) != 1:
+            ShowMessageBox("PLEASE, SELECT EXACTLY ONE OBJECT.", 'ABORT')
+            return{'CANCELLED'}
+        # Count bones
+        if not len(bpy.context.selected_pose_bones):
+            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", 'ABORT')
+            return {'CANCELLED'}
+        data = {
+            'bones': len(bpy.context.selected_pose_bones),
+            'boneNames': [bone.name for bone in bpy.context.selected_pose_bones],
+            'objects': selectedObjects
+        }
+        # Write Json file
+        jsonFile = os.path.join(os.path.dirname(bpy.context.scene.render.filepath), 'temp.json')
+        with open(jsonFile, 'w') as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        
+        # hide some overlays before rendering
+        for area in bpy.context.screen.areas:
+            if area.type == 'VIEW_3D':
+                for space in area.spaces:
+                    if space.type == 'VIEW_3D':
+                        space.overlay.show_axis_x = False
+                        space.overlay.show_axis_y = False
+                        space.overlay.show_floor = False
+                        break
+
+        # Render
+        bpy.ops.render.opengl('INVOKE_DEFAULT', animation=False, write_still=True)
+        return {'FINISHED'}
+
+
 class OT_CreatePose(bpy.types.Operator):
     """Create a Json file with the pose informations and render"""
     bl_idname = 'development.create_pose'
@@ -574,6 +628,10 @@ class GaolibCustomProperties(bpy.types.PropertyGroup):
         name='newPose',
         default=False)
 
+    gaolibNewSelectionSet: bpy.props.BoolProperty(
+        name='newSelectionSet',
+        default=False)
+
 
 # ----------------------------------GAOLIB PANNEL-----------------------------
 
@@ -589,6 +647,9 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
         col4.operator('development.gaolib_operator',
                       text='GAOLIB',
                       icon='EVENT_G')
+        col4.operator('development.create_selection_set',
+                      text='Create Selection Set',
+                      icon='GROUP_BONE')
         col4.operator('development.create_pose',
                       text='Create Pose',
                       icon='POSE_HLT')
@@ -606,6 +667,7 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
 
 classes = [OT_gaolib,
            OT_CreatePose,
+           OT_CreateSelectionSet,
            OT_ShowOverlayParams,
            OT_CreateAnimation,
            GaolibCustomProperties,
