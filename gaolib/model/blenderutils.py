@@ -72,11 +72,14 @@ def importObject(filepath):
     return obj
 
 
-def ShowDialog(text):
+def ShowDialog(text, title=None):
     """Qt dialog box to display text message"""
+    print(text)
     msgBox = QtWidgets.QMessageBox()
     msgBox.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
     msgBox.setStyleSheet("QWidget {background-color: #222; color: #b1b1b1}\nQPushButton:hover { color: green }")
+    if title:
+        msgBox.setWindowTitle(title)
     msgBox.setText(text)
     msgBox.exec_()
 
@@ -102,12 +105,12 @@ def selectBones(jsonPath):
 
     objects = getSelectedObjects()
     if len(objects) != 1:
-        QtWidgets.QMessageBox.about(None,
-                                    'Abort action',
-                                    'NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.')
-        print('NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.')
+        ShowDialog('NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.', title='Abort action')
         return
     obj = objects[0]
+    if obj.type != 'ARMATURE':
+        ShowDialog('Please, select an ARMATURE object.', title='Abort action')
+        return
     print('SELECT BONES')
     for bone in bones:
         if obj.pose.bones.get(bone):
@@ -139,6 +142,12 @@ def getSelectedBones():
     """Return list of selected bones"""
     bones = []
     objects = getSelectedObjects()
+    if len(objects) != 1:
+        ShowDialog('NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.', title='Abort action')
+        return None
+    if objects[0].type != 'ARMATURE':
+        ShowDialog('Please, select an ARMATURE object.', title='Abort action')
+        return None
     for obj in objects:
         for bone in obj.data.bones:
             if bone.select:
@@ -156,9 +165,8 @@ def updateSelectionSet(infoWidget, add=True):
         if file == 'selection_set.json':
             jsonPath = os.path.join(itemPath, file)
     if not jsonPath:
-        QtWidgets.QMessageBox.about(None,
-                                    'Abort action',
-                                    'Found no selection_set.json in ' + itemPath)
+        ShowDialog('Found no selection_set.json in ' + itemPath, title='Abort action')
+        
     # Rend json
     itemdata = {}
     with open(jsonPath) as file:
@@ -189,6 +197,8 @@ def updateSelectionSet(infoWidget, add=True):
 def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     # Remember selection
     selection = getSelectedBones()
+    if not selection:
+        return
     # Read item infos on GAOLIB window
     quickPaste = infoWidget.quickPasteCheckBox.isChecked()
     nbFrames = sourceFrameOut - sourceFrameIn
@@ -206,10 +216,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     # Get selected object
     selectedObjects = getSelectedObjects()
     if len(selectedObjects) != 1:
-        QtWidgets.QMessageBox.about(None,
-                                    'Abort action',
-                                    'NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.')
-        print('NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.')
+        ShowDialog('NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.', title='Abort action')
         return
     selectedObject = selectedObjects[0]
     
@@ -222,26 +229,21 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     if len(fileActions) == 1:
         objectName = fileActions[0]
     else:
-        QtWidgets.QMessageBox.about(None,
-                                    'Abort action',
-                                    'COPIED FILE CONTAINS ZERO OR MORE THAN ONE ACTIONS.')
-        print('COPIED FILE CONTAINS ZERO OR MORE THAN ONE ACTIONS')
+        ShowDialog('COPIED FILE CONTAINS ZERO OR MORE THAN ONE ACTIONS.', title='Abort action')
         return
     
     action = importAction(animPath)
     if action is None:
-        QtWidgets.QMessageBox.about(None,
-                                    'Abort action',
-                                    'APPEND ACTION WENT WRONG.')
-        print('APPEND ACTION WENT WRONG')
+        ShowDialog('APPEND ACTION WENT WRONG.', title='Abort action')
         return
     # PASTE action
     if quickPaste:
         # Paste entire action in new action 
         action.name = os.path.basename(animDir).split('.')[0] + '_ACTION'
+        if selectedObject.animation_data is None:
+            selectedObject.animation_data_create()
         selectedObject.animation_data.action = action
         ShowDialog('Quick Paste Action done !')
-        print('Quick Paste Action done !')
         
     else:
         # Paste into current action the keyframes corresponding to selected range
@@ -250,7 +252,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         # Delete frame range anim
         for bone in selection:
             for frame in range(frameIn, frameOut + 1):
-                if selectedObject.animation_data.action is not None:
+                if selectedObject.animation_data and selectedObject.animation_data.action is not None:
                     bone.keyframe_delete(data_path='location', frame=frame)
                     bone.keyframe_delete(data_path='rotation_euler', frame=frame)
                     bone.keyframe_delete(data_path='scale', frame=frame)
@@ -263,15 +265,13 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                             pass
                 else:
                     break
-        
+        if selectedObject.animation_data is None:
+            selectedObject.animation_data_create()
         # If no action on selected object, create one
         if selectedObject.animation_data.action is None:
             gaolibAction = bpy.data.actions.new('gaolib_action')
             selectedObject.animation_data.action = gaolibAction
 
-        # # Keep track of the pasting progress
-        # progressStep = 95/len(action.fcurves)
-        # onePurcent = int(1/progressStep)
         
         count_op = 0
         # Retrieve source action keyframe points and copy them into target action
@@ -311,10 +311,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                                 count_op += 1
 
                         except Exception as e:
-                            QtWidgets.QMessageBox.about(None,
-                                            'Abort action',
-                                            'Paste anim exception : ' + str(e))
-                            print('Paste anim exception : ' + str(e))
+                            ShowDialog('Paste anim exception : ' + str(e), title='Abort action')
                             return
                         count_op += 1
                         selectedObject.keyframe_insert(data_path=data_path, index=index, frame=frame)
@@ -341,7 +338,6 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
 
         bpy.data.actions.remove(action)
         ShowDialog('Paste animation done !')
-        print('Paste animation done !')
 
 def copyPose(poseDir):
     """ Copy pose temporary file to library"""
@@ -366,10 +362,7 @@ def pastePose(poseDir, flipped=False):
     if len(fileObjects) == 1:
         objectName = fileObjects[0]
     else:
-        QtWidgets.QMessageBox.about(None,
-                                    'Abort action',
-                                    'COPIED FILE CONTAINS ZERO OR MORE THAN ONE OBJECT')
-        print('COPIED FILE CONTAINS ZERO OR MORE THAN ONE OBJECT')
+        ShowDialog('COPIED FILE CONTAINS ZERO OR MORE THAN ONE OBJECT', title='Abort action')
         return
 
     refPose = importObject(posePath)

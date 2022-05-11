@@ -29,6 +29,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtWidgets import QFileDialog
 from coretools.uiloader import loadUi
 
+from PIL import Image
 
 from gaolib.model.gaoliblistmodel import GaoLibListModel
 from gaolib.model.gaolibitem import GaoLibItem
@@ -302,12 +303,15 @@ class GaoLib(QtWidgets.QMainWindow):
         if itemType == 'ANIMATION':
             itemTypeStr = 'anim'
             thumbTempPath = self.thumbTempPath.replace('.png', '.gif')
+            stamp = 'icons/anim2.png'
         elif itemType == 'POSE':
             itemTypeStr = 'pose'
             thumbTempPath = self.thumbTempPath
+            stamp = 'icons/pose2.png'
         elif itemType == 'SELECTION SET':
             itemTypeStr = 'selection'
             thumbTempPath = self.thumbTempPath
+            stamp = 'icons/selectionset.png'
 
         # Check if valid name
         name = self.createPosewidget.nameLineEdit.text()
@@ -385,6 +389,21 @@ class GaoLib(QtWidgets.QMainWindow):
         elif itemType == 'SELECTION SET':
             thumbPath = os.path.join(poseDir, 'thumbnail.png')
             shutil.copyfile(thumbTempPath, thumbPath)
+
+        # Add stamp on thumbnail
+        try:
+            pngThumb = os.path.join(poseDir, 'thumbnail.png')
+            print(pngThumb)
+            print(stamp)
+            im1 = Image.open(pngThumb)
+            im2 = Image.open(stamp)
+            im2 = im2.resize((30,30))
+            im1.paste(im2, (165, 170), im2)
+            destination = os.path.join(poseDir, 'thumbnail_stamped.png')
+            im1.save(destination, quality=100)
+                
+        except Exception as e:
+            print('Stamp Exception : ' + str(e))
             
         # Create json in pose directory
         self.writejson(name, poseDir, itemType=itemType)

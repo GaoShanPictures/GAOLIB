@@ -57,7 +57,7 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
             return itemName
 
         elif role == QtCore.Qt.DecorationRole:
-            return QtGui.QIcon(QtGui.QPixmap(item.thumbpath).scaled(300, 300))
+            return QtGui.QIcon(QtGui.QPixmap(item.stamped).scaled(300, 300))
         elif role == QtCore.Qt.BackgroundRole:
             if item.itemType == 'POSE':
                 return QtGui.QColor(200, 125, 42, 200)
