@@ -421,6 +421,7 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None):
                 for axis in range(3):
                     if not selectedbone.lock_location[axis]:
                         selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * currentPose[selectedbone]['location'][axis]
+                    if rotationMode != 'QUATERNION':
                         if not selectedbone.lock_rotation[axis]:
                             selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * currentPose[selectedbone]['rotation'][axis]
                     if not selectedbone.lock_scale[axis]:

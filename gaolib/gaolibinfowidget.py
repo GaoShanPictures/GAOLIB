@@ -81,6 +81,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     for axis in range(3):
                         if not selectedbone.lock_location[axis]:
                             selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * self.currentPose[selectedbone]['location'][axis]
+                        if rotationMode != 'QUATERNION':
                             if not selectedbone.lock_rotation[axis]:
                                 selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis]
                         if not selectedbone.lock_scale[axis]:
