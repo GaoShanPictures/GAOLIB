@@ -393,8 +393,6 @@ class GaoLib(QtWidgets.QMainWindow):
         # Add stamp on thumbnail
         try:
             pngThumb = os.path.join(poseDir, 'thumbnail.png')
-            print(pngThumb)
-            print(stamp)
             im1 = Image.open(pngThumb)
             im2 = Image.open(stamp)
             im2 = im2.resize((30,30))
@@ -427,7 +425,7 @@ class GaoLib(QtWidgets.QMainWindow):
         self.listView.selectionModel().clear()
         self.listView.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
 
-    def applyPose(self, itemType='POSE', flipped=False):
+    def applyPose(self, itemType='POSE', flipped=False, blendPose=1, currentPose=None):
         """Paste animation/pose from the library to the selected object of the scene"""
         try:
             if itemType == 'ANIMATION':
@@ -435,7 +433,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
             elif itemType == 'POSE':
-                pastePose(self.currentListItem.path, flipped=flipped)
+                pastePose(self.currentListItem.path, flipped=flipped, blend=blendPose, currentPose=currentPose)
         except Exception as e:
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',
@@ -657,7 +655,13 @@ class GaoLib(QtWidgets.QMainWindow):
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
         if selectedItem.itemType == 'POSE':
-            self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType, flipped=self.infoWidget.flippedCheckBox.isChecked()))
+            #self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType, flipped=self.infoWidget.flippedCheckBox.isChecked()))
+            self.infoWidget.applyPushButton.released.connect(lambda: 
+                self.applyPose(
+                    itemType=selectedItem.itemType,
+                    blendPose=self.infoWidget.blendPoseSlider.value()/100,
+                    currentPose=self.infoWidget.currentPose)
+                )
         elif selectedItem.itemType == 'ANIMATION':
             self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType))
 

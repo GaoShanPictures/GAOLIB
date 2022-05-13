@@ -348,12 +348,35 @@ def copyPose(poseDir):
                             'pose.blend')
     shutil.copyfile(tempPose, tempCopy)
 
-def pastePose(poseDir, flipped=False):
-    insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
-    # Remember selection
-    selection =  getSelectedBones()
+
+def getCurrentPose(selection):
+    # Remember current pose
+    currentPose = {}
+    for selectedbone in selection:
+        rotationMode = selectedbone.rotation_mode
+        location = selectedbone.location.copy()
+        
+        if rotationMode != 'QUATERNION':
+            rotation = selectedbone.rotation_euler.copy()
+        if rotationMode == 'QUATERNION':
+            rotation = selectedbone.rotation_quaternion.copy()
+        scale = selectedbone.scale.copy()
+        properties = {}
+        for key in selectedbone.keys():
+            try:
+                properties[key] = eval('selectedbone.' + key)
+            except:
+                properties[key] = eval('selectedbone[\"' + key + '\"]')
+        currentPose[selectedbone] = {'rotationMode': rotationMode,
+                                     'location': location,
+                                     'rotation': rotation,
+                                     'scale': scale,
+                                     'properties': properties}
+    return currentPose
+
+
+def getRefPoseFromLib(poseDir, selection):
     selectionNames = [posebone.bone.name for posebone in selection]
-    
     # Append pose object
     posePath = os.path.join(poseDir, 'pose.blend')
     fileObjects = []
@@ -372,25 +395,42 @@ def pastePose(poseDir, flipped=False):
         if posebone.name in selectionNames:
             posebone.bone.select = True
             refBones.append(posebone)
+    return refPose
+
+
+def pastePose(poseDir, flipped=False, blend=1, currentPose=None):
+    insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
+    # Remember selection
+    selection =  getSelectedBones()
+
+    # Remember current pose
+    if not currentPose:
+        currentPose = getCurrentPose(selection)
+    
+    # Append pose object
+    refPose = getRefPoseFromLib(poseDir, selection)
+    pose = refPose.pose
+
     # Copy properties from ref bones current object
     for posebone in pose.bones:
         for selectedbone in selection:
             if posebone.name == selectedbone.name:
                 rotationMode = posebone.rotation_mode
                 selectedbone.rotation_mode = posebone.rotation_mode
+
                 for axis in range(3):
                     if not selectedbone.lock_location[axis]:
-                        selectedbone.location[axis] = posebone.location[axis]
-                    if rotationMode != 'QUATERNION':
+                        selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * currentPose[selectedbone]['location'][axis]
                         if not selectedbone.lock_rotation[axis]:
-                            selectedbone.rotation_euler[axis] = posebone.rotation_euler[axis]
+                            selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * currentPose[selectedbone]['rotation'][axis]
                     if not selectedbone.lock_scale[axis]:
-                        selectedbone.scale[axis] = posebone.scale[axis]
+                        selectedbone.scale[axis] = blend * posebone.scale[axis] + (1 - blend) * currentPose[selectedbone]['scale'][axis]
                 if rotationMode == 'QUATERNION':
+                    if not selectedbone.lock_rotation[0]:
+                        selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * currentPose[selectedbone]['rotation'][0]
                     for axis in range(3):
                         if not selectedbone.lock_rotation[axis]:
-                            selectedbone.rotation_quaternion[0] = posebone.rotation_quaternion[0]
-                            selectedbone.rotation_quaternion[axis + 1] = posebone.rotation_quaternion[axis + 1 ]
+                            selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * currentPose[selectedbone]['rotation'][axis + 1]
 
                 for key in posebone.keys():
                     try:
@@ -408,14 +448,12 @@ def pastePose(poseDir, flipped=False):
                             selectedbone.keyframe_insert(data_path='location', index=axis)
                         if rotationMode != 'QUATERNION':
                             if not selectedbone.lock_rotation[axis]:
-                                print('key euler')
                                 selectedbone.keyframe_insert(data_path='rotation_euler', index=axis)  
                         if not selectedbone.lock_scale[axis]:
                             selectedbone.keyframe_insert(data_path='scale', index=axis)
                     if rotationMode == 'QUATERNION':
                         for axis in range(3):
                             if not selectedbone.lock_rotation[axis]:
-                                print('key quaternion')
                                 selectedbone.keyframe_insert(data_path='rotation_quaternion', index=axis+1)
                                 selectedbone.keyframe_insert(data_path='rotation_quaternion', index=0)
                     for key in posebone.keys():
@@ -428,6 +466,7 @@ def pastePose(poseDir, flipped=False):
     bpy.context.scene.collection.objects.unlink(refPose)
     # Clean orphans
     removeOrphans()
+
 
     
 def clearBoneSelection():

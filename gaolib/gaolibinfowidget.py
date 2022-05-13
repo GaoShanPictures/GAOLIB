@@ -20,13 +20,19 @@ __author__ = "Anne Beurard"
 import os
 import json
 import shutil
+import bpy
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from gaolib.ui.infowidgetui import Ui_Form as InfoWidget
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 
-from gaolib.model.blenderutils import selectBones, updateSelectionSet
+from gaolib.model.blenderutils import (selectBones,
+                                       updateSelectionSet,
+                                       getSelectedBones,
+                                       removeOrphans,
+                                       getCurrentPose,
+                                       getRefPoseFromLib)
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
@@ -38,6 +44,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.mainWindow = mainWin
         self.item = selectedItem
         self.thumbpath = self.item.thumbpath
+        self.currentPose = None
         
         # For animation item use gif thumbnail
         self.movie = None
@@ -49,6 +56,60 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.selectBonesPushButton.released.connect(self.selectBones)
         self.addToSetPushButton.released.connect(lambda: updateSelectionSet(self, add=True))
         self.rmFromSetPushButton.released.connect(lambda: updateSelectionSet(self, add=False))
+        self.blendPoseSlider.valueChanged.connect(lambda: self.blendSliderChanged(self.item.path, blend=self.blendPoseSlider.value()/100))
+
+    def blendSliderChanged(self, poseDir, blend=1):
+        self.blendPoseLabel.setText('Blend Pose ' + str(self.blendPoseSlider.value()) + '%')
+        
+        selection =  getSelectedBones()
+
+        # Remember current pose
+        if not self.currentPose:
+            self.currentPose = getCurrentPose(selection)
+
+        # Append pose object
+        refPose = getRefPoseFromLib(poseDir, selection)
+        pose = refPose.pose
+        
+        # Copy properties from ref bones current object
+        for posebone in pose.bones:
+            for selectedbone in selection:
+                if posebone.name == selectedbone.name:
+                    rotationMode = posebone.rotation_mode
+                    selectedbone.rotation_mode = posebone.rotation_mode
+
+                    for axis in range(3):
+                        if not selectedbone.lock_location[axis]:
+                            selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * self.currentPose[selectedbone]['location'][axis]
+                            if not selectedbone.lock_rotation[axis]:
+                                selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis]
+                        if not selectedbone.lock_scale[axis]:
+                            selectedbone.scale[axis] = blend * posebone.scale[axis] + (1 - blend) * self.currentPose[selectedbone]['scale'][axis]
+                    if rotationMode == 'QUATERNION':
+                        if not selectedbone.lock_rotation[0]:
+                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * self.currentPose[selectedbone]['rotation'][0]
+                        for axis in range(3):
+                            if not selectedbone.lock_rotation[axis]:
+                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis + 1]
+
+                    # for key in posebone.keys():
+                    #     try:
+                    #         exec('selectedbone.' + key + ' = posebone.' + key)
+                    #     except:
+                    #         try:
+                    #             exec('selectedbone[\"' + key + '\"] = posebone[\"' + key +'\"]')
+                    #         except:
+                    #             print('IMPOSSIBLE TO HANDLE PROPERTY ' + key + ' FOR ' + selectedbone.name)
+                    
+                    # break
+        
+        # Delete pose      
+        bpy.context.scene.collection.objects.unlink(refPose)
+        # Clean orphans
+        removeOrphans()
+
+        
+
 
     def delete(self):
         """Delete selected item"""
@@ -141,10 +202,11 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
         if self.item.itemType == 'POSE':
             self.animOptionsWidget.setVisible(False)
-            self.poseOptionsWidget.setVisible(False)
-            self.optionsGroupBox.setVisible(False)
+            #self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(True)
             self.selectionSetOptionsWidget.setVisible(False)
-            # self.flippedCheckBox.setEnabled(False)
+            self.flippedCheckBox.setVisible(False)
+            self.flippedCheckBox.setEnabled(False)
             # for file in os.listdir(self.item.path):
             #     if file == 'flipped_pose.blend':
             #         self.flippedCheckBox.setEnabled(True)
