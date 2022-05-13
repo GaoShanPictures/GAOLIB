@@ -12,14 +12,12 @@ The design of the user interface of this project, and its main purpose are inspi
   <img src="https://user-images.githubusercontent.com/103406493/168264512-6f607fda-1383-40c7-b0ac-5cadaffd1df8.png" />
 </p>
 
-![image](https://user-images.githubusercontent.com/103406493/168264512-6f607fda-1383-40c7-b0ac-5cadaffd1df8.png)
-
-
 - You can now choose different colors for the folder icons !  
 
-- A new item type is now available in GAOLIB : the Selection set to store a list of bones. 
-![image](https://user-images.githubusercontent.com/103406493/168264364-d7e7c186-8f14-4801-8f97-18831f44e750.png)
-
+- A new item type is now available in GAOLIB : the Selection set to store a list of bones.
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/103406493/168264364-d7e7c186-8f14-4801-8f97-18831f44e750.png" />
+</p>
 
 - Former note : 'In order to remove properly the add-on from Blender, the user has to do it from a Blender session in which the Gaolib main window has not been opened. Otherwise, when trying to remove the add-on it will raise an Error in Windows (WinError 32:  The process cannot access the file because it is being used by another process).' bug has been fixed ! However, after installing a new version of GAOLIB, you may need to close and reopen Bender (Read more about it in the note section).
 
@@ -47,8 +45,9 @@ After installing, the GAOLIB Pannel should now be available in Blender 3D View.
 
 WARNING : The user has to define a non empty path in the Blender preferences, File Paths section for Temporary files. If not, he/she won't be able to create new items in the library.
 
-![image](https://user-images.githubusercontent.com/103406493/162702699-6e96c988-5fd8-4b09-b8e6-ad86f8cd86e4.png)
-
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/103406493/162702699-6e96c988-5fd8-4b09-b8e6-ad86f8cd86e4.png" />
+</p>
 
 Four operators are available : 
 
@@ -65,9 +64,9 @@ The animation is created if the selected object in the scene is an armature and 
 
 - Show overlay hidden : After creating a pose/animation, some overlays can be hidden for its preview to be clean. This button sets back the deactivated overlays.
 
-![image](https://user-images.githubusercontent.com/103406493/162738690-006e8049-826a-43b1-9f1b-ea4fec5c2bf3.png)
-
-
+<p align="center">
+  <img src="https://user-images.githubusercontent.com/103406493/162738690-006e8049-826a-43b1-9f1b-ea4fec5c2bf3.png" />
+</p>
 
 ## Note
 This project is the first version of a work in progress. We are aware that some things can be improved and we are still looking for a way to change them. Amongst them : 
