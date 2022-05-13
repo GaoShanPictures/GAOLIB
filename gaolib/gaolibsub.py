@@ -341,13 +341,14 @@ class GaoLib(QtWidgets.QMainWindow):
             rsp = dialog.exec_()
             # if user clicks on 'ok'
             if rsp == QtWidgets.QDialog.Accepted:
-                try:
-                    os.remove(os.path.join(poseDir, 'thumbnail.gif'))
-                except Exception as e:
-                    QtWidgets.QMessageBox.about(self,
-                                                'Abort action',
-                                                'Cannot remove ' + os.path.join(poseDir, 'thumbnail.gif') + ' : ' + str(e))
-                    return
+                if itemType == 'ANIMATION':
+                    try:
+                        os.remove(os.path.join(poseDir, 'thumbnail.gif'))
+                    except Exception as e:
+                        QtWidgets.QMessageBox.about(self,
+                                                    'Abort action',
+                                                    'Cannot remove ' + os.path.join(poseDir, 'thumbnail.gif') + ' : ' + str(e))
+                        return
                 shutil.rmtree(poseDir)
             else:
                 return
