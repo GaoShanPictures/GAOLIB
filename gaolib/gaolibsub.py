@@ -589,7 +589,7 @@ class GaoLib(QtWidgets.QMainWindow):
             thumbpath = os.path.join(os.path.dirname(self.thumbTempPath), 'sequence')
             # Create GIF
             try:
-                thumbpath = generateGif(thumbpath)
+                thumbpath = generateGif(thumbpath, fps=bpy.context.scene.render.fps)
             except:
                 print('No images to generate GIF from')
         elif itemType == 'POSE' or itemType == 'SELECTION SET':

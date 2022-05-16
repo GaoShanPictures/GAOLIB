@@ -21,12 +21,13 @@ import os
 import imageio
 
 
-def generateGif(sequence):
+def generateGif(sequence, fps=25):
 	"""Generate a gif file from the given image sequence"""
 	images = []
 	filenames = os.listdir(sequence)
 	for filename in filenames:
 	    images.append(imageio.imread(os.path.join(sequence, filename)))
 	gifFile = os.path.join(os.path.dirname(sequence), 'thumbnail.gif')
-	imageio.mimsave(gifFile, images, fps=25)
+	print('fps : '  + str(fps))
+	imageio.mimsave(gifFile, images, fps=fps)
 	return gifFile
