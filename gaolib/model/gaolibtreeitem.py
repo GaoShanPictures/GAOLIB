@@ -21,8 +21,11 @@ import os
 
 class GaoLibTreeItem(object):
     """Description of one item of the Tree View"""
-    def __init__(self, name, parent=None, ancestors=[], path=''):
-        self.name = name
+    def __init__(self, name, parent=None, ancestors=[], path='', newName=None):
+        if newName:
+            self.name = newName
+        else:
+            self.name = name
         self.path = path
         self.parent = parent
         self.ancestors = ancestors

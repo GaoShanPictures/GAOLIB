@@ -110,8 +110,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         removeOrphans()
 
         
-
-
     def delete(self):
         """Delete selected item"""
         # Confirm delete dialog
@@ -124,7 +122,8 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         rsp = dialog.exec_()
         # if user clicks on 'ok'
         if rsp == QtWidgets.QDialog.Accepted:
-            trashPath = os.path.join(self.mainWindow.rootPath, 'trash')
+            print(self.mainWindow.rootPath)
+            trashPath = os.path.join(self.mainWindow.rootPath, '../trash')
             if not os.path.exists(trashPath):
                 os.makedirs(trashPath)
             trashPath = os.path.join(trashPath, os.path.basename(path))
@@ -178,6 +177,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 return
             shutil.rmtree(path)
             self.mainWindow.items = self.mainWindow.getListItems()
+            self.mainWindow.currentTreeElement = None
             self.mainWindow.setTreeView()
         
     def selectBones(self):

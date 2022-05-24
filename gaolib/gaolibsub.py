@@ -36,6 +36,7 @@ from gaolib.model.gaolibitem import GaoLibItem
 from gaolib.model.gaolibtreeitem import GaoLibTreeItem
 from gaolib.model.gaolibtreeitemmodel import GaoLibTreeItemModel
 from gaolib.model.treeitemfilterproxymodel import TreeItemFilterProxyModel
+from gaolib.model.rootitemwidget import RootItemWidget
 
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
 from gaolib.createposewidget import CreatePoseWidget
@@ -74,6 +75,7 @@ class GaoLib(QtWidgets.QMainWindow):
         self.items = {}
         self.projName = ''
         self.rootPath = None
+        self.rootList = []
         self.initUi()
         self._connectUi()
             
@@ -107,58 +109,96 @@ class GaoLib(QtWidgets.QMainWindow):
         createMenu.addAction('Settings', self.settings)
         self.settingsPushButton.setMenu(createMenu)
 
+
+    def getRootList(self):
+        """Read Json config"""
+        self.rootList = []
+        self.rootPath = None
+        if os.path.exists(self.configPath):
+            with open(self.configPath) as file:
+                itemdata = json.load(file)
+                self.rootList = itemdata['rootpath']
+
     def settings(self):
         """ Manage change of ROOT folder location """
         # creates the dialog
         dialog = QtWidgets.QDialog(self)
         dialog.ui = SettingsDialog()
         dialog.ui.setupUi(dialog)
-        if self.rootPath:
-            dialog.ui.pathLineEdit.setText(self.rootPath)
-        else:
-            dialog.ui.pathLineEdit.setText('')
+        
+        dialog.ui.pathLineEdit.setText('')
+        table = dialog.ui.tableWidget
+        table.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Stretch)
+        # Read config
+        if os.path.isfile(self.configPath):
+            with open(self.configPath) as file:
+                itemdata = json.load(file)
+            for key in itemdata.keys():
+                if key == 'rootpath':
+                    for e in itemdata[key]:
+                        rtname = e['name']
+                        rtpath = e['path']
+                        row = table.rowCount()
+                        itemWidget = RootItemWidget(rtname, rtpath, self.configPath)
+                        table.insertRow(row)
+                        table.setCellWidget(row, 0, itemWidget)
         # File browser
         dialog.ui.browsePushButton.released.connect(lambda: self.openFileNameDialog(dialog))
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
         path = dialog.ui.pathLineEdit.text()
-
+        pathName = dialog.ui.lineEdit.text()
         # The user clicks OK
         if rsp == QtWidgets.QDialog.Accepted:
-            oldRootPath = self.rootPath
+            self.getRootList()
             createRoot = False
+            newRootItem = {'path': path, 'name': pathName}
             try:
-                if os.path.exists(path):
+                if not(len(path)):
+                    pass
+                elif os.path.exists(path):
+                    for e in self.rootList:
+                        if e['path'] == path:
+                            QtWidgets.QMessageBox.about(self,
+                                                'Abort action',
+                                                'Path already in root list :' + path)
+                            self.setTreeView()
+                            return
                     # Change the ROOT location
-                    self.rootPath = path
+                    self.rootList.append(newRootItem)
                     if 'ROOT' not in os.listdir(path):
                         createRoot = True
                         os.mkdir(os.path.join(path, 'ROOT'))
-                    self.currentTreeElement = None
-                    self.setTreeView()
                     # remember setting
                     with open(self.configPath, 'w') as file:
-                        json.dump({'rootpath' : path}, file, indent=4, sort_keys=True)
+                        json.dump({'rootpath' : self.rootList}, file, indent=4, sort_keys=True)
                 else:
                     QtWidgets.QMessageBox.about(self,
                                                 'Abort action',
                                                 'Path does not exist ' + path)
+                    
+
             except WindowsError as e:
                 # if errors occure, set back the old ROOT location
-                self.rootPath = oldRootPath
-                if createRoot:
+                if createRoot and not len(os.listdir(os.path.join(path, 'ROOT'))):
                     os.rmdir(os.path.join(path, 'ROOT'))
                 QtWidgets.QMessageBox.about(self,
                                             'Abort action',
                                             'Access denied to path ' + path)
+                with open(self.configPath, 'w') as file:
+                        json.dump({'rootpath' : self.rootList}, file, indent=4, sort_keys=True)    
+
+        self.currentTreeElement = None
+        self.setTreeView()
+
 
     def openFileNameDialog(self, dialog):
         """File browser to change the ROOT location"""
         fileDialog = QFileDialog(self)
         fileDialog.setFileMode(QFileDialog.DirectoryOnly)
         
-        if self.rootPath:
-            fileDialog.setDirectory(os.path.dirname(self.rootPath))
+        # if self.rootPath:
+        #     fileDialog.setDirectory(os.path.dirname(self.rootPath))
        
         options = fileDialog.Options()
         directory  = fileDialog.getExistingDirectory(
@@ -671,8 +711,12 @@ class GaoLib(QtWidgets.QMainWindow):
         self.currentTreeElement = selectedItem
         self.items = self.getListItems()
         self.setListView()
+        if len(selectedItem.ancestors) > 1:
+            self.rootPath = selectedItem.ancestors[1].path
+        else:
+            self.rootPath = selectedItem.path
 
-    def recursivelyPopulateTreeView(self, parentItem, itemPath):
+    def recursivelyPopulateTreeView(self, parentItem, itemPath, newName=None):
         """Recursively populate treeView by parsing directories from the ROOT directory"""
         ancestors = parentItem.ancestors + [parentItem]
 
@@ -680,7 +724,7 @@ class GaoLib(QtWidgets.QMainWindow):
             directoryPath = os.path.join(itemPath, directory)
             if os.path.isdir(directoryPath) and '.anim' not in directory and '.selection' not in directory and '.pose' not in directory and directory != 'trash' and not directory.startswith('.'):
                 # Create Item
-                item = GaoLibTreeItem(directory, ancestors=ancestors, path=directoryPath)
+                item = GaoLibTreeItem(directory, ancestors=ancestors, path=directoryPath, newName=newName)
                 parentItem.addChild(item)
                 self.recursivelyPopulateTreeView(item, directoryPath)
 
@@ -690,7 +734,9 @@ class GaoLib(QtWidgets.QMainWindow):
         ancestorNames = [a.name for a in self.currentTreeElement.ancestors[1:] ]
         ancestors = '/'.join(ancestorNames)
         
-        folderPath = os.path.join(self.rootPath, ancestors, folder)
+        #folderPath = os.path.join(self.rootPath, ancestors, folder)
+        folderPath = self.currentTreeElement.path
+        
         items = {}
         # Parse folder
         i = 0
@@ -753,42 +799,47 @@ class GaoLib(QtWidgets.QMainWindow):
 
     def setTreeView(self):
         """Set Tree model and connect it to UI"""
-        if self.rootPath:
-            self.treeroot = GaoLibTreeItem("Root", path=self.rootPath)
+        self.getRootList()
+
+        self.treeroot = GaoLibTreeItem("root")
+        rootName = None
+        for rootItem in self.rootList:
+            #self.treeroot = GaoLibTreeItem("Root", path=self.rootPath)
+            rootPath = rootItem['path']
+            rootName = rootItem['name']
             if not self.currentTreeElement:    
                 self.currentTreeElement = self.treeroot
-
-            itemPath = self.rootPath
-            self.recursivelyPopulateTreeView(self.treeroot, itemPath)
-
-            model = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
-            self.treeItemProxyModel = TreeItemFilterProxyModel()
             
-            self.treeItemProxyModel.setSourceModel(model)
-            self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
-            self.hierarchyTreeView.setModel(self.treeItemProxyModel)
-            
-            self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
-            self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
-            self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
-            self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+            self.recursivelyPopulateTreeView(self.treeroot, rootPath, newName=rootName)
+            self.rootPath = rootPath
 
-            self.selectChildItemInTree('ROOT')
+        model = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
+        self.treeItemProxyModel = TreeItemFilterProxyModel()
+        
+        self.treeItemProxyModel.setSourceModel(model)
+        self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
+        self.hierarchyTreeView.setModel(self.treeItemProxyModel)
+        
+        self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
+        self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
+        self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
+        self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-            self.setListView()
+        if rootName:
+            self.selectChildItemInTree(rootName)
+        else:
+            self.items = {}
+
+        self.setListView()
 
         
     def initUi(self):
         """INIT"""
         self.configPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config', 'config.json')
-        if os.path.exists(self.configPath):
-            with open(self.configPath) as file:
-                itemdata = json.load(file)
-                self.rootPath = itemdata['rootpath']
 
         self.setTreeView()
 
-        if (not self.rootPath or not os.path.isdir(self.rootPath)):
+        if not len(self.rootList):
             self.settings()
 
     @QtCore.Slot()
