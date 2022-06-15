@@ -398,7 +398,7 @@ def getRefPoseFromLib(poseDir, selection):
     return refPose
 
 
-def pastePose(poseDir, flipped=False, blend=1, additiveMode=False, currentPose=None):
+def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=False):
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
     # Remember selection
     selection =  getSelectedBones()
@@ -421,7 +421,7 @@ def pastePose(poseDir, flipped=False, blend=1, additiveMode=False, currentPose=N
                 for axis in range(3):
                     if not selectedbone.lock_location[axis]:
                         if additiveMode:
-                            selectedbone.location[axis] = blend * posebone.location[axis] + currentPose[selectedbone]['location'][axis]
+                            blend * posebone.location[axis] + currentPose[selectedbone]['location'][axis]
                         else:
                             selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * currentPose[selectedbone]['location'][axis]
                     if rotationMode != 'QUATERNION':
@@ -432,22 +432,22 @@ def pastePose(poseDir, flipped=False, blend=1, additiveMode=False, currentPose=N
                                 selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * currentPose[selectedbone]['rotation'][axis]
                     if not selectedbone.lock_scale[axis]:
                         if additiveMode:
-                            selectedbone.scale[axis] = blend * posebone.scale[axis] + currentPose[selectedbone]['scale'][axis] - 1
+                            selectedbone.scale[axis] = blend * posebone.scale[axis] + currentPose[selectedbone]['scale'][axis] - blend
                         else:
                             selectedbone.scale[axis] = blend * posebone.scale[axis] + (1 - blend) * currentPose[selectedbone]['scale'][axis]
                 if rotationMode == 'QUATERNION':
                     if not selectedbone.lock_rotation[0]:
                         if additiveMode:
-                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + currentPose[selectedbone]['rotation'][0] - 1
+                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] +  currentPose[selectedbone]['rotation'][0] - blend
                         else:
                             selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * currentPose[selectedbone]['rotation'][0]
                     for axis in range(3):
                         if not selectedbone.lock_rotation[axis]:
                             if additiveMode:
-                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + currentPose[selectedbone]['rotation'][axis + 1]
+                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] +  currentPose[selectedbone]['rotation'][axis + 1]
                             else:
                                 selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * currentPose[selectedbone]['rotation'][axis + 1]
-                
+
                 for key in posebone.keys():
                     try:
                         exec('selectedbone.' + key + ' = posebone.' + key)
@@ -482,6 +482,7 @@ def pastePose(poseDir, flipped=False, blend=1, additiveMode=False, currentPose=N
     bpy.context.scene.collection.objects.unlink(refPose)
     # Clean orphans
     removeOrphans()
+
 
     
 def clearBoneSelection():

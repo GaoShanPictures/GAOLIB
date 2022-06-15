@@ -122,7 +122,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     if rotationMode == 'QUATERNION':
                         if not selectedbone.lock_rotation[0]:
                             if additiveMode:
-                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + self.currentPose[selectedbone]['rotation'][0] - 1
+                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + self.currentPose[selectedbone]['rotation'][0] - blend
                             else:
                                 selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * self.currentPose[selectedbone]['rotation'][0]
                         for axis in range(3):
