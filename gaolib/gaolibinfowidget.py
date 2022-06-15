@@ -45,6 +45,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.item = selectedItem
         self.thumbpath = self.item.thumbpath
         self.currentPose = None
+        self.toggleAdditive = False
         
         # For animation item use gif thumbnail
         self.movie = None
@@ -56,11 +57,34 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.selectBonesPushButton.released.connect(self.selectBones)
         self.addToSetPushButton.released.connect(lambda: updateSelectionSet(self, add=True))
         self.rmFromSetPushButton.released.connect(lambda: updateSelectionSet(self, add=False))
+        self.additiveModeCheckBox.stateChanged.connect(self.additiveModeToggle)
         self.blendPoseSlider.valueChanged.connect(lambda: self.blendSliderChanged(self.item.path, blend=self.blendPoseSlider.value()/100))
 
+    def additiveModeToggle(self):
+        """Set info widget to display infos for additive/regular mode"""
+        self.toggleAdditive = True
+        state = self.additiveModeCheckBox.isChecked()
+
+        if state:
+            # Additive mode on
+            self.blendPoseSlider.setMinimum(-100)
+            self.blendPoseSlider.setValue(0)
+        else:
+            self.blendPoseSlider.setMinimum(0)
+            self.blendPoseSlider.setValue(100)
+
+
     def blendSliderChanged(self, poseDir, blend=1):
-        self.blendPoseLabel.setText('Blend Pose ' + str(self.blendPoseSlider.value()) + '%')
-        
+        additiveMode = self.additiveModeCheckBox.isChecked() 
+        if additiveMode:
+            self.blendPoseLabel.setText('Add to Pose ' + str(self.blendPoseSlider.value()) + '%')
+        else:
+            self.blendPoseLabel.setText('Blend Pose ' + str(self.blendPoseSlider.value()) + '%')
+
+        if self.toggleAdditive:
+            self.toggleAdditive = False
+            return
+
         selection =  getSelectedBones()
 
         # Remember current pose
@@ -80,18 +104,33 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
                     for axis in range(3):
                         if not selectedbone.lock_location[axis]:
-                            selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * self.currentPose[selectedbone]['location'][axis]
+                            if additiveMode:
+                                selectedbone.location[axis] = blend * posebone.location[axis] + self.currentPose[selectedbone]['location'][axis]
+                            else:
+                                selectedbone.location[axis] = blend * posebone.location[axis] + (1-blend) * self.currentPose[selectedbone]['location'][axis]
                         if rotationMode != 'QUATERNION':
                             if not selectedbone.lock_rotation[axis]:
-                                selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis]
+                                if additiveMode:
+                                    selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + self.currentPose[selectedbone]['rotation'][axis]
+                                else:
+                                    selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis]
                         if not selectedbone.lock_scale[axis]:
-                            selectedbone.scale[axis] = blend * posebone.scale[axis] + (1 - blend) * self.currentPose[selectedbone]['scale'][axis]
+                            if additiveMode:
+                                selectedbone.scale[axis] = blend * posebone.scale[axis] + self.currentPose[selectedbone]['scale'][axis] - blend
+                            else:
+                                selectedbone.scale[axis] = blend * posebone.scale[axis] + (1 - blend) * self.currentPose[selectedbone]['scale'][axis]
                     if rotationMode == 'QUATERNION':
                         if not selectedbone.lock_rotation[0]:
-                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * self.currentPose[selectedbone]['rotation'][0]
+                            if additiveMode:
+                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + self.currentPose[selectedbone]['rotation'][0] - 1
+                            else:
+                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * self.currentPose[selectedbone]['rotation'][0]
                         for axis in range(3):
                             if not selectedbone.lock_rotation[axis]:
-                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis + 1]
+                                if additiveMode:
+                                    selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + self.currentPose[selectedbone]['rotation'][axis + 1]
+                                else:
+                                    selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis + 1]
 
                     # for key in posebone.keys():
                     #     try:

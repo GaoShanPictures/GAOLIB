@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>245</width>
-    <height>613</height>
+    <height>658</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -572,6 +572,13 @@ QPlainTextEdit {
           <widget class="QCheckBox" name="flippedCheckBox">
            <property name="text">
             <string>Flipped on X-Axis</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="additiveModeCheckBox">
+           <property name="text">
+            <string>Additive Mode</string>
            </property>
           </widget>
          </item>
