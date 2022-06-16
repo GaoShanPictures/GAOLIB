@@ -7,6 +7,8 @@ The design of the user interface of this project, and its main purpose are inspi
 
 ## Latest Updates
 
+- When applying a pose from the library, you can choose to blend it with the current pose with the ADDITIVE MODE. It adds to the bones current location, rotation and scale the values from the stored library.  
+
 - It is now possible to set several root directories instead of just one.
 
 - The GIF thumbnail for animations matches the framerate defined in Blender. Hovewer there may be some limitations with high framerates, for instance playing a 120 fps GIF happens to be much slower than a 60 fps GIF, probably due to some limitations from the device or from the Qt widgets. 
@@ -90,6 +92,8 @@ This project is the first version of a work in progress. We are aware that some 
 	-- One click on the Save Pose/Animation button in the Gaolib window : Actually stores the files related to the pose/animation item in the library.
 
 - To install a new version of GAOLIB, you have to remove the previous version from the addons and install the new zip you've downloaded here. Note that Blender takes the new changed into account if in the same session the old version of GAOLIB hasn't been used. The first time you install a new version, if some things don't work properly, try to close Blender and reopen it. 
+
+- The pose pasting only supports Quaternion and Euler rotation modes. Axis angles are not supported. 
 
 
 ## License
