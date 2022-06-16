@@ -474,7 +474,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
             elif itemType == 'POSE':
-                pastePose(self.currentListItem.path, flipped=flipped, blend=blendPose, currentPose=currentPose)
+                pastePose(self.currentListItem.path, flipped=flipped, blend=blendPose, currentPose=currentPose, additiveMode=self.infoWidget.additiveModeCheckBox.isChecked())
         except Exception as e:
             QtWidgets.QMessageBox.about(self,
                                         'Abort action',

@@ -21,6 +21,7 @@ __author__ = "Anne Beurard"
 import os
 import json
 import shutil
+import mathutils
 
 try:
     import bpy
@@ -415,9 +416,30 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     for posebone in pose.bones:
         for selectedbone in selection:
             if posebone.name == selectedbone.name:
+                # Manage if different rotation modes used (WARNING : axis angle not supported !)
                 rotationMode = posebone.rotation_mode
-                selectedbone.rotation_mode = posebone.rotation_mode
+                
+                if rotationMode == 'AXIS_ANGLE' or selectedbone.rotation_mode == 'AXIS_ANGLE':
+                    # Delete pose      
+                    bpy.context.scene.collection.objects.unlink(refPose)
+                    # Clean orphans
+                    removeOrphans()
+                    raise Exception('AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler.')
+                elif rotationMode == 'QUATERNION' and currentPose[selectedbone]['rotationMode'] != 'QUATERNION':
+                    currentPoseRotation = currentPose[selectedbone]['rotation'].to_quaternion()
+                elif rotationMode != 'QUATERNION' and currentPose[selectedbone]['rotationMode'] == 'QUATERNION':
+                    currentPoseRotation = currentPose[selectedbone]['rotation'].to_euler()
+                elif rotationMode == currentPose[selectedbone]['rotationMode']:
+                    currentPoseRotation = currentPose[selectedbone]['rotation']
+                else:
+                    # Delete pose      
+                    bpy.context.scene.collection.objects.unlink(refPose)
+                    # Clean orphans
+                    removeOrphans()
+                    raise Exception('Conversion between Rotation modes other than QUATERNION and Euler are not supported !')
 
+                selectedbone.rotation_mode = rotationMode
+                
                 for axis in range(3):
                     if not selectedbone.lock_location[axis]:
                         if additiveMode:
@@ -427,26 +449,26 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
                     if rotationMode != 'QUATERNION':
                         if not selectedbone.lock_rotation[axis]:
                             if additiveMode:
-                                selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + currentPose[selectedbone]['rotation'][axis]
+                                selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + currentPoseRotation[axis] #currentPose[selectedbone]['rotation'][axis]
                             else:
-                                selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * currentPose[selectedbone]['rotation'][axis]
+                                selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * currentPoseRotation[axis] #currentPose[selectedbone]['rotation'][axis]
                     if not selectedbone.lock_scale[axis]:
                         if additiveMode:
                             selectedbone.scale[axis] = blend * posebone.scale[axis] + currentPose[selectedbone]['scale'][axis] - blend
                         else:
                             selectedbone.scale[axis] = blend * posebone.scale[axis] + (1 - blend) * currentPose[selectedbone]['scale'][axis]
                 if rotationMode == 'QUATERNION':
-                    if not selectedbone.lock_rotation[0]:
+                    if not selectedbone.lock_rotation_w:
                         if additiveMode:
-                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] +  currentPose[selectedbone]['rotation'][0] - blend
+                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] +  currentPoseRotation[0] - blend #currentPose[selectedbone]['rotation'][0] - blend
                         else:
-                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * currentPose[selectedbone]['rotation'][0]
+                            selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * currentPoseRotation[0] #currentPose[selectedbone]['rotation'][0]
                     for axis in range(3):
                         if not selectedbone.lock_rotation[axis]:
                             if additiveMode:
-                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] +  currentPose[selectedbone]['rotation'][axis + 1]
+                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + currentPoseRotation[axis + 1] #currentPose[selectedbone]['rotation'][axis + 1]
                             else:
-                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * currentPose[selectedbone]['rotation'][axis + 1]
+                                selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * currentPoseRotation[axis + 1] # currentPose[selectedbone]['rotation'][axis + 1]
 
                 for key in posebone.keys():
                     try:

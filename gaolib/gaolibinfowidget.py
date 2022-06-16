@@ -99,8 +99,29 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         for posebone in pose.bones:
             for selectedbone in selection:
                 if posebone.name == selectedbone.name:
+
+                    # Manage if different rotation modes used (WARNING : axis angle not supported !)
                     rotationMode = posebone.rotation_mode
-                    selectedbone.rotation_mode = posebone.rotation_mode
+                    if rotationMode == 'AXIS_ANGLE'or selectedbone.rotation_mode == 'AXIS_ANGLE':
+                        # Delete pose      
+                        bpy.context.scene.collection.objects.unlink(refPose)
+                        # Clean orphans
+                        removeOrphans()
+                        raise Exception('AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler.')
+                    elif rotationMode == 'QUATERNION' and self.currentPose[selectedbone]['rotationMode'] != 'QUATERNION':
+                        currentPoseRotation = self.currentPose[selectedbone]['rotation'].to_quaternion()
+                    elif rotationMode != 'QUATERNION' and self.currentPose[selectedbone]['rotationMode'] == 'QUATERNION':
+                        currentPoseRotation = self.currentPose[selectedbone]['rotation'].to_euler()
+                    elif rotationMode == self.currentPose[selectedbone]['rotationMode']:
+                        currentPoseRotation = self.currentPose[selectedbone]['rotation']
+                    else:
+                        # Delete pose      
+                        bpy.context.scene.collection.objects.unlink(refPose)
+                        # Clean orphans
+                        removeOrphans()
+                        raise Exception('Conversion between Rotation modes other than QUATERNION and Euler are not supported !')
+
+                    selectedbone.rotation_mode = rotationMode
 
                     for axis in range(3):
                         if not selectedbone.lock_location[axis]:
@@ -111,9 +132,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                         if rotationMode != 'QUATERNION':
                             if not selectedbone.lock_rotation[axis]:
                                 if additiveMode:
-                                    selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + self.currentPose[selectedbone]['rotation'][axis]
+                                    selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + currentPoseRotation[axis]
                                 else:
-                                    selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis]
+                                    selectedbone.rotation_euler[axis] = blend * posebone.rotation_euler[axis] + (1 - blend) * currentPoseRotation[axis]
                         if not selectedbone.lock_scale[axis]:
                             if additiveMode:
                                 selectedbone.scale[axis] = blend * posebone.scale[axis] + self.currentPose[selectedbone]['scale'][axis] - blend
@@ -122,15 +143,15 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     if rotationMode == 'QUATERNION':
                         if not selectedbone.lock_rotation[0]:
                             if additiveMode:
-                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + self.currentPose[selectedbone]['rotation'][0] - blend
+                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + currentPoseRotation[0] - blend
                             else:
-                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * self.currentPose[selectedbone]['rotation'][0]
+                                selectedbone.rotation_quaternion[0] = blend * posebone.rotation_quaternion[0] + (1 - blend) * currentPoseRotation[0]
                         for axis in range(3):
                             if not selectedbone.lock_rotation[axis]:
                                 if additiveMode:
-                                    selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + self.currentPose[selectedbone]['rotation'][axis + 1]
+                                    selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + currentPoseRotation[axis + 1]
                                 else:
-                                    selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * self.currentPose[selectedbone]['rotation'][axis + 1]
+                                    selectedbone.rotation_quaternion[axis + 1] = blend * posebone.rotation_quaternion[axis + 1 ] + (1 - blend) * currentPoseRotation[axis + 1]
 
                     # for key in posebone.keys():
                     #     try:
