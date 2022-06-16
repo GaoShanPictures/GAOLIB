@@ -301,8 +301,12 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
     def modal(self, context, event):
         """Run modal."""
         if event.type == 'TIMER':
-            if self._window and not self._window.isVisible():
-                self.cancel(context)
+            try:
+                if self._window and not self._window.isVisible():
+                    self.cancel(context)
+                    return {'FINISHED'}
+            except RuntimeError as e:
+                # Gaolib already closed
                 return {'FINISHED'}
 
             self._app.processEvents()
@@ -355,7 +359,11 @@ class OT_gaolib(bpy.types.Operator):
     bl_label = "GaoLib"
 
     def execute(self, context):
-        run_timed_modal_gaolib_operator()
+        from PySide2 import QtWidgets
+        if QtWidgets.QApplication.instance():
+            QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
+        else:
+            run_timed_modal_gaolib_operator()
         return {'FINISHED'}
 
     @classmethod
