@@ -305,17 +305,17 @@ QPlainTextEdit {
          </widget>
         </item>
         <item>
-         <widget class="QLineEdit" name="searchEdit">
-          <property name="minimumSize">
+         <spacer name="horizontalSpacer">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
            <size>
-            <width>0</width>
-            <height>40</height>
+            <width>40</width>
+            <height>20</height>
            </size>
           </property>
-          <property name="placeholderText">
-           <string>Filter by name</string>
-          </property>
-         </widget>
+         </spacer>
         </item>
         <item>
          <widget class="QPushButton" name="settingsPushButton">
@@ -407,6 +407,12 @@ QPlainTextEdit {
          </property>
          <item>
           <widget class="QLineEdit" name="searchHierarchyEdit">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>30</height>
+            </size>
+           </property>
            <property name="placeholderText">
             <string>Filter by name</string>
            </property>
@@ -466,6 +472,19 @@ QPlainTextEdit {
           <property name="bottomMargin">
            <number>3</number>
           </property>
+          <item>
+           <widget class="QLineEdit" name="searchEdit">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>30</height>
+             </size>
+            </property>
+            <property name="placeholderText">
+             <string>Filter by name</string>
+            </property>
+           </widget>
+          </item>
           <item>
            <widget class="QListView" name="listView">
             <property name="editTriggers">
