@@ -845,7 +845,7 @@ class GaoLib(QtWidgets.QMainWindow):
     @QtCore.Slot()
     def filterTree(self):
         """Manage text filter research for treeView"""
-        filterText = self.searchHierarchyEdit.text()
+        filterText = self.searchHierarchyEdit.text().lower()
         if len(filterText):
             self.hierarchyTreeView.expandToDepth(-1)
         else:
