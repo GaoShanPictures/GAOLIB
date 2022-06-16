@@ -301,9 +301,13 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
     def modal(self, context, event):
         """Run modal."""
         if event.type == 'TIMER':
-            if self._window and not self._window.isVisible():
-                self.cancel(context)
-                return {'FINISHED'}
+            try:
+                if self._window and not self._window.isVisible():
+                    self.cancel(context)
+                    return {'FINISHED'}
+            except Exception as e:
+                print(str(e))
+
 
             self._app.processEvents()
             self._counter += 1
