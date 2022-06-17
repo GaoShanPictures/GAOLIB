@@ -19,9 +19,11 @@ __author__ = "Anne Beurard"
 
 import os
 
+
 class GaoLibTreeItem(object):
     """Description of one item of the Tree View"""
-    def __init__(self, name, parent=None, ancestors=[], path='', newName=None):
+
+    def __init__(self, name, parent=None, ancestors=[], path="", newName=None):
         if newName:
             self.name = newName
         else:
@@ -32,17 +34,16 @@ class GaoLibTreeItem(object):
         self.children = []
         if self.parent is not None:
             self.parent.addChild(self)
-        thumbnailPath = os.path.join(path, 'thumbnail.png')
+        thumbnailPath = os.path.join(path, "thumbnail.png")
         if os.path.isfile(thumbnailPath):
             self.thumbnail = thumbnailPath
         else:
             self.thumbnail = None
-        
 
     def parent(self):
         """Return the parent of the item"""
         return self.parent
-    
+
     def clearChildren(self):
         """Remove all children of the item"""
         self.children = []
@@ -51,7 +52,6 @@ class GaoLibTreeItem(object):
         """Add gievn child to item children"""
         child.parent = self
         self.children.append(child)
-        
 
     #############################
     # methods necessary for pyqt

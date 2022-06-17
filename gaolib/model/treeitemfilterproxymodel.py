@@ -17,14 +17,15 @@
 
 __author__ = "Anne Beurard"
 
-from PySide2 import QtGui, QtCore
+from PySide2 import QtCore, QtGui
 
 
 class TreeItemFilterProxyModel(QtCore.QSortFilterProxyModel):
     """Filter model for tree items"""
+
     def __init__(self, parent=None):
         super(TreeItemFilterProxyModel, self).__init__(parent)
-        self.text = ''
+        self.text = ""
 
     # Recursive search
     def _accept_index(self, idx):

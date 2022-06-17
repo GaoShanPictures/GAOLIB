@@ -19,12 +19,14 @@ __author__ = "Anne Beurard"
 
 import os
 
-from PySide2 import QtGui, QtCore
+from PySide2 import QtCore, QtGui
 
 from .gaolibtreeitem import GaoLibTreeItem
 
+
 class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
-    """Model for Tree view """
+    """Model for Tree view"""
+
     def __init__(self, root, parent=None, projName=""):
         super(GaoLibTreeItemModel, self).__init__(parent)
         self._root = root
@@ -39,7 +41,7 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         return treeItem.childCount()
 
     def columnCount(self, parent):
-        """Number of columns """
+        """Number of columns"""
         return len(self.__headers)
 
     def flags(self, index):
@@ -88,7 +90,7 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
             return None
 
         elem = index.internalPointer()
-    
+
         if role == QtCore.Qt.DisplayRole:
             return elem.name
 
@@ -99,9 +101,10 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
             if elem.thumbnail:
                 folderPicture = elem.thumbnail
             else:
-                folderPicture = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../icons/folder2.png')
+                folderPicture = os.path.join(
+                    os.path.dirname(os.path.realpath(__file__)), "../icons/folder2.png"
+                )
             return QtGui.QIcon(QtGui.QPixmap(folderPicture))
 
         elif role == QtCore.Qt.UserRole:
             return elem
-        

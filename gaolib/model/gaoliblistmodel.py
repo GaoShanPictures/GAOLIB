@@ -21,7 +21,8 @@ from PySide2 import QtCore, QtGui
 
 
 class GaoLibListModel(QtCore.QAbstractItemModel):
-    """Model for List view """
+    """Model for List view"""
+
     def __init__(self, items={}, parent=None):
         super(GaoLibListModel, self).__init__(parent)
         self.__items = items
@@ -36,7 +37,7 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
 
     def flags(self, index):
         """item flags list"""
-        return (QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable)
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
 
     def data(self, index, role):
         """Manage display of items in the list"""
@@ -46,24 +47,24 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
 
         if role == QtCore.Qt.DisplayRole:
             itemName = item.name
-            if itemName.endswith('.anim'):
+            if itemName.endswith(".anim"):
                 itemName = itemName[:-5]
-            elif itemName.endswith ('.selection'):
+            elif itemName.endswith(".selection"):
                 itemName = itemName[:-10]
-            elif itemName.endswith('.pose'):
+            elif itemName.endswith(".pose"):
                 itemName = itemName[:-5]
             if len(itemName) > 18:
-                itemName = itemName[:15] + '...'
+                itemName = itemName[:15] + "..."
             return itemName
 
         elif role == QtCore.Qt.DecorationRole:
             return QtGui.QIcon(QtGui.QPixmap(item.stamped).scaled(300, 300))
         elif role == QtCore.Qt.BackgroundRole:
-            if item.itemType == 'POSE':
+            if item.itemType == "POSE":
                 return QtGui.QColor(200, 125, 42, 200)
-            elif item.itemType == 'ANIMATION':
+            elif item.itemType == "ANIMATION":
                 return QtGui.QColor(37, 172, 182, 200)
-            elif item.itemType == 'SELECTION SET':
+            elif item.itemType == "SELECTION SET":
                 return QtGui.QColor(163, 46, 142, 200)
 
         elif role == QtCore.Qt.UserRole:
