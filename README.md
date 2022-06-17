@@ -1,5 +1,7 @@
 # GAOLIB
 
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 GAOLIB Copyright (C) 2022 GAO SHAN PICTURES is a GAO SHAN PICTURES Blender add-on developped to manage a library of poses and animations. This tool will help you store and re-use animations and poses in from and to different Blender files. 
 
 The design of the user interface of this project, and its main purpose are inspired by Studio Library for Maya
