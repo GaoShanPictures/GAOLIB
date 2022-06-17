@@ -33,7 +33,7 @@ try:
 except Exception as e:
     from PySide import QtUiTools
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide2 import QtCore
 
 
 class UiLoader(QtUiTools.QUiLoader):
