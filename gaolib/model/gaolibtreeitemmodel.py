@@ -29,6 +29,7 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         super(GaoLibTreeItemModel, self).__init__(parent)
         self._root = root
         self.__headers = ["Prod: %s" % projName]
+        self.indexes = []
 
     def rowCount(self, parent):
         """Number of children for given parent"""
@@ -87,6 +88,10 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return None
 
+        # Create index list from model
+        if index not in self.indexes:
+            self.indexes.append(index)
+
         elem = index.internalPointer()
 
         if role == QtCore.Qt.DisplayRole:
@@ -106,3 +111,41 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
 
         elif role == QtCore.Qt.UserRole:
             return elem
+
+    def getIndex(self, elem):
+        """Return index of given elem"""
+        rootIdx = QtCore.QModelIndex()
+        currentIdx = rootIdx
+        rootElem = self._root
+        currentElem = elem
+
+        ancestors = [elem]
+        while currentElem.parent != rootElem:
+            ancestors.append(currentElem.parent)
+            currentElem = currentElem.parent
+        ancestors.reverse()
+
+        currentElement = rootElem
+        currentIdx = rootIdx
+        while currentElement != elem:
+            for child in currentElement.children:
+                if child in ancestors:
+                    currentElement = child
+                    currentIdx = self.index(currentElement.row(), 0, currentIdx)
+                    break
+        return currentIdx
+
+    def addElement(self, elem, parent):
+        """Add elem as child of given parent"""
+        self.beginInsertRows(
+            QtCore.QModelIndex(),
+            self.rowCount(QtCore.QModelIndex()),
+            self.rowCount(QtCore.QModelIndex()),
+        )
+        parent.addChild(elem)
+        self.endInsertRows()
+        # self.layoutChanged.emit()
+
+    def getAllIndexes(self):
+        """Return List of all indexes in the model"""
+        return self.indexes

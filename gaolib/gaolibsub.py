@@ -249,13 +249,12 @@ class GaoLib(QtWidgets.QMainWindow):
                         self, "Abort action", "Folder already exists : " + folderPath
                     )
                 else:
+                    # Remember expanded states in tree view
+                    expanded = self.getTreeExpandedItems()
                     # Creates new folder and add it to the hierachy
                     os.mkdir(folderPath)
-                    sourceModel = self.hierarchyTreeView.model().sourceModel()
                     parentItem = self.currentTreeElement
-                    indexes = (
-                        self.hierarchyTreeView.selectionModel().selection().indexes()
-                    )
+                    selectedItemPath = parentItem.path
                     ancestors = parentItem.ancestors + [parentItem]
                     ancestorNames = []
                     for ances in ancestors:
@@ -270,20 +269,64 @@ class GaoLib(QtWidgets.QMainWindow):
                         thumbnailPath = os.path.join(path, "thumbnail.png")
                         shutil.copyfile(folderIconPath, thumbnailPath)
                     newItem = GaoLibTreeItem(name, ancestors=ancestors, path=path)
-                    parentItem.addChild(newItem)
 
                     # refresh TreeView
-                    self.setTreeView()
-                    self.currentTreeElement = self.treeroot
-                    for i in range(len(ancestorNames)):
-                        ancestorNames[i]
-                        if i != 0:
-                            self.selectChildItemInTree(ancestorNames[i])
+                    parentItem.addChild(newItem)
+                    # self.hierarchyTreeView.model().layoutChanged.emit()
+                    self.hierarchyTreeView.model().sourceModel().layoutChanged.emit()
+
+                    # Update filter
+                    self.updateTreeFilter()
+
+                    # Restore expand state and selected item
+                    self.restoreExpandedState(expanded, selectedItemPath)
 
             else:
                 QtWidgets.QMessageBox.about(
                     self, "Abort action", "Folder name must not be empty."
                 )
+
+    def restoreExpandedState(self, expanded, selectedItemPath):
+        """Expand items corresponding to given list of treeModel item indexes"""
+        for idx in expanded:
+            mappedIdx = self.treeItemProxyModel.mapFromSource(idx)
+            self.hierarchyTreeView.expand(mappedIdx)
+            # Restore current selection
+            elem = self.treeModel.getElement(idx)
+            if elem.path == selectedItemPath:
+                self.treeSelectionModel.clear()
+                self.treeSelectionModel.select(
+                    mappedIdx, QtCore.QItemSelectionModel.Select
+                )
+
+    def getTreeExpandedItems(self):
+        """Get list of index of expanded items in TreeView"""
+        # Get all proxy filter indexes
+        proxyIndexes = []
+        for idx in self.treeModel.getAllIndexes():
+            proxyIndexes.append(self.treeItemProxyModel.mapFromSource(idx))
+        # Check expand state in treeview for each proxy filter index
+        expandedIndexes = []
+        for idx in proxyIndexes:
+            if self.hierarchyTreeView.isExpanded(idx):
+                mappedIdx = idx.model().mapToSource(idx)
+                expandedIndexes.append(mappedIdx)
+            elif idx == self.hierarchyTreeView.selectionModel().currentIndex():
+                mappedIdx = idx.model().mapToSource(idx)
+                expandedIndexes.append(mappedIdx)
+        return expandedIndexes
+
+    def updateTreeFilter(self):
+        """Update QSortFilterProxyModel for tree View"""
+        self.treeItemProxyModel = TreeItemFilterProxyModel()
+        self.treeItemProxyModel.setSourceModel(self.treeModel)
+        self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
+
+        self.hierarchyTreeView.setModel(self.treeItemProxyModel)
+        self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
+        self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
+        self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
+        self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
     def createGenericItem(self):
         """Create new animation/pose/selection set item"""
@@ -741,7 +784,10 @@ class GaoLib(QtWidgets.QMainWindow):
             selectedItem = self.hierarchyTreeView.model().data(
                 indexes[0], QtCore.Qt.UserRole
             )
-            self.treeElementSelected(selectedItem)
+            if selectedItem:
+                self.treeElementSelected(selectedItem)
+            else:
+                print("Warning : Selected Item is None")
 
     def listItemSelected(self):
         """Display selected item informations"""
@@ -803,15 +849,12 @@ class GaoLib(QtWidgets.QMainWindow):
                     directory, ancestors=ancestors, path=directoryPath, newName=newName
                 )
                 parentItem.addChild(item)
+
                 self.recursivelyPopulateTreeView(item, directoryPath)
 
     def getListItems(self):
         """Display current selected folder content in listView"""
-        folder = self.currentTreeElement.name
-        ancestorNames = [a.name for a in self.currentTreeElement.ancestors[1:]]
-        ancestors = "/".join(ancestorNames)
 
-        # folderPath = os.path.join(self.rootPath, ancestors, folder)
         folderPath = self.currentTreeElement.path
 
         items = {}
@@ -842,24 +885,59 @@ class GaoLib(QtWidgets.QMainWindow):
         return items
 
     def selectChildItemInTree(self, itemName):
-        """Select one item in treeView knowing its parent and its name"""
+        """Select one item in treeView knowing its parent(the current selection) and its name"""
+
         parent = self.currentTreeElement
+        # Get all parent children names
+        childrenNames = []
+        for child in parent.children:
+            childrenNames.append(child.name.lower())
+        childrenNames.sort()
+
         for child in parent.children:
             if child.name == itemName:
-                indexes = self.hierarchyTreeView.selectionModel().selection().indexes()
+                indexes = self.treeSelectionModel.selection().indexes()
                 if not indexes:
                     indexes = [self.hierarchyTreeView.rootIndex()]
-                index = self.hierarchyTreeView.model().index(child.row(), 0, indexes[0])
+
+                # Get child index
+                childRow = 0
+                for i in range(len(childrenNames)):
+                    if child.name.lower() == childrenNames[i]:
+                        childRow = i
+                        break
+                index = self.hierarchyTreeView.model().index(childRow, 0, indexes[0])
+
+                # index = self.hierarchyTreeView.model().index(child.row(), 0, indexes[0])
+
+                # Select child item in tree
                 self.treeSelectionModel.clear()
                 self.treeSelectionModel.select(index, QtCore.QItemSelectionModel.Select)
-                self.hierarchyTreeView.expand(indexes[0])
+                self.hierarchyTreeView.expand(index)
                 break
+
+    # def selectParentItemInTree(self):
+    #     """Select the parent of current item in treeView"""
+    #     child = self.currentTreeElement
+    #     parent = child.parent
+    #     parentIdx = self.treeModel.createIndex(parent.row(), 0, parent)
+    #     self.treeSelectionModel.clear()
+    #     self.treeSelectionModel.select(parentIdx, QtCore.QItemSelectionModel.Select)
+
+    # def selectCurrentItemInTree(self):
+    #     """Select current item in treeView"""
+    #     indexes = self.treeSelectionModel.selection().indexes()
+    #     if not indexes:
+    #         indexes = [self.hierarchyTreeView.rootIndex()]
+    #     index = indexes[0]
+
+    #     self.treeSelectionModel.clear()
+    #     self.treeSelectionModel.select(index, QtCore.QItemSelectionModel.Select)
 
     def itemDoubleClick(self):
         """Double click on a List folder item sets the current selection in TreeView"""
         itemType = self.currentListItem.itemType
         itemName = self.currentListItem.name
-        index = None
         if itemType == "FOLDER":
             self.selectChildItemInTree(itemName)
 
@@ -896,17 +974,8 @@ class GaoLib(QtWidgets.QMainWindow):
             self.recursivelyPopulateTreeView(self.treeroot, rootPath, newName=rootName)
             self.rootPath = rootPath
 
-        model = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
-        self.treeItemProxyModel = TreeItemFilterProxyModel()
-
-        self.treeItemProxyModel.setSourceModel(model)
-        self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
-        self.hierarchyTreeView.setModel(self.treeItemProxyModel)
-
-        self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
-        self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
-        self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
-        self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.treeModel = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
+        self.updateTreeFilter()
 
         if rootName:
             self.selectChildItemInTree(rootName)
