@@ -21,8 +21,6 @@ import os
 
 from PySide2 import QtCore, QtGui
 
-from .gaolibtreeitem import GaoLibTreeItem
-
 
 class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
     """Model for Tree view"""

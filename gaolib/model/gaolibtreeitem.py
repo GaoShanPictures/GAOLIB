@@ -49,7 +49,7 @@ class GaoLibTreeItem(object):
         self.children = []
 
     def addChild(self, child):
-        """Add gievn child to item children"""
+        """Add given child to item children"""
         child.parent = self
         self.children.append(child)
 
