@@ -572,6 +572,9 @@ class GaoLib(QtWidgets.QMainWindow):
                 self, "Abort action", "An error has occured, check Console : " + str(e)
             )
             raise
+        # Reset currentPose to applied one
+        self.infoWidget.currentPose = None
+        self.infoWidget.blendPoseSlider.setValue(0)
 
     def writejson(self, name, directory, itemType="POSE"):
         """Create json file corresponding to pose/animation item"""
@@ -815,6 +818,7 @@ class GaoLib(QtWidgets.QMainWindow):
                     currentPose=self.infoWidget.currentPose,
                 )
             )
+
         elif selectedItem.itemType == "ANIMATION":
             self.infoWidget.applyPushButton.released.connect(
                 lambda: self.applyPose(itemType=selectedItem.itemType)

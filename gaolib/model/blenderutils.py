@@ -389,8 +389,23 @@ def copyPose(poseDir):
     shutil.copyfile(tempPose, tempCopy)
 
 
-def getCurrentPose(selection):
+def getCurrentPose():
     """Return dict with current pose informations"""
+    selection = []
+    objects = getSelectedObjects()
+    if len(objects) != 1:
+        ShowDialog(
+            "NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.", title="Abort action"
+        )
+        return None
+    if objects[0].type != "ARMATURE":
+        ShowDialog("Please, select an ARMATURE object.", title="Abort action")
+        return None
+    for obj in objects:
+        for bone in obj.data.bones:
+            posebone = obj.pose.bones[bone.name]
+            selection.append(posebone)
+
     currentPose = {}
     for selectedbone in selection:
         rotationMode = selectedbone.rotation_mode
@@ -451,7 +466,7 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
 
     # Remember current pose
     if not currentPose:
-        currentPose = getCurrentPose(selection)
+        currentPose = getCurrentPose()
 
     # Append pose object
     refPose = getRefPoseFromLib(poseDir, selection)

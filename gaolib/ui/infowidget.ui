@@ -585,7 +585,7 @@ QPlainTextEdit {
          <item>
           <widget class="QLabel" name="blendPoseLabel">
            <property name="text">
-            <string>Blend Pose 100%</string>
+            <string>Blend Pose 0%</string>
            </property>
           </widget>
          </item>
@@ -598,7 +598,7 @@ QPlainTextEdit {
             <number>10</number>
            </property>
            <property name="sliderPosition">
-            <number>100</number>
+            <number>0</number>
            </property>
            <property name="tracking">
             <bool>true</bool>

@@ -81,7 +81,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.blendPoseSlider.setValue(0)
         else:
             self.blendPoseSlider.setMinimum(0)
-            self.blendPoseSlider.setValue(100)
+            self.blendPoseSlider.setValue(0)
 
     def blendSliderChanged(self, poseDir, blend=1):
         """Update pose from current scene according to the blend slider parameter value"""
@@ -101,20 +101,16 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             return
 
         selection = getSelectedBones()
-
         # Remember current pose
         if not self.currentPose:
-            self.currentPose = getCurrentPose(selection)
-
+            self.currentPose = getCurrentPose()
         # Append pose object
         refPose = getRefPoseFromLib(poseDir, selection)
         pose = refPose.pose
-
         # Copy properties from ref bones current object
         for posebone in pose.bones:
             for selectedbone in selection:
                 if posebone.name == selectedbone.name:
-
                     # Manage if different rotation modes used (WARNING : axis angle not supported !)
                     rotationMode = posebone.rotation_mode
                     if (
@@ -220,7 +216,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                         blend * posebone.rotation_quaternion[axis + 1]
                                         + (1 - blend) * currentPoseRotation[axis + 1]
                                     )
-
                     # for key in posebone.keys():
                     #     try:
                     #         exec('selectedbone.' + key + ' = posebone.' + key)
@@ -231,7 +226,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     #             print('IMPOSSIBLE TO HANDLE PROPERTY ' + key + ' FOR ' + selectedbone.name)
 
                     # break
-
         # Delete pose
         bpy.context.scene.collection.objects.unlink(refPose)
         # Clean orphans
