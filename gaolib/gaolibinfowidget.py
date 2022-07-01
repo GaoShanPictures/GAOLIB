@@ -249,7 +249,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         rsp = dialog.exec_()
         # if user clicks on 'ok'
         if rsp == QtWidgets.QDialog.Accepted:
-            print(self.mainWindow.rootPath)
             trashPath = os.path.join(self.mainWindow.rootPath, "../trash")
             if not os.path.exists(trashPath):
                 os.makedirs(trashPath)
