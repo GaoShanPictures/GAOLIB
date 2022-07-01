@@ -17,16 +17,15 @@
 
 __author__ = "Anne Beurard"
 
-import os
-import json
-
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidget
 
+
 class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
     """Manage pose/animation item creation"""
-    def __init__(self, itemType='POSE', parent=None):
+
+    def __init__(self, itemType="POSE", parent=None):
         super(CreatePoseWidget, self).__init__(parent=parent)
         self.parent = parent
         self.setupUi(self)
@@ -34,17 +33,16 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         self.movie = None
 
         self.parent.infoGroupBox.setTitle(self.type)
-        if self.type == 'POSE':
+        if self.type == "POSE":
             self.frameRangeWidget.setVisible(False)
-        elif self.type == 'SELECTION SET' :
+        elif self.type == "SELECTION SET":
             self.frameRangeWidget.setVisible(False)
-            self.applyPushButton.setText('SAVE SELECTION SET')
-        elif self.type == 'ANIMATION':
-            self.applyPushButton.setText('SAVE ANIMATION')
+            self.applyPushButton.setText("SAVE SELECTION SET")
+        elif self.type == "ANIMATION":
+            self.applyPushButton.setText("SAVE ANIMATION")
             self.pushButton.installEventFilter(self)
 
-        self.contentLabel.setText('')
-        
+        self.contentLabel.setText("")
 
     def eventFilter(self, obj, event):
         """Event filter to play movie when hovered"""
@@ -53,7 +51,7 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         if obj == self.pushButton and event.type() == QtCore.QEvent.HoverLeave:
             self.leaveHovered()
         return super(CreatePoseWidget, self).eventFilter(obj, event)
-        
+
     def updateMovie(self):
         """Set pushbutton icon"""
         if not self.movie:

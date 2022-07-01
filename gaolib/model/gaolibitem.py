@@ -17,18 +17,21 @@
 
 __author__ = "Anne Beurard"
 
-import os
 import json
+import os
 
 
 class GaoLibItem(object):
     """Description of one item of the list view"""
+
     def __init__(self, name="", thumbpath=None, path=None):
         self.name = name
         self.thumbpath = thumbpath
-        stamped = thumbpath.replace('thumbnail.png', 'thumbnail_stamped.png')
+        stamped = thumbpath.replace("thumbnail.png", "thumbnail_stamped.png")
         if self.thumbpath is None or not os.path.isfile(self.thumbpath):
-            self.thumbpath = os.path.join(os.path.dirname(os.path.realpath(__file__)),'../icons/nopreview2.png')
+            self.thumbpath = os.path.join(
+                os.path.dirname(os.path.realpath(__file__)), "../icons/nopreview2.png"
+            )
         self.stamped = self.thumbpath
         if os.path.isfile(stamped):
             self.stamped = stamped
@@ -39,42 +42,42 @@ class GaoLibItem(object):
 
     def getItemInfos(self):
         """Read json infos from json"""
-        if self.name.endswith('.pose'):
-            jsonPath = os.path.join(self.path,  'pose.json')
-            self.itemType = 'POSE'
-        elif self.name.endswith('.anim'):
-            jsonPath = os.path.join(self.path,  'animation.json')
-            self.itemType = 'ANIMATION'
-        elif self.name.endswith('.selection'):
-            jsonPath = os.path.join(self.path,  'selection_set.json')
-            self.itemType = 'SELECTION SET'
+        if self.name.endswith(".pose"):
+            jsonPath = os.path.join(self.path, "pose.json")
+            self.itemType = "POSE"
+        elif self.name.endswith(".anim"):
+            jsonPath = os.path.join(self.path, "animation.json")
+            self.itemType = "ANIMATION"
+        elif self.name.endswith(".selection"):
+            jsonPath = os.path.join(self.path, "selection_set.json")
+            self.itemType = "SELECTION SET"
         else:
             jsonPath = None
-            self.itemType = 'FOLDER'
+            self.itemType = "FOLDER"
 
-        self.owner = ''
-        self.date = ''
-        self.content = ''
-        self.frameRange = ''
+        self.owner = ""
+        self.date = ""
+        self.content = ""
+        self.frameRange = ""
 
         if jsonPath:
             if os.path.exists(jsonPath):
                 with open(jsonPath) as file:
                     itemdata = json.load(file)
 
-                self.owner = 'Unknown'
-                self.date = 'Unknown'
-                self.content = 'Unknown'
-                self.frameRange = 'Unknown'
+                self.owner = "Unknown"
+                self.date = "Unknown"
+                self.content = "Unknown"
+                self.frameRange = "Unknown"
 
-                if 'metadata' in itemdata.keys():
-                    if 'user' in itemdata['metadata'].keys():
-                        self.owner = itemdata['metadata']['user']
-                    if 'date' in itemdata['metadata'].keys():
-                        self.date =  itemdata['metadata']['date']
-                    if 'content' in itemdata['metadata'].keys():
-                        self.content = itemdata['metadata']['content']
-                    if 'frameRange' in itemdata['metadata'].keys():
-                        self.frameRange = itemdata['metadata']['frameRange']
-                    if 'boneNames' in itemdata['metadata'].keys():
+                if "metadata" in itemdata.keys():
+                    if "user" in itemdata["metadata"].keys():
+                        self.owner = itemdata["metadata"]["user"]
+                    if "date" in itemdata["metadata"].keys():
+                        self.date = itemdata["metadata"]["date"]
+                    if "content" in itemdata["metadata"].keys():
+                        self.content = itemdata["metadata"]["content"]
+                    if "frameRange" in itemdata["metadata"].keys():
+                        self.frameRange = itemdata["metadata"]["frameRange"]
+                    if "boneNames" in itemdata["metadata"].keys():
                         self.bonesSelection = True

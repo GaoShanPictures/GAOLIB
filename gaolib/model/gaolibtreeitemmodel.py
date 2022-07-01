@@ -19,16 +19,17 @@ __author__ = "Anne Beurard"
 
 import os
 
-from PySide2 import QtGui, QtCore
+from PySide2 import QtCore, QtGui
 
-from .gaolibtreeitem import GaoLibTreeItem
 
 class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
-    """Model for Tree view """
+    """Model for Tree view"""
+
     def __init__(self, root, parent=None, projName=""):
         super(GaoLibTreeItemModel, self).__init__(parent)
         self._root = root
         self.__headers = ["Prod: %s" % projName]
+        self.indexes = []
 
     def rowCount(self, parent):
         """Number of children for given parent"""
@@ -39,7 +40,7 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         return treeItem.childCount()
 
     def columnCount(self, parent):
-        """Number of columns """
+        """Number of columns"""
         return len(self.__headers)
 
     def flags(self, index):
@@ -87,8 +88,12 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return None
 
+        # Create index list from model
+        if index not in self.indexes:
+            self.indexes.append(index)
+
         elem = index.internalPointer()
-    
+
         if role == QtCore.Qt.DisplayRole:
             return elem.name
 
@@ -99,9 +104,48 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
             if elem.thumbnail:
                 folderPicture = elem.thumbnail
             else:
-                folderPicture = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../icons/folder2.png')
+                folderPicture = os.path.join(
+                    os.path.dirname(os.path.realpath(__file__)), "../icons/folder2.png"
+                )
             return QtGui.QIcon(QtGui.QPixmap(folderPicture))
 
         elif role == QtCore.Qt.UserRole:
             return elem
-        
+
+    def getIndex(self, elem):
+        """Return index of given elem"""
+        rootIdx = QtCore.QModelIndex()
+        currentIdx = rootIdx
+        rootElem = self._root
+        currentElem = elem
+
+        ancestors = [elem]
+        while currentElem.parent != rootElem:
+            ancestors.append(currentElem.parent)
+            currentElem = currentElem.parent
+        ancestors.reverse()
+
+        currentElement = rootElem
+        currentIdx = rootIdx
+        while currentElement != elem:
+            for child in currentElement.children:
+                if child in ancestors:
+                    currentElement = child
+                    currentIdx = self.index(currentElement.row(), 0, currentIdx)
+                    break
+        return currentIdx
+
+    def addElement(self, elem, parent):
+        """Add elem as child of given parent"""
+        self.beginInsertRows(
+            QtCore.QModelIndex(),
+            self.rowCount(QtCore.QModelIndex()),
+            self.rowCount(QtCore.QModelIndex()),
+        )
+        parent.addChild(elem)
+        self.endInsertRows()
+        # self.layoutChanged.emit()
+
+    def getAllIndexes(self):
+        """Return List of all indexes in the model"""
+        return self.indexes
