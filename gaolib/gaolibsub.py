@@ -271,16 +271,12 @@ class GaoLib(QtWidgets.QMainWindow):
                     newItem = GaoLibTreeItem(name, ancestors=ancestors, path=path)
 
                     # refresh TreeView
-                    parentItem.addChild(newItem)
-                    # self.hierarchyTreeView.model().layoutChanged.emit()
-                    self.hierarchyTreeView.model().sourceModel().layoutChanged.emit()
+                    self.treeModel.addElement(newItem, parentItem)
 
                     # Update filter
                     self.updateTreeFilter()
-
                     # Restore expand state and selected item
                     self.restoreExpandedState(expanded, selectedItemPath)
-
             else:
                 QtWidgets.QMessageBox.about(
                     self, "Abort action", "Folder name must not be empty."
@@ -303,8 +299,13 @@ class GaoLib(QtWidgets.QMainWindow):
         """Get list of index of expanded items in TreeView"""
         # Get all proxy filter indexes
         proxyIndexes = []
-        for idx in self.treeModel.getAllIndexes():
-            proxyIndexes.append(self.treeItemProxyModel.mapFromSource(idx))
+        allIndexes = self.treeModel.getAllIndexes(
+            currentElem=None, currentIdx=QtCore.QModelIndex(), indexes=[]
+        )
+        for idx in allIndexes:
+            mapped = self.treeItemProxyModel.mapFromSource(idx)
+            proxyIndexes.append(mapped)
+
         # Check expand state in treeview for each proxy filter index
         expandedIndexes = []
         for idx in proxyIndexes:

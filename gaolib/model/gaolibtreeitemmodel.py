@@ -29,7 +29,6 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         super(GaoLibTreeItemModel, self).__init__(parent)
         self._root = root
         self.__headers = ["Prod: %s" % projName]
-        self.indexes = []
 
     def rowCount(self, parent):
         """Number of children for given parent"""
@@ -88,10 +87,6 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return None
 
-        # Create index list from model
-        if index not in self.indexes:
-            self.indexes.append(index)
-
         elem = index.internalPointer()
 
         if role == QtCore.Qt.DisplayRole:
@@ -144,8 +139,42 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         )
         parent.addChild(elem)
         self.endInsertRows()
-        # self.layoutChanged.emit()
+        self.layoutChanged.emit()
 
-    def getAllIndexes(self):
+    def removeElement(self, elem):
+        """Remove elem from parent children and remove elem index from indexes"""
+        index = self.getIndex(elem)  # index of item to remove
+        parentIndex = self.getIndex(elem.parent)
+        self.beginRemoveRows(parentIndex, index.row(), index.row())
+        elem.parent.children.remove(elem)
+        # self.indexes.remove(index)
+        self.endRemoveRows()
+        self.layoutChanged.emit()
+
+    def getElemWithPath(self, path):
+        """Return item with given path"""
+        # for index in self.indexes:
+        for index in self.getAllIndexes():
+            elem = self.getElement(index)
+            if elem.path == path:
+                return elem
+
+    def getAllIndexes(
+        self, currentElem=None, currentIdx=QtCore.QModelIndex(), indexes=[]
+    ):
         """Return List of all indexes in the model"""
-        return self.indexes
+        # return self.indexes
+        if currentElem is None:
+            currentElem = self._root
+            indexes = []
+
+        for child in currentElem.children:
+            childIdx = self.index(child.row(), 0, currentIdx)
+            if childIdx.isValid():
+                indexes.append(childIdx)
+                indexes = self.getAllIndexes(
+                    currentElem=child, currentIdx=childIdx, indexes=indexes
+                )
+            else:
+                print(str(childIdx) + " not valid ")
+        return indexes

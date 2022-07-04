@@ -249,6 +249,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         rsp = dialog.exec_()
         # if user clicks on 'ok'
         if rsp == QtWidgets.QDialog.Accepted:
+            # Remember current tree selection
+            selectedItemPath = self.mainWindow.currentTreeElement.path
+
             trashPath = os.path.join(self.mainWindow.rootPath, "../trash")
             if not os.path.exists(trashPath):
                 os.makedirs(trashPath)
@@ -317,9 +320,25 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     os.remove(os.path.join(path, "thumbnail.png"))
                 return
             shutil.rmtree(path)
-            self.mainWindow.items = self.mainWindow.getListItems()
-            self.mainWindow.currentTreeElement = None
-            self.mainWindow.setTreeView()
+
+            # Remember expanded states in tree view
+            expanded = self.mainWindow.getTreeExpandedItems()
+            if self.item.itemType == "FOLDER":
+                # Delete item from model
+                itemPath = self.item.path
+                model = self.mainWindow.treeModel
+                treeItem = model.getElemWithPath(itemPath)
+                if itemPath == selectedItemPath:
+                    selectedItemPath = treeItem.parent.path
+                # Remove item
+                model.removeElement(treeItem)
+                # Update filter
+                self.mainWindow.updateTreeFilter()
+                # Restore expand state and selected item
+                self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
+            else:
+                self.mainWindow.items = self.mainWindow.getListItems()
+                self.mainWindow.setListView()
 
     def selectBones(self):
         """Select bones listed in json file"""
