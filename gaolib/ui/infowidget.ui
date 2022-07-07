@@ -698,6 +698,20 @@ QPlainTextEdit {
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="modifyPushButton">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Modify</string>
+        </property>
+        <property name="icon">
+         <iconset>
+          <normaloff>../icons/folder2.png</normaloff>../icons/folder2.png</iconset>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="trashPushButton">
         <property name="text">
          <string>Trash</string>

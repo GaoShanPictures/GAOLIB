@@ -33,6 +33,7 @@ from gaolib.model.blenderutils import (
     updateSelectionSet,
 )
 from gaolib.ui.infowidgetui import Ui_Form as InfoWidget
+from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 
 
@@ -69,6 +70,61 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 self.item.path, blend=self.blendPoseSlider.value() / 100
             )
         )
+        self.modifyPushButton.released.connect(self.modifyFolder)
+
+    def modifyFolder(self):
+        """Modify existing folder"""
+        # creates the dialog
+        dialog = QtWidgets.QDialog(self.mainWindow)
+        dialog.ui = NewFolderDialog()
+        dialog.ui.setupUi(dialog)
+
+        thumbpath = self.thumbpath
+        dialog.ui.iconLabel.setPixmap((QtGui.QPixmap(thumbpath).scaled(80, 80)))
+        folderIcons = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "icons/folder_icons"
+        )
+        if os.path.isdir(folderIcons):
+            for iconFile in os.listdir(folderIcons):
+                iconPath = os.path.join(folderIcons, iconFile)
+                icon = QtGui.QIcon()
+                icon.addPixmap(QtGui.QPixmap(iconPath))
+                dialog.ui.iconComboBox.addItem(icon, iconFile)
+        dialog.ui.iconComboBox.currentIndexChanged.connect(
+            lambda: dialog.ui.iconLabel.setPixmap(
+                QtGui.QPixmap(
+                    os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())
+                ).scaled(80, 80)
+            )
+        )
+        dialog.ui.lineEdit.setText(self.item.name)
+        dialog.ui.lineEdit.setEnabled(False)
+        rsp = dialog.exec_()
+        # retrieve editLine infos from the dialog
+        name = dialog.ui.lineEdit.text()
+        # if user clicks on 'ok'
+        if rsp == QtWidgets.QDialog.Accepted:
+            if name.replace(" ", "") != "":
+                oldName = self.item.name
+                oldPath = self.item.path
+                # Modify thumbnail
+                folderIconPath = os.path.join(
+                    folderIcons, dialog.ui.iconComboBox.currentText()
+                )
+                if os.path.isfile(folderIconPath):
+                    thumbnailPath = os.path.join(oldPath, "thumbnail.png")
+                    if os.path.isfile(thumbnailPath):
+                        os.remove(thumbnailPath)
+                    shutil.copyfile(folderIconPath, thumbnailPath)
+                # Refresh View
+                self.thumbnailLabel.setPixmap(
+                    (QtGui.QPixmap(thumbnailPath).scaled(200, 200))
+                )
+
+            else:
+                QtWidgets.QMessageBox.about(
+                    self, "Abort action", "Folder name must not be empty."
+                )
 
     def additiveModeToggle(self):
         """Set info widget to display infos for additive/regular mode"""
@@ -358,6 +414,8 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.thumbnailLabel.setPixmap((QtGui.QPixmap(self.thumbpath).scaled(200, 200)))
         self.frameRangeLabel.setText(self.item.frameRange)
 
+        self.modifyPushButton.setVisible(False)
+
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
 
@@ -393,6 +451,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.label_4.setVisible(False)
             self.label_5.setVisible(False)
             self.selectBonesPushButton.setVisible(False)
+            self.modifyPushButton.setVisible(True)
 
         if self.item.itemType == "ANIMATION":
             self.selectionSetOptionsWidget.setVisible(False)
