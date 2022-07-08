@@ -151,6 +151,17 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         self.endRemoveRows()
         self.layoutChanged.emit()
 
+    def modifyElement(self, elem, newName, newPath):
+        """Modify elem"""
+        index = self.getIndex(elem)
+        elem.name = newName
+        elem.path = newPath
+        elem.thumbnail = os.path.join(elem.path, "thumbnail.png")
+        for child in elem.children:
+            childPath = os.path.join(elem.path, child.name)
+            self.modifyElement(child, child.name, childPath)
+        self.dataChanged.emit(index, index)
+
     def getElemWithPath(self, path):
         """Return item with given path"""
         # for index in self.indexes:

@@ -25,6 +25,7 @@ import bpy
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from gaolib.model.blenderutils import (
+    ShowDialog,
     getCurrentPose,
     getRefPoseFromLib,
     getSelectedBones,
@@ -98,7 +99,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             )
         )
         dialog.ui.lineEdit.setText(self.item.name)
-        dialog.ui.lineEdit.setEnabled(False)
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
         name = dialog.ui.lineEdit.text()
@@ -116,11 +116,58 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     if os.path.isfile(thumbnailPath):
                         os.remove(thumbnailPath)
                     shutil.copyfile(folderIconPath, thumbnailPath)
-                # Refresh View
-                self.thumbnailLabel.setPixmap(
-                    (QtGui.QPixmap(thumbnailPath).scaled(200, 200))
-                )
+                    # Refresh View
+                    self.thumbnailLabel.setPixmap(
+                        (QtGui.QPixmap(thumbnailPath).scaled(200, 200))
+                    )
+                # Modify folder name
+                if name != oldName:
+                    selectedItemPath = self.mainWindow.currentTreeElement.path
+                    expanded = self.mainWindow.getTreeExpandedItems()
+                    # Rename folder
+                    newPath = os.path.join(os.path.dirname(oldPath), name)
+                    try:
+                        os.rename(oldPath, newPath)
+                    except PermissionError as pe:
+                        ShowDialog(
+                            "The folder or one of its sub folders might be open or used by another program.\n\n"
+                            + str(pe),
+                            "Impossible to rename folder",
+                        )
+                        return
+                    except FileExistsError as fee:
+                        ShowDialog(
+                            "A folder with name "
+                            + name
+                            + " already exists.\n\n"
+                            + str(fee),
+                            "Impossible to rename folder",
+                        )
+                        return
+                    except Exception as e:
+                        ShowDialog(
+                            "An error occured : \n\n" + str(e),
+                            "Impossible to rename folder",
+                        )
+                        raise
 
+                    # Get tree item
+                    treeModel = self.mainWindow.treeModel
+                    treeItem = treeModel.getElemWithPath(oldPath)
+                    # Rename tree item
+                    treeModel.modifyElement(treeItem, name, newPath)
+                    # Restore expand state and selected item
+                    self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
+                    # Select MODIFIED item
+                    currentIndex = None
+                    for item in self.mainWindow.items.keys():
+                        if self.mainWindow.items[item].name == name:
+                            currentIndex = item
+                            break
+                    index = self.mainWindow.listView.model().index(currentIndex, 0)
+                    self.mainWindow.listView.selectionModel().select(
+                        index, QtCore.QItemSelectionModel.Select
+                    )
             else:
                 QtWidgets.QMessageBox.about(
                     self, "Abort action", "Folder name must not be empty."
