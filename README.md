@@ -9,7 +9,9 @@ The design of the user interface of this project, and its main purpose are inspi
 
 ## Latest Updates
 
-- When applying a pose from the library, you can choose to blend it with the current pose with the ADDITIVE MODE. It adds to the bones current location, rotation and scale the values from the stored library.  
+- New Feature : Modify folder name and icon.
+
+- New Feature : Pose ADDITIVE MODE. When applying a pose from the library, you can choose to blend it with the current pose with the ADDITIVE MODE. It adds to the bones current location, rotation and scale the values from the stored library.  
 
 - It is now possible to set several root directories instead of just one.
 
