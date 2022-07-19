@@ -154,9 +154,28 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
     def modifyElement(self, elem, newName, newPath):
         """Modify elem"""
         index = self.getIndex(elem)
+        # Modify elem
         elem.name = newName
         elem.path = newPath
         elem.thumbnail = os.path.join(elem.path, "thumbnail.png")
+        # Modify parenthood
+        newParentItem = self.getElemWithPath(os.path.dirname(newPath))
+        if elem.parent != newParentItem:
+            newParentIndex = self.getIndex(newParentItem)
+            parentIndex = self.getIndex(elem.parent)
+            self.beginMoveRows(
+                parentIndex,
+                index.row(),
+                index.row(),
+                newParentIndex,
+                newParentItem.childCount(),
+            )
+            elem.parent.children.remove(elem)
+            newParentItem.children.append(elem)
+            elem.parent = newParentItem
+            elem.ancestors = newParentItem.ancestors + [newParentItem]
+            self.endMoveRows()
+        # Modify children
         for child in elem.children:
             childPath = os.path.join(elem.path, child.name)
             self.modifyElement(child, child.name, childPath)
@@ -167,7 +186,7 @@ class GaoLibTreeItemModel(QtCore.QAbstractItemModel):
         # for index in self.indexes:
         for index in self.getAllIndexes():
             elem = self.getElement(index)
-            if elem.path == path:
+            if os.path.realpath(elem.path) == os.path.realpath(path):
                 return elem
 
     def getAllIndexes(

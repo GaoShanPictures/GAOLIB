@@ -6,12 +6,16 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>793</width>
+    <width>825</width>
     <height>625</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>GAOLIB</string>
+  </property>
+  <property name="windowIcon">
+   <iconset>
+    <normaloff>icons/gaolib.png</normaloff>icons/gaolib.png</iconset>
   </property>
   <property name="styleSheet">
    <string notr="true">QMainWindow{
@@ -518,7 +522,7 @@ QPlainTextEdit {
          </property>
          <property name="minimumSize">
           <size>
-           <width>230</width>
+           <width>250</width>
            <height>0</height>
           </size>
          </property>
@@ -590,7 +594,7 @@ QPlainTextEdit {
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>793</width>
+     <width>825</width>
      <height>21</height>
     </rect>
    </property>

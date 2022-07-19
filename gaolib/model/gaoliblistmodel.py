@@ -37,10 +37,16 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
 
     def flags(self, index):
         """item flags list"""
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable
+        return (
+            QtCore.Qt.ItemIsEnabled
+            | QtCore.Qt.ItemIsSelectable
+            # | QtCore.Qt.ItemIsDragEnabled
+            # | QtCore.Qt.ItemIsDropEnabled
+        )
 
     def data(self, index, role):
         """Manage display of items in the list"""
+
         row = index.row()
         col = index.column()
         item = self.__items[row]
@@ -61,6 +67,7 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
             return QtGui.QIcon(QtGui.QPixmap(item.stamped).scaled(300, 300))
         elif role == QtCore.Qt.BackgroundRole:
             if item.itemType == "POSE":
+
                 return QtGui.QColor(200, 125, 42, 200)
             elif item.itemType == "ANIMATION":
                 return QtGui.QColor(37, 172, 182, 200)
@@ -72,8 +79,12 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
 
     def index(self, row, column, parent):
         """Return the index object of an item given its row, column and parent"""
-        childItem = self.__items[row]
-        if childItem:
-            return self.createIndex(row, column, childItem)
+
+        if row in self.__items.keys():
+            childItem = self.__items[row]
+            if childItem:
+                index = self.createIndex(row, column, childItem)
+                return index
         else:
-            return QtCore.QModelIndex()
+            print("No key " + str(row) + " in " + str(self.__items))
+        return QtCore.QModelIndex()

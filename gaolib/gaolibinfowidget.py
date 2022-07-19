@@ -21,7 +21,11 @@ import json
 import os
 import shutil
 
-import bpy
+try:
+    import bpy
+except Exception as e:
+    print("IMPORT EXCEPTION : " + str(e))
+
 from PySide2 import QtCore, QtGui, QtWidgets
 
 from gaolib.model.blenderutils import (
@@ -98,15 +102,52 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 ).scaled(80, 80)
             )
         )
-        dialog.ui.lineEdit.setText(self.item.name)
+        oldName = self.item.name
+        # oldPath = os.path.realpath(self.item.path.replace("\\", "/"))
+        oldPath = self.item.path
+        oldParentPath = os.path.dirname(oldPath)
+        dialog.ui.lineEdit.setText(oldName)
+        dialog.ui.pathLineEdit.setText(oldParentPath)
+        dialog.ui.pathLineEdit.setEnabled(True)
+        dialog.ui.browsePushButton.setEnabled(True)
+        dialog.ui.browsePushButton.released.connect(
+            lambda: self.mainWindow.openFileNameDialog(dialog, openDirectory=oldPath)
+        )
+        doRefreshView = False
+
+        isFolder = self.item.itemType == "FOLDER"
+        if not isFolder:
+            dialog.ui.iconComboBox.setEnabled(False)
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
         name = dialog.ui.lineEdit.text()
+        path = os.path.realpath(dialog.ui.pathLineEdit.text())
         # if user clicks on 'ok'
         if rsp == QtWidgets.QDialog.Accepted:
+            if not isFolder:
+                wrongName = False
+                if self.item.itemType == "ANIMATION" and not name.endswith(".anim"):
+                    suffix = ".anim"
+                    name = name.split(".")[0] + suffix
+                    wrongName = True
+                elif self.item.itemType == "SELECTION SET" and not name.endswith(
+                    ".selection"
+                ):
+                    suffix = ".selection"
+                    name = name.split(".")[0] + suffix
+                    wrongName = True
+                elif self.item.itemType == "POSE" and not name.endswith(".pose"):
+                    suffix = ".pose"
+                    name = name.split(".")[0] + ".pose"
+                    wrongName = True
+                if wrongName:
+                    ShowDialog(
+                        "Name must end with " + suffix + ", for example : \n\n" + name,
+                        "Wrong Name",
+                    )
+                    return
+
             if name.replace(" ", "") != "":
-                oldName = self.item.name
-                oldPath = self.item.path
                 # Modify thumbnail
                 folderIconPath = os.path.join(
                     folderIcons, dialog.ui.iconComboBox.currentText()
@@ -120,14 +161,38 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     self.thumbnailLabel.setPixmap(
                         (QtGui.QPixmap(thumbnailPath).scaled(200, 200))
                     )
+                if isFolder:
+                    # Get tree item
+                    treeModel = self.mainWindow.treeModel
+                    treeItem = treeModel.getElemWithPath(oldPath)
+                selectedItemPath = self.mainWindow.currentTreeElement.path
+                expanded = self.mainWindow.getTreeExpandedItems()
                 # Modify folder name
                 if name != oldName:
-                    selectedItemPath = self.mainWindow.currentTreeElement.path
-                    expanded = self.mainWindow.getTreeExpandedItems()
                     # Rename folder
                     newPath = os.path.join(os.path.dirname(oldPath), name)
                     try:
+                        if not isFolder:
+                            # clean info widget
+                            if self.movie is not None:
+                                self.thumbnailLabel.removeEventFilter(self)
+                                self.movie.setFileName("")
+                            self.mainWindow.cleanInfoWidget()
                         os.rename(oldPath, newPath)
+                        if not isFolder:
+                            # Modify name in Json file
+                            jsonFile = None
+                            for file in os.listdir(newPath):
+                                if file.endswith(".json"):
+                                    jsonFile = os.path.join(newPath, file)
+                                    break
+                            if jsonFile:
+                                with open(jsonFile) as file:
+                                    data = json.load(file)
+                                data["metadata"]["name"] = name
+                                with open(jsonFile, "w") as file:
+                                    json.dump(data, file, indent=4, sort_keys=True)
+                        oldPath = newPath
                     except PermissionError as pe:
                         ShowDialog(
                             "The folder or one of its sub folders might be open or used by another program.\n\n"
@@ -150,24 +215,52 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                             "Impossible to rename folder",
                         )
                         raise
+                    if isFolder:
+                        # Rename tree item
+                        treeModel.modifyElement(treeItem, name, newPath)
+                    doRefreshView = True
 
-                    # Get tree item
-                    treeModel = self.mainWindow.treeModel
-                    treeItem = treeModel.getElemWithPath(oldPath)
-                    # Rename tree item
-                    treeModel.modifyElement(treeItem, name, newPath)
+                # Modify location
+                if os.path.realpath(path) != os.path.realpath(os.path.dirname(oldPath)):
+                    try:
+                        if not isFolder:
+                            # clean info widget
+                            if self.movie is not None:
+                                self.thumbnailLabel.removeEventFilter(self)
+                                self.movie.setFileName("")
+                            self.mainWindow.cleanInfoWidget()
+                        shutil.move(oldPath, path)
+                    except Exception as e:
+                        ShowDialog(
+                            "An error occured : \n\n" + str(e),
+                            "Impossible to Move folder",
+                        )
+                        raise
+                    if isFolder:
+                        # Modify tree item
+                        treeModel.modifyElement(
+                            treeItem, name, os.path.join(path, name)
+                        )
+                    doRefreshView = True
+
+                if doRefreshView:
                     # Restore expand state and selected item
                     self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
+
                     # Select MODIFIED item
                     currentIndex = None
                     for item in self.mainWindow.items.keys():
                         if self.mainWindow.items[item].name == name:
                             currentIndex = item
                             break
-                    index = self.mainWindow.listView.model().index(currentIndex, 0)
-                    self.mainWindow.listView.selectionModel().select(
-                        index, QtCore.QItemSelectionModel.Select
-                    )
+
+                    if currentIndex is not None:
+                        index = self.mainWindow.listView.model().index(currentIndex, 0)
+                        self.mainWindow.listView.selectionModel().select(
+                            index, QtCore.QItemSelectionModel.Select
+                        )
+                    else:
+                        self.mainWindow.cleanInfoWidget()
             else:
                 QtWidgets.QMessageBox.about(
                     self, "Abort action", "Folder name must not be empty."
@@ -461,7 +554,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.thumbnailLabel.setPixmap((QtGui.QPixmap(self.thumbpath).scaled(200, 200)))
         self.frameRangeLabel.setText(self.item.frameRange)
 
-        self.modifyPushButton.setVisible(False)
+        # self.modifyPushButton.setVisible(False)
 
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
@@ -498,7 +591,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.label_4.setVisible(False)
             self.label_5.setVisible(False)
             self.selectBonesPushButton.setVisible(False)
-            self.modifyPushButton.setVisible(True)
+            # self.modifyPushButton.setVisible(True)
 
         if self.item.itemType == "ANIMATION":
             self.selectionSetOptionsWidget.setVisible(False)

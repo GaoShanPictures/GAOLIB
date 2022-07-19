@@ -1,3 +1,19 @@
+#   Copyright (C) 2022 GAO SHAN PICTURES
+
+#   This file is a part of GAOLIB.
+
+#   GAOLIB is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 3 of the License, or
+#   (at your option) any later version.
+
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#   GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'infowidget.ui'
@@ -14,7 +30,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(245, 658)
+        Form.resize(246, 658)
         Form.setStyleSheet(
             "QMainWindow{\n"
             "    color: #b1b1b1;\n"
@@ -431,6 +447,9 @@ class Ui_Form(object):
         self.horizontalLayout_3.setObjectName("horizontalLayout_3")
         self.selectBonesPushButton = QtWidgets.QPushButton(self.widget_2)
         self.selectBonesPushButton.setEnabled(True)
+        font = QtGui.QFont()
+        font.setPointSize(7)
+        self.selectBonesPushButton.setFont(font)
         icon = QtGui.QIcon()
         icon.addPixmap(
             QtGui.QPixmap("icons/select.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
@@ -440,6 +459,9 @@ class Ui_Form(object):
         self.horizontalLayout_3.addWidget(self.selectBonesPushButton)
         self.modifyPushButton = QtWidgets.QPushButton(self.widget_2)
         self.modifyPushButton.setEnabled(True)
+        font = QtGui.QFont()
+        font.setPointSize(7)
+        self.modifyPushButton.setFont(font)
         icon1 = QtGui.QIcon()
         icon1.addPixmap(
             QtGui.QPixmap("icons/folder2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
@@ -448,6 +470,9 @@ class Ui_Form(object):
         self.modifyPushButton.setObjectName("modifyPushButton")
         self.horizontalLayout_3.addWidget(self.modifyPushButton)
         self.trashPushButton = QtWidgets.QPushButton(self.widget_2)
+        font = QtGui.QFont()
+        font.setPointSize(7)
+        self.trashPushButton.setFont(font)
         icon2 = QtGui.QIcon()
         icon2.addPixmap(
             QtGui.QPixmap("icons/trash.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off

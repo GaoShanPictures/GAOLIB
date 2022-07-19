@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>245</width>
+    <width>246</width>
     <height>658</height>
    </rect>
   </property>
@@ -688,6 +688,11 @@ QPlainTextEdit {
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="font">
+         <font>
+          <pointsize>7</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>Select bones</string>
         </property>
@@ -702,6 +707,11 @@ QPlainTextEdit {
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="font">
+         <font>
+          <pointsize>7</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>Modify</string>
         </property>
@@ -713,6 +723,11 @@ QPlainTextEdit {
       </item>
       <item>
        <widget class="QPushButton" name="trashPushButton">
+        <property name="font">
+         <font>
+          <pointsize>7</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>Trash</string>
         </property>

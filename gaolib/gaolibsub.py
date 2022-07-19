@@ -199,15 +199,57 @@ class GaoLib(QtWidgets.QMainWindow):
         self.currentTreeElement = None
         self.setTreeView()
 
-    def openFileNameDialog(self, dialog):
+    def openFileNameDialog(self, dialog, openDirectory=None):
         """File browser to change the ROOT location"""
         fileDialog = QFileDialog(self)
         fileDialog.setFileMode(QFileDialog.DirectoryOnly)
 
         options = fileDialog.Options()
+        if openDirectory:
+            openDirectory = os.path.realpath(openDirectory)
+            fileDialog.setDirectory(os.path.dirname(openDirectory))
         directory = fileDialog.getExistingDirectory(self)
         if directory:
-            dialog.ui.pathLineEdit.setText(directory)
+            directory = os.path.realpath(directory)
+            if not openDirectory:
+                dialog.ui.pathLineEdit.setText(directory)
+            # Modifying an item path
+            elif openDirectory:
+                rootPaths = [
+                    os.path.realpath(os.path.join(root["path"], "ROOT"))
+                    for root in self.rootList
+                ]
+                foundRoot = False
+                for rootPath in rootPaths:
+                    if os.path.commonprefix([directory, rootPath]) == rootPath:
+                        foundRoot = True
+                        break
+                if not foundRoot:
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Wrong Path",
+                        "Chosen path must start with one of these known ROOT paths :\n\n"
+                        + "\n".join(rootPaths),
+                    )
+                elif os.path.commonprefix([openDirectory, directory]) == openDirectory:
+
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Wrong Path",
+                        "Parent path cannot include current folder path !",
+                    )
+                elif (
+                    ".anim" in directory
+                    or ".selection" in directory
+                    or ".pose" in directory
+                ):
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Wrong Path",
+                        "Parent path cannot be in an .anim/.pose/.selection folder !",
+                    )
+                else:
+                    dialog.ui.pathLineEdit.setText(directory)
 
     def createFolder(self):
         """Create new folder functionnality"""
@@ -235,6 +277,9 @@ class GaoLib(QtWidgets.QMainWindow):
                     os.path.join(folderIcons, dialog.ui.iconComboBox.currentText())
                 ).scaled(80, 80)
             )
+        )
+        dialog.ui.parentPathLineEdit.setText(
+            self.currentTreeElement.path.replace("\\", "/")
         )
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
@@ -802,11 +847,16 @@ class GaoLib(QtWidgets.QMainWindow):
             self.currentListItem = selectedItem
             self.displayInfos(selectedItem)
 
-    def displayInfos(self, selectedItem):
-        """Display selected item informations"""
+    def cleanInfoWidget(self):
+        """Clean Info Widget"""
         layout = self.verticalLayout_5
         for i in reversed(range(layout.count())):
             layout.itemAt(i).widget().deleteLater()
+
+    def displayInfos(self, selectedItem):
+        """Display selected item informations"""
+        layout = self.verticalLayout_5
+        self.cleanInfoWidget()
         self.infoWidget = GaoLibInfoWidget(selectedItem, self, parent=self)
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
@@ -912,7 +962,6 @@ class GaoLib(QtWidgets.QMainWindow):
                         childRow = i
                         break
                 index = self.hierarchyTreeView.model().index(childRow, 0, indexes[0])
-
                 # index = self.hierarchyTreeView.model().index(child.row(), 0, indexes[0])
 
                 # Select child item in tree
@@ -951,7 +1000,8 @@ class GaoLib(QtWidgets.QMainWindow):
         try:
             self.listView.doubleClicked.disconnect()
         except:
-            print("listView.doubleClicked not connected to any function")
+            pass
+            # print("listView.doubleClicked not connected to any function")
         # Manage ListView (central widget)
         # Create Qt Model
         model = GaoLibListModel(self.items)
