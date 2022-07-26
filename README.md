@@ -99,7 +99,7 @@ This project is the first version of a work in progress. We are aware that some 
 
 - The pose pasting only supports Quaternion and Euler rotation modes. Axis angles are not supported. 
 
-- ABOUT THE DEPENDENCIES MANAGEMENT : 
+## ABOUT THE DEPENDENCIES MANAGEMENT : 
 ![image](https://user-images.githubusercontent.com/103406493/180926775-3db48c11-2030-420c-bb69-1530f9ca2a7f.png)
 
 GAOLIB requires the following packages to work : PySide2 and imageio. It should be possible to install them from the Blender Preferences, in the Add-ons section, selecting the GAOLIB Add-on. However, if the installation doesn't work (cf image above), the users has to install the dependencies on their own, that is to say in a python console, the commands 'import PySide2' and 'import imageio' should not raise any error.
