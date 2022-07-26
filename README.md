@@ -105,13 +105,18 @@ This project is the first version of a work in progress. We are aware that some 
 GAOLIB requires the following packages to be installed : PySide2 and imageio. It should be possible to install them from the Blender Preferences, in the Add-ons section, selecting the GAOLIB Add-on. However, if the installation doesn't work (cf image above), the users has to install the dependencies on their own, that is to say in Blender's python console, the commands 'import PySide2' and 'import imageio' should not raise any error.
 There are several ways to acheive that. 
 
-One of them use pip, for me the command to run in a terminal looks like this (make sure you give the right path to blender's python.exe): 
+- One of them uses pip, for me the command to run in a terminal looks like this (make sure you give the right path to blender's python.exe): 
+
 "C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install PySide2
+
 "C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install imageio
 
-Another way, if you already have the dependency package installed somewhere for a python using the same version than the python in blender, in Blender's python console you can use : 
+- Another way, if you already have the dependency package installed somewhere for a python using the same version than the python in blender, in Blender's python console you can use : 
+
 import sys
+
 sys.path.append('/location/of/your/dependency')
+
 Note that with this method, you'd have to call these two lines for each dependency every time you reopen Blender.
 
 
