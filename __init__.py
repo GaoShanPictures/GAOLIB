@@ -158,7 +158,6 @@ def install_and_import_module(module_name, package_name=None, global_name=None):
 
 
 def uninstall_module(module_name, package_name=None, global_name=None):
-
     if package_name is None:
         package_name = module_name
 

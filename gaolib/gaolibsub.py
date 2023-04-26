@@ -25,11 +25,11 @@ import shutil
 import sys
 from datetime import datetime
 
+from coretools.uiloader import loadUi
 from PIL import Image
 from PySide2 import QtCore, QtGui, QtWidgets
 from PySide2.QtWidgets import QFileDialog
 
-from coretools.uiloader import loadUi
 from gaolib.createposewidget import CreatePoseWidget
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
 from gaolib.model.gaolibitem import GaoLibItem
@@ -232,7 +232,6 @@ class GaoLib(QtWidgets.QMainWindow):
                         + "\n".join(rootPaths),
                     )
                 elif os.path.commonprefix([openDirectory, directory]) == openDirectory:
-
                     QtWidgets.QMessageBox.about(
                         self,
                         "Wrong Path",
@@ -783,8 +782,8 @@ class GaoLib(QtWidgets.QMainWindow):
             # Create GIF
             try:
                 thumbpath = generateGif(thumbpath, fps=bpy.context.scene.render.fps)
-            except:
-                print("No images to generate GIF from")
+            except Exception as e:
+                print("An error occured during GIF generation : " + str(e))
         elif itemType == "POSE" or itemType == "SELECTION SET":
             thumbpath = self.thumbTempPath
         if os.path.isfile(thumbpath):
@@ -842,7 +841,6 @@ class GaoLib(QtWidgets.QMainWindow):
         """Display selected item informations"""
         indexes = self.listView.selectionModel().selection().indexes()
         if len(indexes) != 0:
-
             selectedItem = self.listView.model().data(indexes[0], QtCore.Qt.UserRole)
             self.currentListItem = selectedItem
             self.displayInfos(selectedItem)
@@ -1076,7 +1074,6 @@ class GaoLib(QtWidgets.QMainWindow):
 
 
 if __name__ == "__main__":
-
     app = QtWidgets.QApplication(sys.argv)
     mainWin = GaoLib()
     mainWin.show()
