@@ -277,7 +277,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 ).scaled(80, 80)
             )
         )
-        dialog.ui.parentPathLineEdit.setText(
+        dialog.ui.pathLineEdit.setText(
             self.currentTreeElement.path.replace("\\", "/")
         )
         rsp = dialog.exec_()
