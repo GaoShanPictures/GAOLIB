@@ -631,6 +631,25 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
                                 + selectedbone.name
                             )
                 break
+    # Group channels by bones
+    if insertKeyframes:
+        # Get selected object
+        selectedObjects = getSelectedObjects()
+        selectedObject = selectedObjects[0]
+        bones = {}
+        for fc in selectedObject.animation_data.action.fcurves:
+            bone = fc.data_path.split('["')[1].split('"]')[0]
+            if bone not in bones.keys():
+                bones[bone] = []
+            bones[bone].append(fc)
+
+        for key in bones.keys():
+            group = selectedObject.animation_data.action.groups.get(key)
+            if not group:
+                group = selectedObject.animation_data.action.groups.new(key)
+            for fc in bones[key]:
+                if fc.group == None:
+                    fc.group = group
     # Delete pose
     bpy.context.scene.collection.objects.unlink(refPose)
     # Clean orphans
