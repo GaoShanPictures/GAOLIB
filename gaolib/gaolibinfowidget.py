@@ -283,14 +283,15 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         """Update pose from current scene according to the blend slider parameter value"""
         # Refresh display
         additiveMode = self.additiveModeCheckBox.isChecked()
+        value = self.blendPoseSlider.value()
         if additiveMode:
-            self.blendPoseLabel.setText(
-                "Add to Pose " + str(self.blendPoseSlider.value()) + "%"
-            )
+            self.blendPoseLabel.setText("Add to Pose " + str(value) + "%")
         else:
-            self.blendPoseLabel.setText(
-                "Blend Pose " + str(self.blendPoseSlider.value()) + "%"
-            )
+            self.blendPoseLabel.setText("Blend Pose " + str(value) + "%")
+        if value:
+            self.applyPushButton.setText("APPLY " + str(value) + "%")
+        else:
+            self.applyPushButton.setText("APPLY 100 %")
         # If additive mode checkbox has just been toggled, do not update pose
         if self.toggleAdditive:
             self.toggleAdditive = False
@@ -560,6 +561,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.selectBonesPushButton.setEnabled(False)
 
         if self.item.itemType == "POSE":
+            self.applyPushButton.setText("APPLY 100 %")
             self.animOptionsWidget.setVisible(False)
             # self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(True)

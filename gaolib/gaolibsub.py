@@ -277,9 +277,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 ).scaled(80, 80)
             )
         )
-        dialog.ui.pathLineEdit.setText(
-            self.currentTreeElement.path.replace("\\", "/")
-        )
+        dialog.ui.pathLineEdit.setText(self.currentTreeElement.path.replace("\\", "/"))
         rsp = dialog.exec_()
         # retrieve editLine infos from the dialog
         name = dialog.ui.lineEdit.text()
@@ -605,6 +603,8 @@ class GaoLib(QtWidgets.QMainWindow):
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
             elif itemType == "POSE":
+                if not blendPose:
+                    blendPose = 1
                 pastePose(
                     self.currentListItem.path,
                     flipped=flipped,
