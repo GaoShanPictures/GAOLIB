@@ -18,6 +18,9 @@ The design of the user interface of this project, and its main purpose are inspi
 - The GIF thumbnail for animations matches the framerate defined in Blender. Hovewer there may be some limitations with high framerates, for instance playing a 120 fps GIF happens to be much slower than a 60 fps GIF, probably due to some limitations from the device or from the Qt widgets. 
 
 - When applying a pose from the library, you can choose to blend it with the current pose. The pose used as 'current pose' is the one set in the scene at the moment you move the slider for the first time. If you modify the pose in the scene, to take it into account as the current pose, you will have to select another item in the library and select again the pose you need to reset the 'current pose'. 
+
+- When the blending value of a pose is set to 0, the applied blending is 100% so that the default value applied is 100% instead of 0%
+ 
 <p align="center">
   <img src="https://user-images.githubusercontent.com/103406493/168264512-6f607fda-1383-40c7-b0ac-5cadaffd1df8.png" />
 </p>
