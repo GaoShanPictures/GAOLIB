@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>478</width>
-    <height>323</height>
+    <height>358</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -416,6 +416,25 @@ QPlainTextEdit {
           <string>New Column</string>
          </property>
         </column>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_5">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Item List Display Mode</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="recursiveListModeCheckBox">
+        <property name="text">
+         <string>Display all items contained in subfolders recursively</string>
+        </property>
        </widget>
       </item>
       <item>

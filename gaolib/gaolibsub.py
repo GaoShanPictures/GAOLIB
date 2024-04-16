@@ -75,6 +75,7 @@ class GaoLib(QtWidgets.QMainWindow):
         self.projName = ""
         self.rootPath = None
         self.rootList = []
+        self.recursiveDisplayMode = False
         self.initUi()
         self._connectUi()
 
@@ -111,7 +112,7 @@ class GaoLib(QtWidgets.QMainWindow):
         createMenu.addAction("Settings", self.settings)
         self.settingsPushButton.setMenu(createMenu)
 
-    def getRootList(self):
+    def readConfig(self):
         """Read Json config"""
         self.rootList = []
         self.rootPath = None
@@ -119,6 +120,10 @@ class GaoLib(QtWidgets.QMainWindow):
             with open(self.configPath) as file:
                 itemdata = json.load(file)
                 self.rootList = itemdata["rootpath"]
+                if "recursiveDisplayMode" in itemdata.keys():
+                    self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
+                else:
+                    self.recursiveDisplayMode = False
 
     def settings(self):
         """Manage change of ROOT folder location"""
@@ -143,6 +148,8 @@ class GaoLib(QtWidgets.QMainWindow):
                         itemWidget = RootItemWidget(rtname, rtpath, self.configPath)
                         table.insertRow(row)
                         table.setCellWidget(row, 0, itemWidget)
+                if key == "recursiveDisplayMode":
+                    dialog.ui.recursiveListModeCheckBox.setChecked(itemdata[key])
         # File browser
         dialog.ui.browsePushButton.released.connect(
             lambda: self.openFileNameDialog(dialog)
@@ -151,50 +158,75 @@ class GaoLib(QtWidgets.QMainWindow):
         # retrieve editLine infos from the dialog
         path = dialog.ui.pathLineEdit.text()
         pathName = dialog.ui.lineEdit.text()
+        recursiveDisplayMode = dialog.ui.recursiveListModeCheckBox.isChecked()
         # The user clicks OK
         if rsp == QtWidgets.QDialog.Accepted:
-            self.getRootList()
-            createRoot = False
-            newRootItem = {"path": path, "name": pathName}
-            try:
-                if not (len(path)):
-                    pass
-                elif os.path.exists(path):
-                    for e in self.rootList:
-                        if e["path"] == path:
-                            QtWidgets.QMessageBox.about(
-                                self,
-                                "Abort action",
-                                "Path already in root list :" + path,
-                            )
-                            self.setTreeView()
-                            return
-                    # Change the ROOT location
-                    self.rootList.append(newRootItem)
-                    if "ROOT" not in os.listdir(path):
-                        createRoot = True
-                        os.mkdir(os.path.join(path, "ROOT"))
+            self.readConfig()
+            if not len(path):
+                if recursiveDisplayMode != self.recursiveDisplayMode:
                     # remember setting
                     with open(self.configPath, "w") as file:
                         json.dump(
-                            {"rootpath": self.rootList}, file, indent=4, sort_keys=True
+                            {
+                                "rootpath": self.rootList,
+                                "recursiveDisplayMode": recursiveDisplayMode,
+                            },
+                            file,
+                            indent=4,
+                            sort_keys=True,
                         )
-                else:
-                    QtWidgets.QMessageBox.about(
-                        self, "Abort action", "Path does not exist " + path
-                    )
+            else:
+                createRoot = False
+                newRootItem = {"path": path, "name": pathName}
+                try:
+                    if os.path.exists(path):
+                        for e in self.rootList:
+                            if e["path"] == path:
+                                QtWidgets.QMessageBox.about(
+                                    self,
+                                    "Abort action",
+                                    "Path already in root list :" + path,
+                                )
+                                self.setTreeView()
+                                return
+                        # Change the ROOT location
+                        self.rootList.append(newRootItem)
+                        if "ROOT" not in os.listdir(path):
+                            createRoot = True
+                            os.mkdir(os.path.join(path, "ROOT"))
+                        # remember setting
+                        with open(self.configPath, "w") as file:
+                            json.dump(
+                                {
+                                    "rootpath": self.rootList,
+                                    "recursiveDisplayMode": recursiveDisplayMode,
+                                },
+                                file,
+                                indent=4,
+                                sort_keys=True,
+                            )
+                    else:
+                        QtWidgets.QMessageBox.about(
+                            self, "Abort action", "Path does not exist " + path
+                        )
 
-            except WindowsError as e:
-                # if errors occure, set back the old ROOT location
-                if createRoot and not len(os.listdir(os.path.join(path, "ROOT"))):
-                    os.rmdir(os.path.join(path, "ROOT"))
-                QtWidgets.QMessageBox.about(
-                    self, "Abort action", "Access denied to path " + path
-                )
-                with open(self.configPath, "w") as file:
-                    json.dump(
-                        {"rootpath": self.rootList}, file, indent=4, sort_keys=True
+                except WindowsError as e:
+                    # if errors occure, set back the old ROOT location
+                    if createRoot and not len(os.listdir(os.path.join(path, "ROOT"))):
+                        os.rmdir(os.path.join(path, "ROOT"))
+                    QtWidgets.QMessageBox.about(
+                        self, "Abort action", "Access denied to path " + path
                     )
+                    with open(self.configPath, "w") as file:
+                        json.dump(
+                            {
+                                "rootpath": self.rootList,
+                                "recursiveDisplayMode": self.recursiveDisplayMode,
+                            },
+                            file,
+                            indent=4,
+                            sort_keys=True,
+                        )
 
         self.currentTreeElement = None
         self.setTreeView()
@@ -907,34 +939,58 @@ class GaoLib(QtWidgets.QMainWindow):
 
     def getListItems(self):
         """Display current selected folder content in listView"""
-
+        recursiveSearch = self.recursiveDisplayMode
         folderPath = self.currentTreeElement.path
-
         items = {}
         # Parse folder
-        i = 0
-        for it in os.listdir(folderPath):
-            itPath = os.path.join(folderPath, it)
-            if os.path.isdir(itPath):
-                thumbnailPath = os.path.join(itPath, "thumbnail.png")
-                if os.path.isfile(thumbnailPath):
-                    thumbpath = thumbnailPath
-                elif (
-                    os.path.isdir(itPath)
-                    and not it.endswith(".anim")
-                    and not it.endswith(".pose")
-                    and not it.endswith(".selection")
-                ):
-                    thumbpath = os.path.join(
-                        os.path.dirname(os.path.realpath(__file__)), "icons/folder2.png"
-                    )
-                else:
-                    thumbpath = None
+        if recursiveSearch:
+            i = 0
+            for root, dirs, files in os.walk(folderPath):
+                for it in dirs:
+                    itPath = os.path.join(root, it)
+                    if os.path.isdir(itPath):
+                        if (
+                            it.endswith(".anim")
+                            or it.endswith(".pose")
+                            or it.endswith(".selection")
+                        ):
+                            thumbnailPath = os.path.join(itPath, "thumbnail.png")
+                            if os.path.isfile(thumbnailPath):
+                                thumbpath = thumbnailPath
+                            else:
+                                thumbpath = None
 
-                # Create Item
-                gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
-                items[i] = gaoLibItem
-                i += 1
+                            # Create Item
+                            gaoLibItem = GaoLibItem(
+                                name=it, thumbpath=thumbpath, path=itPath
+                            )
+                            items[i] = gaoLibItem
+                            i += 1
+        else:
+            i = 0
+            for it in os.listdir(folderPath):
+                itPath = os.path.join(folderPath, it)
+                if os.path.isdir(itPath):
+                    thumbnailPath = os.path.join(itPath, "thumbnail.png")
+                    if os.path.isfile(thumbnailPath):
+                        thumbpath = thumbnailPath
+                    elif (
+                        os.path.isdir(itPath)
+                        and not it.endswith(".anim")
+                        and not it.endswith(".pose")
+                        and not it.endswith(".selection")
+                    ):
+                        thumbpath = os.path.join(
+                            os.path.dirname(os.path.realpath(__file__)),
+                            "icons/folder2.png",
+                        )
+                    else:
+                        thumbpath = None
+
+                    # Create Item
+                    gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
+                    items[i] = gaoLibItem
+                    i += 1
         return items
 
     def selectChildItemInTree(self, itemName):
@@ -1013,7 +1069,7 @@ class GaoLib(QtWidgets.QMainWindow):
 
     def setTreeView(self):
         """Set Tree model and connect it to UI"""
-        self.getRootList()
+        self.readConfig()
 
         self.treeroot = GaoLibTreeItem("root")
         rootName = None
