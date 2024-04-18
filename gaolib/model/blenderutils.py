@@ -637,6 +637,12 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
         selectedObjects = getSelectedObjects()
         selectedObject = selectedObjects[0]
         bones = {}
+        if not selectedObject.animation_data:
+            selectedObject.animation_data_create()
+        if not selectedObject.animation_data.action:
+            selectedObject.animation_data.action = bpy.data.actions.new(
+                "anim_" + selectedObject.name + "Action"
+            )
         for fc in selectedObject.animation_data.action.fcurves:
             bone = fc.data_path.split('["')[1].split('"]')[0]
             if bone not in bones.keys():
