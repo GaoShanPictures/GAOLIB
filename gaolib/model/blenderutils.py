@@ -357,7 +357,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                             data_path=data_path, index=index, frame=frame
                         )
             # if onePurcent != 0 and i % onePurcent == 0:
-            #     # Print progress in concole
+            #     # Print progress in console
             #     print(str(int(i * progressStep) + 5) + ' %')
         print("operations : " + str(count_op))
 

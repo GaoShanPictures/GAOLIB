@@ -17,7 +17,7 @@
 bl_info = {
     "name": "GAOLIB",
     "author": "Anne Beurard",
-    "version": (1, 0, 2),
+    "version": (1, 0, 4),
     "blender": (3, 0, 0),
     "location": "View 3D",
     "warning": "Requires installation of dependencies",
@@ -330,15 +330,14 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
                 # Gaolib already closed
                 return {"FINISHED"}
 
-            self._app.processEvents()
+            # self._app.processEvents()
             self._counter += 1
-
         return {"PASS_THROUGH"}
 
     def execute(self, context):
+        """Process the event loop of the Qt app."""
         from .gaolib.gaolibsub import GaoLib
 
-        """Process the event loop of the Qt app."""
         self._window = GaoLib()
 
         self._window.show()
@@ -350,9 +349,9 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
     def cancel(self, context):
+        """Remove event timer when stopping the operator."""
         from PySide2 import QtWidgets
 
-        """Remove event timer when stopping the operator."""
         self._window.close()
         wm = context.window_manager
         wm.event_timer_remove(self._timer)

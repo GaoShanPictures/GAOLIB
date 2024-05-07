@@ -1077,11 +1077,20 @@ class GaoLib(QtWidgets.QMainWindow):
             # self.treeroot = GaoLibTreeItem("Root", path=self.rootPath)
             rootPath = rootItem["path"]
             rootName = rootItem["name"]
+
             if not self.currentTreeElement:
                 self.currentTreeElement = self.treeroot
-
-            self.recursivelyPopulateTreeView(self.treeroot, rootPath, newName=rootName)
-            self.rootPath = rootPath
+            if os.path.isdir(rootPath):
+                self.recursivelyPopulateTreeView(
+                    self.treeroot, rootPath, newName=rootName
+                )
+                self.rootPath = rootPath
+            else:
+                QtWidgets.QMessageBox.about(
+                    self,
+                    "FOLDER NOT FOUND",
+                    "Root folder does not exist :\n" + str(rootPath),
+                )
 
         self.treeModel = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
         self.updateTreeFilter()
