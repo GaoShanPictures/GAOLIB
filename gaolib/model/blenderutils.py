@@ -463,18 +463,27 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
     # Remember selection
     selection = getSelectedBones()
-
     # Remember current pose
     if not currentPose:
         currentPose = getCurrentPose()
-
+    # get pose selection set
+    itemdata = {}
+    jsonPath = os.path.join(poseDir, "pose.json")
+    with open(jsonPath) as file:
+        itemdata = json.load(file)
+    selectionSetBones = []
+    for key in itemdata["metadata"].keys():
+        if key == "boneNames":
+            selectionSetBones = itemdata["metadata"]["boneNames"]
     # Append pose object
     refPose = getRefPoseFromLib(poseDir, selection)
     pose = refPose.pose
-
     # Copy properties from ref bones current object
     for posebone in pose.bones:
         for selectedbone in selection:
+            if not selectedbone.name in selectionSetBones:
+                # ignore bones outside original pose selection set
+                continue
             if posebone.name == selectedbone.name:
                 # Manage if different rotation modes used (WARNING : axis angle not supported !)
                 rotationMode = posebone.rotation_mode
