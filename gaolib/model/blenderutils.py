@@ -594,18 +594,48 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
                                         + (1 - blend) * currentPoseRotation[axis + 1]
                                     )
 
+                    # handle properties
                     for key in posebone.keys():
                         try:
-                            exec("selectedbone." + key + " = posebone." + key)
+                            propertyType = eval(
+                                "selectedbone." + key
+                            ).__class__.__name__
+                            if propertyType == "float":
+                                exec(
+                                    "selectedbone."
+                                    + key
+                                    + " = blend * posebone."
+                                    + key
+                                    + " + (1-blend) * currentPose[selectedbone]."
+                                    + key
+                                )
+                            else:
+                                exec("selectedbone." + key + " = posebone." + key)
                         except:
                             try:
-                                exec(
-                                    'selectedbone["'
-                                    + key
-                                    + '"] = posebone["'
-                                    + key
-                                    + '"]'
-                                )
+                                propertyType = eval(
+                                    'selectedbone["' + key + '"]'
+                                ).__class__.__name__
+                                if propertyType == "float":
+                                    command = (
+                                        'selectedbone["'
+                                        + key
+                                        + '"] = blend * posebone["'
+                                        + key
+                                        + '"]'
+                                        + '+ (1-blend) * currentPose[selectedbone]["properties"]["'
+                                        + key
+                                        + '"]'
+                                    )
+                                    exec(command)
+                                else:
+                                    exec(
+                                        'selectedbone["'
+                                        + key
+                                        + '"] = posebone["'
+                                        + key
+                                        + '"]'
+                                    )
                             except:
                                 print(
                                     "IMPOSSIBLE TO HANDLE PROPERTY "

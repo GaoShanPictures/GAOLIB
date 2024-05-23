@@ -429,6 +429,55 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                             + (1 - blend)
                                             * currentPoseRotation[axis + 1]
                                         )
+                        # handle properties
+                        for key in posebone.keys():
+                            try:
+                                propertyType = eval(
+                                    "selectedbone." + key
+                                ).__class__.__name__
+                                if propertyType == "float":
+                                    exec(
+                                        "selectedbone."
+                                        + key
+                                        + " = blend * posebone."
+                                        + key
+                                        + " + (1-blend) * self.currentPose[selectedbone]."
+                                        + key
+                                    )
+                                else:
+                                    exec("selectedbone." + key + " = posebone." + key)
+                            except:
+                                try:
+                                    propertyType = eval(
+                                        'selectedbone["' + key + '"]'
+                                    ).__class__.__name__
+                                    if propertyType == "float":
+                                        command = (
+                                            'selectedbone["'
+                                            + key
+                                            + '"] = blend * posebone["'
+                                            + key
+                                            + '"]'
+                                            + '+ (1-blend) * self.currentPose[selectedbone]["properties"]["'
+                                            + key
+                                            + '"]'
+                                        )
+                                        exec(command)
+                                    else:
+                                        exec(
+                                            'selectedbone["'
+                                            + key
+                                            + '"] = posebone["'
+                                            + key
+                                            + '"]'
+                                        )
+                                except:
+                                    print(
+                                        "IMPOSSIBLE TO HANDLE PROPERTY "
+                                        + key
+                                        + " FOR "
+                                        + selectedbone.name
+                                    )
         except Exception as e:
             print("Blend Pose Exception : " + str(e))
         # Delete pose
