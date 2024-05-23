@@ -431,10 +431,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                         )
         except Exception as e:
             print("Blend Pose Exception : " + str(e))
-            # Delete pose
-            bpy.context.scene.collection.objects.unlink(refPose)
-            # Clean orphans
-            removeOrphans()
+        # Delete pose
+        bpy.context.scene.collection.objects.unlink(refPose)
+        # Clean orphans
+        removeOrphans()
 
     def delete(self):
         """Delete selected item"""

@@ -27,11 +27,11 @@ class GaoLibItem(object):
     def __init__(self, name="", thumbpath=None, path=None):
         self.name = name
         self.thumbpath = thumbpath
-        stamped = thumbpath.replace("thumbnail.png", "thumbnail_stamped.png")
         if self.thumbpath is None or not os.path.isfile(self.thumbpath):
             self.thumbpath = os.path.join(
                 os.path.dirname(os.path.realpath(__file__)), "../icons/nopreview2.png"
             )
+        stamped = self.thumbpath.replace("thumbnail.png", "thumbnail_stamped.png")
         self.stamped = self.thumbpath
         if os.path.isfile(stamped):
             self.stamped = stamped

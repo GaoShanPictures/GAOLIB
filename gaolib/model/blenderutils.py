@@ -21,6 +21,7 @@ __author__ = "Anne Beurard"
 import json
 import os
 import shutil
+import traceback
 
 try:
     import bpy
@@ -478,197 +479,216 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     # Append pose object
     refPose = getRefPoseFromLib(poseDir, selection)
     pose = refPose.pose
+    exceptionMessage = None
     # Copy properties from ref bones current object
-    for posebone in pose.bones:
-        for selectedbone in selection:
-            if not selectedbone.name in selectionSetBones:
-                # ignore bones outside original pose selection set
-                continue
-            if posebone.name == selectedbone.name:
-                # Manage if different rotation modes used (WARNING : axis angle not supported !)
-                rotationMode = posebone.rotation_mode
+    try:
+        for posebone in pose.bones:
+            for selectedbone in selection:
+                if not selectedbone.name in selectionSetBones:
+                    # ignore bones outside original pose selection set
+                    continue
+                if posebone.name == selectedbone.name:
+                    # Manage if different rotation modes used (WARNING : axis angle not supported !)
+                    rotationMode = posebone.rotation_mode
 
-                # AXIS_ANGLE rotation mode not supported !
-                if (
-                    rotationMode == "AXIS_ANGLE"
-                    or selectedbone.rotation_mode == "AXIS_ANGLE"
-                ):
-                    # Delete pose
-                    bpy.context.scene.collection.objects.unlink(refPose)
-                    # Clean orphans
-                    removeOrphans()
-                    raise Exception(
-                        "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
-                    )
-                elif (
-                    rotationMode == "QUATERNION"
-                    and currentPose[selectedbone]["rotationMode"] != "QUATERNION"
-                ):
-                    currentPoseRotation = currentPose[selectedbone][
-                        "rotation"
-                    ].to_quaternion()
-                elif (
-                    rotationMode != "QUATERNION"
-                    and currentPose[selectedbone]["rotationMode"] == "QUATERNION"
-                ):
-                    currentPoseRotation = currentPose[selectedbone][
-                        "rotation"
-                    ].to_euler()
-                elif rotationMode == currentPose[selectedbone]["rotationMode"]:
-                    currentPoseRotation = currentPose[selectedbone]["rotation"]
-                else:
-                    # Delete pose
-                    bpy.context.scene.collection.objects.unlink(refPose)
-                    # Clean orphans
-                    removeOrphans()
-                    raise Exception(
-                        "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
-                    )
+                    # AXIS_ANGLE rotation mode not supported !
+                    if (
+                        rotationMode == "AXIS_ANGLE"
+                        or selectedbone.rotation_mode == "AXIS_ANGLE"
+                    ):
+                        # Delete pose
+                        bpy.context.scene.collection.objects.unlink(refPose)
+                        # Clean orphans
+                        removeOrphans()
+                        raise Exception(
+                            "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
+                        )
+                    elif (
+                        rotationMode == "QUATERNION"
+                        and currentPose[selectedbone]["rotationMode"] != "QUATERNION"
+                    ):
+                        currentPoseRotation = currentPose[selectedbone][
+                            "rotation"
+                        ].to_quaternion()
+                    elif (
+                        rotationMode != "QUATERNION"
+                        and currentPose[selectedbone]["rotationMode"] == "QUATERNION"
+                    ):
+                        currentPoseRotation = currentPose[selectedbone][
+                            "rotation"
+                        ].to_euler()
+                    elif rotationMode == currentPose[selectedbone]["rotationMode"]:
+                        currentPoseRotation = currentPose[selectedbone]["rotation"]
+                    else:
+                        # Delete pose
+                        bpy.context.scene.collection.objects.unlink(refPose)
+                        # Clean orphans
+                        removeOrphans()
+                        raise Exception(
+                            "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
+                        )
 
-                selectedbone.rotation_mode = rotationMode
-                # Set pose for selected bones
-                for axis in range(3):
-                    if not selectedbone.lock_location[axis]:
-                        if additiveMode:
-                            (
-                                blend * posebone.location[axis]
-                                + currentPose[selectedbone]["location"][axis]
-                            )
-                        else:
-                            selectedbone.location[axis] = (
-                                blend * posebone.location[axis]
-                                + (1 - blend)
-                                * currentPose[selectedbone]["location"][axis]
-                            )
-                    if rotationMode != "QUATERNION":
-                        if not selectedbone.lock_rotation[axis]:
-                            if additiveMode:
-                                selectedbone.rotation_euler[axis] = (
-                                    blend * posebone.rotation_euler[axis]
-                                    + currentPoseRotation[axis]
-                                )
-                            else:
-                                selectedbone.rotation_euler[axis] = (
-                                    blend * posebone.rotation_euler[axis]
-                                    + (1 - blend) * currentPoseRotation[axis]
-                                )
-                    if not selectedbone.lock_scale[axis]:
-                        if additiveMode:
-                            selectedbone.scale[axis] = (
-                                blend * posebone.scale[axis]
-                                + currentPose[selectedbone]["scale"][axis]
-                                - blend
-                            )
-                        else:
-                            selectedbone.scale[axis] = (
-                                blend * posebone.scale[axis]
-                                + (1 - blend) * currentPose[selectedbone]["scale"][axis]
-                            )
-                if rotationMode == "QUATERNION":
-                    if not selectedbone.lock_rotation_w:
-                        if additiveMode:
-                            selectedbone.rotation_quaternion[0] = (
-                                blend * posebone.rotation_quaternion[0]
-                                + currentPoseRotation[0]
-                                - blend
-                            )
-                        else:
-                            selectedbone.rotation_quaternion[0] = (
-                                blend * posebone.rotation_quaternion[0]
-                                + (1 - blend) * currentPoseRotation[0]
-                            )
-                    for axis in range(3):
-                        if not selectedbone.lock_rotation[axis]:
-                            if additiveMode:
-                                selectedbone.rotation_quaternion[axis + 1] = (
-                                    blend * posebone.rotation_quaternion[axis + 1]
-                                    + currentPoseRotation[axis + 1]
-                                )
-                            else:
-                                selectedbone.rotation_quaternion[axis + 1] = (
-                                    blend * posebone.rotation_quaternion[axis + 1]
-                                    + (1 - blend) * currentPoseRotation[axis + 1]
-                                )
-
-                for key in posebone.keys():
-                    try:
-                        exec("selectedbone." + key + " = posebone." + key)
-                    except:
-                        try:
-                            exec(
-                                'selectedbone["' + key + '"] = posebone["' + key + '"]'
-                            )
-                        except:
-                            print(
-                                "IMPOSSIBLE TO HANDLE PROPERTY "
-                                + key
-                                + " FOR "
-                                + selectedbone.name
-                            )
-                # Key the pasted pose
-                if insertKeyframes:
-                    selectedbone.keyframe_insert(data_path="rotation_mode")
+                    selectedbone.rotation_mode = rotationMode
+                    # Set pose for selected bones
                     for axis in range(3):
                         if not selectedbone.lock_location[axis]:
-                            selectedbone.keyframe_insert(
-                                data_path="location", index=axis
-                            )
+                            if additiveMode:
+                                (
+                                    blend * posebone.location[axis]
+                                    + currentPose[selectedbone]["location"][axis]
+                                )
+                            else:
+                                selectedbone.location[axis] = (
+                                    blend * posebone.location[axis]
+                                    + (1 - blend)
+                                    * currentPose[selectedbone]["location"][axis]
+                                )
                         if rotationMode != "QUATERNION":
                             if not selectedbone.lock_rotation[axis]:
-                                selectedbone.keyframe_insert(
-                                    data_path="rotation_euler", index=axis
-                                )
+                                if additiveMode:
+                                    selectedbone.rotation_euler[axis] = (
+                                        blend * posebone.rotation_euler[axis]
+                                        + currentPoseRotation[axis]
+                                    )
+                                else:
+                                    selectedbone.rotation_euler[axis] = (
+                                        blend * posebone.rotation_euler[axis]
+                                        + (1 - blend) * currentPoseRotation[axis]
+                                    )
                         if not selectedbone.lock_scale[axis]:
-                            selectedbone.keyframe_insert(data_path="scale", index=axis)
+                            if additiveMode:
+                                selectedbone.scale[axis] = (
+                                    blend * posebone.scale[axis]
+                                    + currentPose[selectedbone]["scale"][axis]
+                                    - blend
+                                )
+                            else:
+                                selectedbone.scale[axis] = (
+                                    blend * posebone.scale[axis]
+                                    + (1 - blend)
+                                    * currentPose[selectedbone]["scale"][axis]
+                                )
                     if rotationMode == "QUATERNION":
+                        if not selectedbone.lock_rotation_w:
+                            if additiveMode:
+                                selectedbone.rotation_quaternion[0] = (
+                                    blend * posebone.rotation_quaternion[0]
+                                    + currentPoseRotation[0]
+                                    - blend
+                                )
+                            else:
+                                selectedbone.rotation_quaternion[0] = (
+                                    blend * posebone.rotation_quaternion[0]
+                                    + (1 - blend) * currentPoseRotation[0]
+                                )
                         for axis in range(3):
                             if not selectedbone.lock_rotation[axis]:
-                                selectedbone.keyframe_insert(
-                                    data_path="rotation_quaternion", index=axis + 1
-                                )
-                                selectedbone.keyframe_insert(
-                                    data_path="rotation_quaternion", index=0
-                                )
+                                if additiveMode:
+                                    selectedbone.rotation_quaternion[axis + 1] = (
+                                        blend * posebone.rotation_quaternion[axis + 1]
+                                        + currentPoseRotation[axis + 1]
+                                    )
+                                else:
+                                    selectedbone.rotation_quaternion[axis + 1] = (
+                                        blend * posebone.rotation_quaternion[axis + 1]
+                                        + (1 - blend) * currentPoseRotation[axis + 1]
+                                    )
+
                     for key in posebone.keys():
                         try:
-                            selectedbone.keyframe_insert(data_path='["' + key + '"]')
-                        except Exception as e:
-                            print(
-                                "IMPOSSIBLE TO ADD KEYFRAME FOR PROP "
-                                + key
-                                + " FOR "
-                                + selectedbone.name
-                            )
-                break
-    # Group channels by bones
-    if insertKeyframes:
-        # Get selected object
-        selectedObjects = getSelectedObjects()
-        selectedObject = selectedObjects[0]
-        bones = {}
-        if not selectedObject.animation_data:
-            selectedObject.animation_data_create()
-        if not selectedObject.animation_data.action:
-            selectedObject.animation_data.action = bpy.data.actions.new(
-                "anim_" + selectedObject.name + "Action"
-            )
-        for fc in selectedObject.animation_data.action.fcurves:
-            bone = fc.data_path.split('["')[1].split('"]')[0]
-            if bone not in bones.keys():
-                bones[bone] = []
-            bones[bone].append(fc)
-
-        for key in bones.keys():
-            group = selectedObject.animation_data.action.groups.get(key)
-            if not group:
-                group = selectedObject.animation_data.action.groups.new(key)
-            for fc in bones[key]:
-                if fc.group == None:
-                    fc.group = group
+                            exec("selectedbone." + key + " = posebone." + key)
+                        except:
+                            try:
+                                exec(
+                                    'selectedbone["'
+                                    + key
+                                    + '"] = posebone["'
+                                    + key
+                                    + '"]'
+                                )
+                            except:
+                                print(
+                                    "IMPOSSIBLE TO HANDLE PROPERTY "
+                                    + key
+                                    + " FOR "
+                                    + selectedbone.name
+                                )
+                    # Key the pasted pose
+                    if insertKeyframes:
+                        selectedbone.keyframe_insert(data_path="rotation_mode")
+                        for axis in range(3):
+                            if not selectedbone.lock_location[axis]:
+                                selectedbone.keyframe_insert(
+                                    data_path="location", index=axis
+                                )
+                            if rotationMode != "QUATERNION":
+                                if not selectedbone.lock_rotation[axis]:
+                                    selectedbone.keyframe_insert(
+                                        data_path="rotation_euler", index=axis
+                                    )
+                            if not selectedbone.lock_scale[axis]:
+                                selectedbone.keyframe_insert(
+                                    data_path="scale", index=axis
+                                )
+                        if rotationMode == "QUATERNION":
+                            for axis in range(3):
+                                if not selectedbone.lock_rotation[axis]:
+                                    selectedbone.keyframe_insert(
+                                        data_path="rotation_quaternion", index=axis + 1
+                                    )
+                                    selectedbone.keyframe_insert(
+                                        data_path="rotation_quaternion", index=0
+                                    )
+                        for key in posebone.keys():
+                            try:
+                                selectedbone.keyframe_insert(
+                                    data_path='["' + key + '"]'
+                                )
+                            except Exception as e:
+                                print(
+                                    "IMPOSSIBLE TO ADD KEYFRAME FOR PROP "
+                                    + key
+                                    + " FOR "
+                                    + selectedbone.name
+                                )
+                    break
+        # Group channels by bones
+        if insertKeyframes:
+            # Get selected object
+            selectedObjects = getSelectedObjects()
+            selectedObject = selectedObjects[0]
+            bones = {}
+            if not selectedObject.animation_data:
+                selectedObject.animation_data_create()
+            if not selectedObject.animation_data.action:
+                selectedObject.animation_data.action = bpy.data.actions.new(
+                    "anim_" + selectedObject.name + "Action"
+                )
+            for fc in selectedObject.animation_data.action.fcurves:
+                try:
+                    bone = fc.data_path.split('["')[1].split('"]')[0]
+                    if bone not in bones.keys():
+                        bones[bone] = []
+                    bones[bone].append(fc)
+                except:
+                    pass
+            for key in bones.keys():
+                group = selectedObject.animation_data.action.groups.get(key)
+                if not group:
+                    group = selectedObject.animation_data.action.groups.new(key)
+                for fc in bones[key]:
+                    if fc.group == None:
+                        fc.group = group
+    except Exception as e:
+        print("Blend Pose Exception : " + str(e) + "\n" + str(traceback.format_exc()))
+        exceptionMessage = "Blend Pose Exception : " + str(e)
     # Delete pose
     bpy.context.scene.collection.objects.unlink(refPose)
     # Clean orphans
     removeOrphans()
+    # Show message if exception
+    if exceptionMessage:
+        raise Exception(exceptionMessage)
 
 
 def clearBoneSelection():
