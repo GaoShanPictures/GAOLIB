@@ -28,15 +28,7 @@ except Exception as e:
 
 from PySide2 import QtCore, QtGui, QtWidgets
 
-from gaolib.model.blenderutils import (
-    ShowDialog,
-    getCurrentPose,
-    getRefPoseFromLib,
-    getSelectedBones,
-    removeOrphans,
-    selectBones,
-    updateSelectionSet,
-)
+import gaolib.model.blenderutils as utils
 from gaolib.ui.infowidgetui import Ui_Form as InfoWidget
 from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
@@ -53,7 +45,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.item = selectedItem
         self.thumbpath = self.item.thumbpath
         self.currentPose = None
+        self.refPose = None
         self.toggleAdditive = False
+        utils.removeOrphans()
 
         # For animation item use gif thumbnail
         self.movie = None
@@ -64,10 +58,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.trashPushButton.released.connect(self.delete)
         self.selectBonesPushButton.released.connect(self.selectBones)
         self.addToSetPushButton.released.connect(
-            lambda: updateSelectionSet(self, add=True)
+            lambda: utils.updateSelectionSet(self, add=True)
         )
         self.rmFromSetPushButton.released.connect(
-            lambda: updateSelectionSet(self, add=False)
+            lambda: utils.updateSelectionSet(self, add=False)
         )
         self.additiveModeCheckBox.stateChanged.connect(self.additiveModeToggle)
         self.blendPoseSlider.valueChanged.connect(
@@ -141,7 +135,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     name = name.split(".")[0] + ".pose"
                     wrongName = True
                 if wrongName:
-                    ShowDialog(
+                    utils.ShowDialog(
                         "Name must end with " + suffix + ", for example : \n\n" + name,
                         "Wrong Name",
                     )
@@ -194,14 +188,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                     json.dump(data, file, indent=4, sort_keys=True)
                         oldPath = newPath
                     except PermissionError as pe:
-                        ShowDialog(
+                        utils.ShowDialog(
                             "The folder or one of its sub folders might be open or used by another program.\n\n"
                             + str(pe),
                             "Impossible to rename folder",
                         )
                         return
                     except FileExistsError as fee:
-                        ShowDialog(
+                        utils.ShowDialog(
                             "A folder with name "
                             + name
                             + " already exists.\n\n"
@@ -210,7 +204,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                         )
                         return
                     except Exception as e:
-                        ShowDialog(
+                        utils.ShowDialog(
                             "An error occured : \n\n" + str(e),
                             "Impossible to rename folder",
                         )
@@ -231,7 +225,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                             self.mainWindow.cleanInfoWidget()
                         shutil.move(oldPath, path)
                     except Exception as e:
-                        ShowDialog(
+                        utils.ShowDialog(
                             "An error occured : \n\n" + str(e),
                             "Impossible to Move folder",
                         )
@@ -306,11 +300,13 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             if key == "boneNames":
                 selectionSetBones = itemdata["metadata"]["boneNames"]
         # Remember current pose
-        selection = getSelectedBones()
+        selection = utils.getSelectedBones()
         if not self.currentPose:
-            self.currentPose = getCurrentPose()
+            self.currentPose = utils.getCurrentPose()
         # Append pose object
-        refPose = getRefPoseFromLib(poseDir, selection)
+        if not self.refPose:
+            self.refPose = utils.getRefPoseFromLib(poseDir, selection)
+        refPose = self.refPose
         pose = refPose.pose
         try:
             # Copy properties from ref bones current object
@@ -480,10 +476,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                     )
         except Exception as e:
             print("Blend Pose Exception : " + str(e))
-        # Delete pose
-        bpy.context.scene.collection.objects.unlink(refPose)
-        # Clean orphans
-        removeOrphans()
 
     def delete(self):
         """Delete selected item"""
@@ -599,7 +591,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         for file in os.listdir(self.item.path):
             if file.endswith(".json"):
                 jsonPath = os.path.join(self.item.path, file)
-        selectBones(jsonPath)
+        utils.selectBones(jsonPath)
 
     def showInfos(self):
         """Display thumbnail and infos from json file"""

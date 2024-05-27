@@ -69,7 +69,11 @@ def importObject(filepath):
     if obj is not None:
         for new_obj in data_to.objects:
             if new_obj.name == obj.name:
-                mainCollection.objects.link(new_obj)
+                # mainCollection.objects.link(new_obj)
+                new_obj.select_set(False)
+                new_obj.hide_viewport = True
+                new_obj.hide_render = True
+
     return obj
 
 
@@ -365,11 +369,13 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         # Group channels by bones
         bones = {}
         for fc in selectedObject.animation_data.action.fcurves:
-            bone = fc.data_path.split('["')[1].split('"]')[0]
-            if bone not in bones.keys():
-                bones[bone] = []
-            bones[bone].append(fc)
-
+            try:
+                bone = fc.data_path.split('["')[1].split('"]')[0]
+                if bone not in bones.keys():
+                    bones[bone] = []
+                bones[bone].append(fc)
+            except:
+                pass
         for key in bones.keys():
             group = selectedObject.animation_data.action.groups.get(key)
             if not group:
@@ -377,7 +383,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             for fc in bones[key]:
                 if fc.group == None:
                     fc.group = group
-
+        # clean action
         bpy.data.actions.remove(action)
         ShowDialog("Paste animation done !")
 
@@ -459,6 +465,18 @@ def getRefPoseFromLib(poseDir, selection):
     return refPose
 
 
+def deleteRefPose(refPose, infoWidget):
+    try:
+        bpy.data.objects.remove(refPose)
+    except ReferenceError as e:
+        print(str(e))
+    # Clean armature orphans
+    for arm in bpy.data.armatures:
+        if not arm.users:
+            bpy.data.armatures.remove(arm)
+    infoWidget.refPose = None
+
+
 def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=False):
     """Paste pose from library on selected armature object for selected bones"""
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
@@ -496,8 +514,6 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
                         rotationMode == "AXIS_ANGLE"
                         or selectedbone.rotation_mode == "AXIS_ANGLE"
                     ):
-                        # Delete pose
-                        bpy.context.scene.collection.objects.unlink(refPose)
                         # Clean orphans
                         removeOrphans()
                         raise Exception(
@@ -520,8 +536,6 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
                     elif rotationMode == currentPose[selectedbone]["rotationMode"]:
                         currentPoseRotation = currentPose[selectedbone]["rotation"]
                     else:
-                        # Delete pose
-                        bpy.context.scene.collection.objects.unlink(refPose)
                         # Clean orphans
                         removeOrphans()
                         raise Exception(
@@ -687,13 +701,14 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
             # Get selected object
             selectedObjects = getSelectedObjects()
             selectedObject = selectedObjects[0]
-            bones = {}
             if not selectedObject.animation_data:
                 selectedObject.animation_data_create()
             if not selectedObject.animation_data.action:
                 selectedObject.animation_data.action = bpy.data.actions.new(
                     "anim_" + selectedObject.name + "Action"
                 )
+            # group channels by bones
+            bones = {}
             for fc in selectedObject.animation_data.action.fcurves:
                 try:
                     bone = fc.data_path.split('["')[1].split('"]')[0]
@@ -712,8 +727,7 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     except Exception as e:
         print("Blend Pose Exception : " + str(e) + "\n" + str(traceback.format_exc()))
         exceptionMessage = "Blend Pose Exception : " + str(e)
-    # Delete pose
-    bpy.context.scene.collection.objects.unlink(refPose)
+
     # Clean orphans
     removeOrphans()
     # Show message if exception
@@ -745,6 +759,10 @@ def removeOrphans():
     for o in bpy.data.objects:
         if not o.users:
             bpy.data.objects.remove(o)
+
+    for arm in bpy.data.armatures:
+        if not arm.users:
+            bpy.data.armatures.remove(arm)
 
 
 def removeOrphanCollections():

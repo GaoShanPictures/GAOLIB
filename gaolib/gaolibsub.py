@@ -47,7 +47,7 @@ os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 try:
     import bpy
 
-    from gaolib.model.blenderutils import copyAnim, copyPose, pasteAnim, pastePose
+    import gaolib.model.blenderutils as utils
     from gaolib.model.gifgenerator import generateGif
 except Exception as e:
     print("IMPORT EXCEPTION : " + str(e))
@@ -582,12 +582,12 @@ class GaoLib(QtWidgets.QMainWindow):
             thumbPath = os.path.join(poseDir, "thumbnail.gif")
             shutil.copyfile(thumbTempPath, thumbPath)
             # Copy blend in pose directory
-            copyAnim(poseDir)
+            utils.copyAnim(poseDir)
         elif itemType == "POSE":
             thumbPath = os.path.join(poseDir, "thumbnail.png")
             shutil.copyfile(thumbTempPath, thumbPath)
             # Copy blend in pose directory
-            copyPose(poseDir)
+            utils.copyPose(poseDir)
         elif itemType == "SELECTION SET":
             thumbPath = os.path.join(poseDir, "thumbnail.png")
             shutil.copyfile(thumbTempPath, thumbPath)
@@ -633,11 +633,16 @@ class GaoLib(QtWidgets.QMainWindow):
             if itemType == "ANIMATION":
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
                 frameOut = self.infoWidget.toRangeSpinBox.value()
-                pasteAnim(self.currentListItem.path, frameIn, frameOut, self.infoWidget)
+                utils.pasteAnim(
+                    self.currentListItem.path, frameIn, frameOut, self.infoWidget
+                )
             elif itemType == "POSE":
                 if not blendPose:
                     blendPose = 1
-                pastePose(
+                if self.infoWidget.refPose:
+                    refPose = self.infoWidget.refPose
+                    utils.deleteRefPose(refPose, self.infoWidget)
+                utils.pastePose(
                     self.currentListItem.path,
                     flipped=flipped,
                     blend=blendPose,
