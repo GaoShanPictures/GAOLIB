@@ -84,7 +84,6 @@ class GaoLib(QtWidgets.QMainWindow):
         self.resized.connect(self.setListView)
         self.searchHierarchyEdit.textChanged.connect(self.filterTree)
         self.searchEdit.textChanged.connect(self.filterList)
-
         # Set menus for buttons in the main window
         self.createMenuNew()
         self.createMenuSettings()
@@ -110,6 +109,8 @@ class GaoLib(QtWidgets.QMainWindow):
         # Settings functionnalities
         createMenu = QtWidgets.QMenu(self.settingsPushButton)
         createMenu.addAction("Settings", self.settings)
+        refreshAction = createMenu.addAction("Refresh central view", self.setListView)
+        refreshAction.setShortcut(QtGui.QKeySequence("Ctrl+R"))
         self.settingsPushButton.setMenu(createMenu)
 
     def readConfig(self):
