@@ -17,7 +17,7 @@
 bl_info = {
     "name": "GAOLIB",
     "author": "Anne Beurard",
-    "version": (1, 0, 4),
+    "version": (1, 1, 0),
     "blender": (3, 0, 0),
     "location": "View 3D",
     "warning": "Requires installation of dependencies",
@@ -329,7 +329,6 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
             except RuntimeError as e:
                 # Gaolib already closed
                 return {"FINISHED"}
-
             # self._app.processEvents()
             self._counter += 1
         return {"PASS_THROUGH"}
@@ -470,6 +469,66 @@ class OT_CreateSelectionSet(bpy.types.Operator):
                         space.overlay.show_axis_y = False
                         space.overlay.show_floor = False
                         break
+
+        # Render
+        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return {"FINISHED"}
+
+
+class OT_CreateConstraintSet(bpy.types.Operator):
+    """Create a Json file with the constraint set informations and render"""
+
+    bl_idname = "development.create_constraint_set"
+    bl_label = "Create Constraint Set"
+
+    def execute(self, context):
+        from .gaolib.model.blenderutils import ShowMessageBox
+
+        # Make sure this tool is used after a 'New Constraint Set' action in the GAOLIB window
+        if not bpy.context.scene.gaolib_tool.gaolibNewConstraintSet:
+            ShowMessageBox(
+                "This tool can ONLY be used with GAOLIB after creating a new Constraint Set. (Camera Button)",
+                "ABORT",
+            )
+            return {"CANCELLED"}
+
+        # Check if selected object is in pose mode
+        if bpy.context.object.mode != "POSE":
+            ShowMessageBox("PLEASE, SET POSE MODE.", "ABORT")
+            return {"CANCELLED"}
+
+        # Get Name of selection
+        selectedObjects = []
+        for o in bpy.context.selected_objects:
+            selectedObjects.append(o.name)
+        if len(selectedObjects) == 0:
+            ShowMessageBox("PLEASE, SELECT AT LEAST ONE OBJECT.", "ABORT")
+            return {"CANCELLED"}
+        # Count bones
+        if not len(bpy.context.selected_pose_bones):
+            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", "ABORT")
+            return {"CANCELLED"}
+        data = {
+            "bones": len(bpy.context.selected_pose_bones),
+            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "objects": selectedObjects,
+        }
+        # Write Json file
+        jsonFile = os.path.join(
+            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
+        )
+        with open(jsonFile, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        print(data)
+        # # hide some overlays before rendering
+        # for area in bpy.context.screen.areas:
+        #     if area.type == "VIEW_3D":
+        #         for space in area.spaces:
+        #             if space.type == "VIEW_3D":
+        #                 space.overlay.show_axis_x = False
+        #                 space.overlay.show_axis_y = False
+        #                 space.overlay.show_floor = False
+        #                 break
 
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
@@ -691,6 +750,10 @@ class GaolibCustomProperties(bpy.types.PropertyGroup):
 
     gaolibNewSelectionSet: bpy.props.BoolProperty(name="newSelectionSet", default=False)
 
+    gaolibNewConstraintSet: bpy.props.BoolProperty(
+        name="newConstraintSet", default=False
+    )
+
 
 # ----------------------------------GAOLIB PANNEL-----------------------------
 
@@ -714,6 +777,11 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
             "development.create_animation", text="Create Animation", icon="ANIM"
         )
         col4.operator(
+            "development.create_constraint_set",
+            text="Create Constraint Set",
+            icon="CONSTRAINT_BONE",
+        )
+        col4.operator(
             "development.show_overlay_params",
             text="Show overlay hidden",
             icon="OVERLAY",
@@ -727,6 +795,7 @@ classes = [
     OT_gaolib,
     OT_CreatePose,
     OT_CreateSelectionSet,
+    OT_CreateConstraintSet,
     OT_ShowOverlayParams,
     OT_CreateAnimation,
     GaolibCustomProperties,

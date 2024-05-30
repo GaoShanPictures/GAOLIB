@@ -38,6 +38,9 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         elif self.type == "SELECTION SET":
             self.frameRangeWidget.setVisible(False)
             self.applyPushButton.setText("SAVE SELECTION SET")
+        elif self.type == "CONSTRAINT SET":
+            self.frameRangeWidget.setVisible(False)
+            self.applyPushButton.setText("SAVE CONSTRAINT SET")
         elif self.type == "ANIMATION":
             self.applyPushButton.setText("SAVE ANIMATION")
             self.pushButton.installEventFilter(self)

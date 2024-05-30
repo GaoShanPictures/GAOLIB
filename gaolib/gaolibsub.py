@@ -93,13 +93,23 @@ class GaoLib(QtWidgets.QMainWindow):
         iconFolder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "icons")
         createMenu = QtWidgets.QMenu(self.newPushButton)
         poseIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "pose2.png")))
-        createMenu.addAction(poseIcon, "New Pose", self.createPose)
+        createMenu.addAction(poseIcon, "New Pose", lambda: self.createItem("POSE"))
         animIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "anim2.png")))
         createMenu.addAction(animIcon, "New Animation", self.createAnim)
+        constraintIcon = QtGui.QIcon(
+            QtGui.QPixmap(os.path.join(iconFolder, "constraint.png"))
+        )
+        createMenu.addAction(
+            constraintIcon,
+            "New Constraint Set",
+            lambda: self.createItem("CONSTRAINT SET"),
+        )
         selectIcon = QtGui.QIcon(
             QtGui.QPixmap(os.path.join(iconFolder, "selectionset.png"))
         )
-        createMenu.addAction(selectIcon, "New Selection Set", self.createSelectionSet)
+        createMenu.addAction(
+            selectIcon, "New Selection Set", lambda: self.createItem("SELECTION SET")
+        )
         folderIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "folder2.png")))
         createMenu.addAction(folderIcon, "New Folder", self.createFolder)
         self.newPushButton.setMenu(createMenu)
@@ -274,11 +284,12 @@ class GaoLib(QtWidgets.QMainWindow):
                     ".anim" in directory
                     or ".selection" in directory
                     or ".pose" in directory
+                    or ".constraint" in directory
                 ):
                     QtWidgets.QMessageBox.about(
                         self,
                         "Wrong Path",
-                        "Parent path cannot be in an .anim/.pose/.selection folder !",
+                        "Parent path cannot be in an .anim/.pose/.selection/.constraint folder !",
                     )
                 else:
                     dialog.ui.pathLineEdit.setText(directory)
@@ -405,17 +416,14 @@ class GaoLib(QtWidgets.QMainWindow):
         self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
     def createGenericItem(self):
-        """Create new animation/pose/selection set item"""
-
+        """Create new animation/pose/selection/constraint set item"""
         # Temporary path for thumnail
         self.thumbTempPath = os.path.join(
-            # os.path.dirname(os.path.abspath(__file__)),
             bpy.context.preferences.filepaths.temporary_directory,
             "temp",
             "thumbnail.png",
         )
         self.jsonTempPath = os.path.join(
-            # os.path.dirname(os.path.abspath(__file__)),
             bpy.context.preferences.filepaths.temporary_directory,
             "temp",
             "temp.json",
@@ -455,9 +463,8 @@ class GaoLib(QtWidgets.QMainWindow):
             "value", bpy.context.scene.frame_end
         )
 
-    def createPose(self):
+    def createItem(self, itemType):
         """Sets the UI to Create new pose item"""
-        itemType = "POSE"
         self.createGenericItem()
         # Create widget for create pose
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
@@ -471,21 +478,37 @@ class GaoLib(QtWidgets.QMainWindow):
             lambda: self.savePose(itemType=itemType)
         )
 
-    def createSelectionSet(self):
-        """Sets the UI to Create new selection set item"""
-        self.createGenericItem()
-        itemType = "SELECTION SET"
-        # Create widget for create selection set
-        self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
-        self.verticalLayout_5.addWidget(self.createPosewidget)
+    # def createPose(self):
+    #     """Sets the UI to Create new pose item"""
+    #     itemType = "POSE"
+    #     self.createGenericItem()
+    #     # Create widget for create pose
+    #     self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
+    #     self.verticalLayout_5.addWidget(self.createPosewidget)
 
-        self.beginCreateThumb = True  # remember step of createThumbnail
-        self.createPosewidget.pushButton.released.connect(
-            lambda: self.createThumbnail(itemType=itemType)
-        )
-        self.createPosewidget.applyPushButton.released.connect(
-            lambda: self.savePose(itemType=itemType)
-        )
+    #     self.beginCreateThumb = True  # remember step of createThumbnail
+    #     self.createPosewidget.pushButton.released.connect(
+    #         lambda: self.createThumbnail(itemType=itemType)
+    #     )
+    #     self.createPosewidget.applyPushButton.released.connect(
+    #         lambda: self.savePose(itemType=itemType)
+    #     )
+
+    # def createSelectionSet(self):
+    #     """Sets the UI to Create new selection set item"""
+    #     self.createGenericItem()
+    #     itemType = "SELECTION SET"
+    #     # Create widget for create selection set
+    #     self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
+    #     self.verticalLayout_5.addWidget(self.createPosewidget)
+
+    #     self.beginCreateThumb = True  # remember step of createThumbnail
+    #     self.createPosewidget.pushButton.released.connect(
+    #         lambda: self.createThumbnail(itemType=itemType)
+    #     )
+    #     self.createPosewidget.applyPushButton.released.connect(
+    #         lambda: self.savePose(itemType=itemType)
+    #     )
 
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
@@ -501,6 +524,10 @@ class GaoLib(QtWidgets.QMainWindow):
             itemTypeStr = "selection"
             thumbTempPath = self.thumbTempPath
             stamp = "icons/selectionset.png"
+        elif itemType == "CONSTRAINT SET":
+            itemTypeStr = "constraint"
+            thumbTempPath = self.thumbTempPath
+            stamp = "icons/constraint.png"
 
         # Check if valid name
         name = self.createPosewidget.nameLineEdit.text()
@@ -592,6 +619,10 @@ class GaoLib(QtWidgets.QMainWindow):
         elif itemType == "SELECTION SET":
             thumbPath = os.path.join(poseDir, "thumbnail.png")
             shutil.copyfile(thumbTempPath, thumbPath)
+        elif itemType == "CONSTRAINT SET":
+            thumbPath = os.path.join(poseDir, "thumbnail.png")
+            shutil.copyfile(thumbTempPath, thumbPath)
+            # TODO call get constraints datas
 
         # Add stamp on thumbnail
         try:
@@ -637,6 +668,13 @@ class GaoLib(QtWidgets.QMainWindow):
                 utils.pasteAnim(
                     self.currentListItem.path, frameIn, frameOut, self.infoWidget
                 )
+            elif itemType == "CONSTRAINT SET":
+                pairingDict = {}
+                for widget in self.infoWidget.pairWidgets:
+                    pairingDict[widget.objectName] = (
+                        widget.armatureComboBox.currentText()
+                    )
+                utils.pasteConstraints(self.currentListItem.path, pairingDict)
             elif itemType == "POSE":
                 if not blendPose:
                     blendPose = 1
@@ -667,6 +705,8 @@ class GaoLib(QtWidgets.QMainWindow):
             jsonFile = os.path.join(directory, "pose.json")
         elif itemType == "SELECTION SET":
             jsonFile = os.path.join(directory, "selection_set.json")
+        elif itemType == "CONSTRAINT SET":
+            jsonFile = os.path.join(directory, "constraint_set.json")
 
         if os.path.exists(self.jsonTempPath):
             with open(self.jsonTempPath) as file:
@@ -690,6 +730,11 @@ class GaoLib(QtWidgets.QMainWindow):
                 + str(self.createPosewidget.toRangeSpinBox.value()),
             }
         }
+        for key in itemdata.keys():
+            if key == "constraintData":
+                data[key] = itemdata[key]
+            elif key not in data["metadata"].keys():
+                data["metadata"][key] = itemdata[key]
         # write json
         with open(jsonFile, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
@@ -714,6 +759,7 @@ class GaoLib(QtWidgets.QMainWindow):
         bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
         bpy.context.scene.gaolib_tool.gaolibNewPose = False
         bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
+        bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
         if self.beginCreateThumb:
             self.createThumbnailBegin(itemType=itemType)
             self.beginCreateThumb = False
@@ -740,6 +786,10 @@ class GaoLib(QtWidgets.QMainWindow):
         elif itemType == "SELECTION SET":
             bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = True
             photoButtonText = "Please use the Create\nSelection Set \nTool in Blender\nWhen it is done\nclick HERE again"
+            renderpath = self.thumbTempPath
+        elif itemType == "CONSTRAINT SET":
+            bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = True
+            photoButtonText = "Please use the Create\nConstraint Set \nTool in Blender\nWhen it is done\nclick HERE again"
             renderpath = self.thumbTempPath
 
         self.createPosewidget.pushButton.setText(photoButtonText)
@@ -777,6 +827,8 @@ class GaoLib(QtWidgets.QMainWindow):
             bpy.context.scene.gaolib_tool.gaolibNewPose = False
         elif itemType == "SELECTION SET":
             bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
+        elif itemType == "CONSTRAINT SET":
+            bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
         # unhide hidden overlay params
         try:
             for area in bpy.context.screen.areas:
@@ -796,23 +848,30 @@ class GaoLib(QtWidgets.QMainWindow):
         if os.path.exists(self.jsonTempPath):
             with open(self.jsonTempPath) as file:
                 itemdata = json.load(file)
-        if "objects" in itemdata.keys():
-            if len(itemdata["objects"]) != 1:
-                QtWidgets.QMessageBox.about(
-                    self,
-                    "Abort action",
-                    "Found no or several selected objects. Need exactly one.",
+        if itemType != "CONSTRAINT SET":
+            if "objects" in itemdata.keys():
+                if len(itemdata["objects"]) != 1:
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Abort action",
+                        "Found no or several selected objects. Need exactly one.",
+                    )
+                    os.remove(self.thumbTempPath)
+                    os.remove(self.jsonTempPath)
+            # manage display
+            if "bones" in itemdata.keys():
+                self.createPosewidget.contentLabel.setText(
+                    str(itemdata["bones"]) + " bone(s)"
                 )
-                os.remove(self.thumbTempPath)
-                os.remove(self.jsonTempPath)
-        # manage display
-        if "bones" in itemdata.keys():
-            self.createPosewidget.contentLabel.setText(
-                str(itemdata["bones"]) + " bone(s)"
-            )
+            else:
+                self.createPosewidget.contentLabel.setText("")
         else:
-            self.createPosewidget.contentLabel.setText("")
-
+            msg = ""
+            if "objects" in itemdata.keys():
+                msg += str(len(itemdata["objects"])) + " object(s) \n"
+            if "bones" in itemdata.keys():
+                msg += str(itemdata["bones"]) + " bone(s)"
+            self.createPosewidget.contentLabel.setText(msg)
         self.createPosewidget.pushButton.setText("")
         icon = QtGui.QIcon()
         if itemType == "ANIMATION":
@@ -822,7 +881,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 thumbpath = generateGif(thumbpath, fps=bpy.context.scene.render.fps)
             except Exception as e:
                 print("An error occured during GIF generation : " + str(e))
-        elif itemType == "POSE" or itemType == "SELECTION SET":
+        else:
             thumbpath = self.thumbTempPath
         if os.path.isfile(thumbpath):
             if itemType == "ANIMATION":
@@ -835,7 +894,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 movie.stop()
                 icon = QtGui.QIcon(movie.currentPixmap())
                 self.createPosewidget.pushButton.setIcon(icon)
-            elif itemType == "POSE" or itemType == "SELECTION SET":
+            else:
                 icon.addPixmap(
                     QtGui.QPixmap(thumbpath), QtGui.QIcon.Normal, QtGui.QIcon.Off
                 )
@@ -910,6 +969,10 @@ class GaoLib(QtWidgets.QMainWindow):
             self.infoWidget.applyPushButton.released.connect(
                 lambda: self.applyPose(itemType=selectedItem.itemType)
             )
+        elif selectedItem.itemType == "CONSTRAINT SET":
+            self.infoWidget.applyPushButton.released.connect(
+                lambda: self.applyPose(itemType=selectedItem.itemType)
+            )
 
     def treeElementSelected(self, selectedItem):
         """Manage selection in tree view"""
@@ -932,6 +995,7 @@ class GaoLib(QtWidgets.QMainWindow):
                 and ".anim" not in directory
                 and ".selection" not in directory
                 and ".pose" not in directory
+                and ".constraint" not in directory
                 and directory != "trash"
                 and not directory.startswith(".")
             ):
@@ -959,6 +1023,7 @@ class GaoLib(QtWidgets.QMainWindow):
                             it.endswith(".anim")
                             or it.endswith(".pose")
                             or it.endswith(".selection")
+                            or it.endswith(".constraint")
                         ):
                             thumbnailPath = os.path.join(itPath, "thumbnail.png")
                             if os.path.isfile(thumbnailPath):
@@ -985,6 +1050,7 @@ class GaoLib(QtWidgets.QMainWindow):
                         and not it.endswith(".anim")
                         and not it.endswith(".pose")
                         and not it.endswith(".selection")
+                        and not it.endswith(".constraint")
                     ):
                         thumbpath = os.path.join(
                             os.path.dirname(os.path.realpath(__file__)),

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>246</width>
-    <height>658</height>
+    <height>792</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -445,6 +445,30 @@ QPlainTextEdit {
         </property>
        </widget>
       </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="constraintOptionsGroupBox">
+     <property name="title">
+      <string>Constraints Options</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_3">
+      <property name="spacing">
+       <number>2</number>
+      </property>
+      <property name="leftMargin">
+       <number>0</number>
+      </property>
+      <property name="topMargin">
+       <number>12</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>6</number>
+      </property>
      </layout>
     </widget>
    </item>

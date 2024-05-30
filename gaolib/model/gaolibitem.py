@@ -51,6 +51,9 @@ class GaoLibItem(object):
         elif self.name.endswith(".selection"):
             jsonPath = os.path.join(self.path, "selection_set.json")
             self.itemType = "SELECTION SET"
+        elif self.name.endswith(".constraint"):
+            jsonPath = os.path.join(self.path, "constraint_set.json")
+            self.itemType = "CONSTRAINT SET"
         else:
             jsonPath = None
             self.itemType = "FOLDER"
@@ -59,6 +62,7 @@ class GaoLibItem(object):
         self.date = ""
         self.content = ""
         self.frameRange = ""
+        self.objects = []
 
         if jsonPath:
             if os.path.exists(jsonPath):
@@ -69,6 +73,7 @@ class GaoLibItem(object):
                 self.date = "Unknown"
                 self.content = "Unknown"
                 self.frameRange = "Unknown"
+                self.objects = []
 
                 if "metadata" in itemdata.keys():
                     if "user" in itemdata["metadata"].keys():
@@ -81,3 +86,5 @@ class GaoLibItem(object):
                         self.frameRange = itemdata["metadata"]["frameRange"]
                     if "boneNames" in itemdata["metadata"].keys():
                         self.bonesSelection = True
+                    if "objects" in itemdata["metadata"].keys():
+                        self.objects = itemdata["metadata"]["objects"]

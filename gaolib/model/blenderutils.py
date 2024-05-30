@@ -105,30 +105,73 @@ def selectBones(jsonPath):
     itemdata = {}
     with open(jsonPath) as file:
         itemdata = json.load(file)
-    bones = []
-    for key in itemdata["metadata"].keys():
-        if key == "boneNames":
-            bones = itemdata["metadata"]["boneNames"]
 
+    itemType = itemdata["metadata"]["type"]
     clearBoneSelection()
-
-    objects = getSelectedObjects()
-    if len(objects) != 1:
-        ShowDialog(
-            "NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.", title="Abort action"
-        )
-        return
-    obj = objects[0]
-    if obj.type != "ARMATURE":
-        ShowDialog("Please, select an ARMATURE object.", title="Abort action")
-        return
-    print("SELECT BONES")
-    # Select bones
-    for bone in bones:
-        if obj.pose.bones.get(bone):
-            obj.data.bones.get(bone).select = True
-        else:
-            print("Not found : " + bone)
+    if itemType != "CONSTRAINT SET":
+        # get bone names from json
+        bones = []
+        for key in itemdata["metadata"].keys():
+            if key == "boneNames":
+                bones = itemdata["metadata"]["boneNames"]
+        # get selected object
+        objects = getSelectedObjects()
+        if len(objects) != 1:
+            ShowDialog(
+                "NO OR TOO MANY OBJECTS SELECTED. NEED EXACTLY ONE.",
+                title="Abort action",
+            )
+            return
+        obj = objects[0]
+        if obj.type != "ARMATURE":
+            ShowDialog("Please, select an ARMATURE object.", title="Abort action")
+            return
+        print("SELECT BONES")
+        # Select bones
+        for bone in bones:
+            if obj.pose.bones.get(bone):
+                obj.data.bones.get(bone).select = True
+            else:
+                print("Not found : " + bone)
+    else:
+        # Manage selection for constraint
+        pbList = []
+        objectList = []
+        metaDataKeys = [key for key in itemdata["metadata"].keys()]
+        boneList = []
+        objects = getSelectedObjects()
+        if "boneDict" in metaDataKeys:
+            for objName in itemdata["metadata"]["boneDict"].keys():
+                foundObj = bpy.context.scene.objects.get(objName)
+                if foundObj:
+                    objectList.append(foundObj)
+                    if foundObj.pose:
+                        for boneName in itemdata["metadata"]["boneDict"][objName]:
+                            bone = foundObj.pose.bones.get(boneName)
+                            if not bone:
+                                pbList.append(
+                                    "Bone " + boneName + " not found in " + objName
+                                )
+                            else:
+                                boneList.append(bone)
+                else:
+                    pbList.append("Object not found : " + objName)
+        if len(pbList):
+            ShowDialog(
+                "Some objects or their bones are not in the current scene : \n"
+                + "\n".join(pbList),
+                title="Abort action",
+            )
+            return
+        # select objects
+        for obj in objects:
+            obj.select_set(False)
+        for obj in objectList:
+            obj.select_set(True)
+            bpy.context.view_layer.objects.active = obj
+        # select bones
+        for bone in boneList:
+            bone.bone.select = True
 
 
 def copyAnim(animDir):
@@ -146,6 +189,12 @@ def getSelectedObjects():
         if obj.select_get():
             objects.append(obj)
     return objects
+
+
+def toggleObjectSelection(objects, select=False):
+    """Unselect all objects"""
+    for obj in objects:
+        obj.select_set(select)
 
 
 def getSelectedBones():
@@ -168,7 +217,73 @@ def getSelectedBones():
     return bones
 
 
+def getConstraintSelectedBones(objects):
+    """Return dictionnary with selected object as key and list of selected bones in the object as value"""
+    boneDict = {}
+    for obj in objects:
+        toggleObjectSelection(objects, select=False)
+        if obj.pose:
+            obj.select_set(True)
+            bones = getSelectedBones()
+            if not bones:
+                toggleObjectSelection(objects, select=True)
+                return
+            boneDict[obj.name] = bones
+    return boneDict
+
+
+def getConstraintsForSelection():
+    """Return dict with constraints datas for selected bones"""
+    objects = getSelectedObjects()
+    # Get bones objects from which to get constraint datas
+    boneDict = getConstraintSelectedBones(objects)
+    if not boneDict:
+        return
+    constraintDict = {}
+    # get constraint datas
+    for objName in boneDict.keys():
+        objConstraints = {}
+        objConstraints["bone_constraints"] = {}
+        for bone in boneDict[objName]:
+            for cons in bone.constraints:
+                print(
+                    "\n"
+                    + objName
+                    + " BONE CONSTRAINT on  "
+                    + bone.name
+                    + " : "
+                    + cons.name
+                )
+                # ignore override contraints
+                if cons.is_override_data:
+                    continue
+                # write dict
+                if bone.name not in objConstraints["bone_constraints"].keys():
+                    objConstraints["bone_constraints"][bone.name] = {}
+                objConstraints["bone_constraints"][bone.name][cons.name] = {}
+                for prop, value in cons.bl_rna.properties.items():
+                    propValue = eval("cons." + prop)
+                    if value.type == "POINTER":
+                        try:
+                            propValue = {"type": propValue.type, "name": propValue.name}
+                        except:
+                            propValue = str(propValue)
+                    if propValue.__class__.__name__ == "Matrix":
+                        propValue = {
+                            "matrix": [[elem for elem in line] for line in propValue]
+                        }
+                    print(prop + " = " + str(propValue))
+                    objConstraints["bone_constraints"][bone.name][cons.name][
+                        prop
+                    ] = propValue
+        constraintDict[objName] = objConstraints
+    # reset selection
+    toggleObjectSelection(objects, select=True)
+    return constraintDict
+
+
 def updateSelectionSet(infoWidget, add=True):
+    """Modify selection set item"""
     # Get item json file
     item = infoWidget.item
     itemPath = item.path
@@ -206,7 +321,116 @@ def updateSelectionSet(infoWidget, add=True):
     selectBones(jsonPath)
 
 
+def pasteConstraints(constraintDir, pairingDict):
+    """Read constraint json and apply constraints on selected bones"""
+
+    # read json
+    itemdata = {}
+    jsonPath = os.path.join(constraintDir, "constraint_set.json")
+    with open(jsonPath) as file:
+        itemdata = json.load(file)
+    if "constraintData" in itemdata.keys():
+        constraintData = itemdata["constraintData"]
+    else:
+        ShowDialog("Found no constraint data in " + jsonPath, title="Abort action")
+        return
+    # # Get bones objects from which to get constraint datas
+    objects = getSelectedObjects()
+    # boneDict = getConstraintSelectedBones(objects)
+    # if not boneDict:
+    #     return
+
+    pbList = []
+    # # check if all objects exist
+    # objList = []
+    # for objName in constraintData.keys():
+    #     # obj = bpy.data.objects.get(objName)
+    #     obj = bpy.context.scene.objects.get(objName)
+    #     if not obj:
+    #         pbList.append("Found no object with name " + objName)
+    #     else:
+    #         objList.append(obj)
+    # if len(pbList):
+    #     ShowDialog(
+    #         "Objects not found in current scene : \n" + "\n".join(pbList),
+    #         title="Abort action",
+    #     )
+    #     return
+    # apply constraints
+    for objName in constraintData.keys():
+        boneConstraints = constraintData[objName]["bone_constraints"]
+        targetObject = None
+        for selected in objects:
+            if selected.name == pairingDict[objName]:
+                targetObject = selected
+                break
+        for boneName in boneConstraints.keys():
+            bone = targetObject.pose.bones.get(boneName)
+            if not bone:
+                pbList.append(
+                    "Did not find bone " + boneName + " in " + targetObject.name
+                )
+                continue
+            for constName, constData in boneConstraints[boneName].items():
+                cons = bone.constraints.new(constData["type"])
+                cons.name = constData["name"] + "_GAOLIB"
+                for propName, propData in constData.items():
+                    if propName not in [
+                        "type",
+                        "rna_type",
+                        "name",
+                        "is_override_data",
+                        "is_valid",
+                        "error_location",
+                        "error_rotation",
+                    ]:
+                        if propData.__class__.__name__ != "dict":
+                            try:
+                                if (
+                                    propData.__class__.__name__ == "str"
+                                    and propData != "None"
+                                ):
+                                    exec(
+                                        "cons."
+                                        + propName
+                                        + ' = "'
+                                        + str(propData)
+                                        + '"'
+                                    )
+                                else:
+                                    exec("cons." + propName + " = " + str(propData))
+                            except AttributeError as e:
+                                pbList.append("Attribute error : " + str(e))
+                        else:
+                            if "matrix" in propData.keys():
+                                for i in range(len(propData["matrix"])):
+                                    for j in range(len(propData["matrix"][i])):
+                                        exec(
+                                            "cons."
+                                            + propName
+                                            + "["
+                                            + str(i)
+                                            + "]["
+                                            + str(j)
+                                            + "] = "
+                                            + str(propData["matrix"][i][j])
+                                        )
+
+                            elif "type" in propData.keys():
+                                elem = eval(
+                                    'bpy.data.objects.get("' + propData["name"] + '")'
+                                )
+                                exec("cons." + propName + "= elem")
+
+    if len(pbList):
+        ShowDialog(
+            "Some problems occured : \n" + "\n".join(pbList),
+            title="WARNING",
+        )
+
+
 def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
+    """Paste animation on selected bones"""
     # Remember selection
     selection = getSelectedBones()
     if not selection:
@@ -365,7 +589,6 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             #     # Print progress in console
             #     print(str(int(i * progressStep) + 5) + ' %')
         print("operations : " + str(count_op))
-
         # Group channels by bones
         bones = {}
         for fc in selectedObject.animation_data.action.fcurves:
@@ -466,6 +689,7 @@ def getRefPoseFromLib(poseDir, selection):
 
 
 def deleteRefPose(refPose, infoWidget):
+    """Clean reference pose imported while pasting/blending a pose"""
     try:
         bpy.data.objects.remove(refPose)
     except ReferenceError as e:
