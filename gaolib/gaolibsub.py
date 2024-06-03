@@ -478,38 +478,6 @@ class GaoLib(QtWidgets.QMainWindow):
             lambda: self.savePose(itemType=itemType)
         )
 
-    # def createPose(self):
-    #     """Sets the UI to Create new pose item"""
-    #     itemType = "POSE"
-    #     self.createGenericItem()
-    #     # Create widget for create pose
-    #     self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
-    #     self.verticalLayout_5.addWidget(self.createPosewidget)
-
-    #     self.beginCreateThumb = True  # remember step of createThumbnail
-    #     self.createPosewidget.pushButton.released.connect(
-    #         lambda: self.createThumbnail(itemType=itemType)
-    #     )
-    #     self.createPosewidget.applyPushButton.released.connect(
-    #         lambda: self.savePose(itemType=itemType)
-    #     )
-
-    # def createSelectionSet(self):
-    #     """Sets the UI to Create new selection set item"""
-    #     self.createGenericItem()
-    #     itemType = "SELECTION SET"
-    #     # Create widget for create selection set
-    #     self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
-    #     self.verticalLayout_5.addWidget(self.createPosewidget)
-
-    #     self.beginCreateThumb = True  # remember step of createThumbnail
-    #     self.createPosewidget.pushButton.released.connect(
-    #         lambda: self.createThumbnail(itemType=itemType)
-    #     )
-    #     self.createPosewidget.applyPushButton.released.connect(
-    #         lambda: self.savePose(itemType=itemType)
-    #     )
-
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
         if itemType == "ANIMATION":
@@ -622,7 +590,6 @@ class GaoLib(QtWidgets.QMainWindow):
         elif itemType == "CONSTRAINT SET":
             thumbPath = os.path.join(poseDir, "thumbnail.png")
             shutil.copyfile(thumbTempPath, thumbPath)
-            # TODO call get constraints datas
 
         # Add stamp on thumbnail
         try:
@@ -669,11 +636,7 @@ class GaoLib(QtWidgets.QMainWindow):
                     self.currentListItem.path, frameIn, frameOut, self.infoWidget
                 )
             elif itemType == "CONSTRAINT SET":
-                pairingDict = {}
-                for widget in self.infoWidget.pairWidgets:
-                    pairingDict[widget.objectName] = (
-                        widget.armatureComboBox.currentText()
-                    )
+                pairingDict = self.infoWidget.getConstraintPairing()
                 utils.pasteConstraints(self.currentListItem.path, pairingDict)
             elif itemType == "POSE":
                 if not blendPose:
@@ -1127,7 +1090,6 @@ class GaoLib(QtWidgets.QMainWindow):
             self.listView.doubleClicked.disconnect()
         except:
             pass
-            # print("listView.doubleClicked not connected to any function")
         # Manage ListView (central widget)
         # Create Qt Model
         model = GaoLibListModel(self.items)

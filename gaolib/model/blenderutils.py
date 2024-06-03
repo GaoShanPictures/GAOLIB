@@ -100,6 +100,63 @@ def ShowMessageBox(message="", title="Message Box", icon="INFO"):
     bpy.context.window_manager.popup_menu(draw, title=title, icon=icon)
 
 
+def selectConstraintBones(jsonPath, pairingDict):
+    """Read constraint json file and select listed bones of selected object"""
+    pbList = []
+    clearBoneSelection()
+    # read json
+    itemdata = {}
+    with open(jsonPath) as file:
+        itemdata = json.load(file)
+    if "constraintData" in itemdata.keys():
+        constraintData = itemdata["constraintData"]
+    else:
+        ShowDialog("Found no constraint data in " + jsonPath, title="Abort action")
+        return
+    # get selection
+    objects = getSelectedObjects()
+    # deselect all objects
+    toggleObjectSelection(objects, select=False)
+    # select bones
+    for objName in constraintData.keys():
+        boneConstraints = constraintData[objName]["bone_constraints"]
+        targetObject = None
+        for selected in objects:
+            if selected.name == pairingDict[objName]:
+                targetObject = selected
+                break
+        if not targetObject:
+            pbList.append(
+                "Did not find "
+                + pairingDict[objName]
+                + " to be paired with "
+                + objName
+                + " amongst selected objects"
+            )
+            continue
+        # select object
+        targetObject.select_set(True)
+        bpy.context.view_layer.objects.active = targetObject
+        # select bones
+        if not targetObject.pose:
+            pbList.append(targetObject.name + " object does not have any bones.")
+            continue
+        for boneName in boneConstraints.keys():
+            bone = targetObject.pose.bones.get(boneName)
+            if not bone:
+                pbList.append(
+                    "Did not find bone " + boneName + " in " + targetObject.name
+                )
+                continue
+            # select bone
+            bone.bone.select = True
+    if len(pbList):
+        ShowDialog(
+            "Some problems occured while selecting bones : \n" + "\n".join(pbList),
+            title="Select bones Warning",
+        )
+
+
 def selectBones(jsonPath):
     """Read pose/animation json file and select listed bones of selected object"""
     itemdata = {}
@@ -133,45 +190,6 @@ def selectBones(jsonPath):
                 obj.data.bones.get(bone).select = True
             else:
                 print("Not found : " + bone)
-    else:
-        # Manage selection for constraint
-        pbList = []
-        objectList = []
-        metaDataKeys = [key for key in itemdata["metadata"].keys()]
-        boneList = []
-        objects = getSelectedObjects()
-        if "boneDict" in metaDataKeys:
-            for objName in itemdata["metadata"]["boneDict"].keys():
-                foundObj = bpy.context.scene.objects.get(objName)
-                if foundObj:
-                    objectList.append(foundObj)
-                    if foundObj.pose:
-                        for boneName in itemdata["metadata"]["boneDict"][objName]:
-                            bone = foundObj.pose.bones.get(boneName)
-                            if not bone:
-                                pbList.append(
-                                    "Bone " + boneName + " not found in " + objName
-                                )
-                            else:
-                                boneList.append(bone)
-                else:
-                    pbList.append("Object not found : " + objName)
-        if len(pbList):
-            ShowDialog(
-                "Some objects or their bones are not in the current scene : \n"
-                + "\n".join(pbList),
-                title="Abort action",
-            )
-            return
-        # select objects
-        for obj in objects:
-            obj.select_set(False)
-        for obj in objectList:
-            obj.select_set(True)
-            bpy.context.view_layer.objects.active = obj
-        # select bones
-        for bone in boneList:
-            bone.bone.select = True
 
 
 def copyAnim(animDir):
@@ -334,28 +352,10 @@ def pasteConstraints(constraintDir, pairingDict):
     else:
         ShowDialog("Found no constraint data in " + jsonPath, title="Abort action")
         return
-    # # Get bones objects from which to get constraint datas
+    # Get objects from which to get constraint datas
     objects = getSelectedObjects()
-    # boneDict = getConstraintSelectedBones(objects)
-    # if not boneDict:
-    #     return
 
     pbList = []
-    # # check if all objects exist
-    # objList = []
-    # for objName in constraintData.keys():
-    #     # obj = bpy.data.objects.get(objName)
-    #     obj = bpy.context.scene.objects.get(objName)
-    #     if not obj:
-    #         pbList.append("Found no object with name " + objName)
-    #     else:
-    #         objList.append(obj)
-    # if len(pbList):
-    #     ShowDialog(
-    #         "Objects not found in current scene : \n" + "\n".join(pbList),
-    #         title="Abort action",
-    #     )
-    #     return
     # apply constraints
     for objName in constraintData.keys():
         boneConstraints = constraintData[objName]["bone_constraints"]

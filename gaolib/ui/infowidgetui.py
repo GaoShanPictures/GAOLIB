@@ -1,3 +1,19 @@
+#   Copyright (C) 2022 GAO SHAN PICTURES
+
+#   This file is a part of GAOLIB.
+
+#   GAOLIB is free software; you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation; either version 3 of the License, or
+#   (at your option) any later version.
+
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#   GNU General Public License for more details.
+
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <https://www.gnu.org/licenses/>
 # -*- coding: utf-8 -*-
 
 # Form implementation generated from reading ui file 'infowidget.ui'
@@ -344,6 +360,11 @@ class Ui_Form(object):
         self.verticalLayout_3.setContentsMargins(0, 12, 0, 6)
         self.verticalLayout_3.setSpacing(2)
         self.verticalLayout_3.setObjectName("verticalLayout_3")
+        self.refreshPairingListPushButton = QtWidgets.QPushButton(
+            self.constraintOptionsGroupBox
+        )
+        self.refreshPairingListPushButton.setObjectName("refreshPairingListPushButton")
+        self.verticalLayout_3.addWidget(self.refreshPairingListPushButton)
         self.verticalLayout.addWidget(self.constraintOptionsGroupBox)
         self.optionsGroupBox = QtWidgets.QGroupBox(Form)
         self.optionsGroupBox.setObjectName("optionsGroupBox")
@@ -443,7 +464,7 @@ class Ui_Form(object):
         self.selectBonesPushButton.setFont(font)
         icon = QtGui.QIcon()
         icon.addPixmap(
-            QtGui.QPixmap("../icons/select.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+            QtGui.QPixmap("icons/select.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
         )
         self.selectBonesPushButton.setIcon(icon)
         self.selectBonesPushButton.setObjectName("selectBonesPushButton")
@@ -455,7 +476,7 @@ class Ui_Form(object):
         self.modifyPushButton.setFont(font)
         icon1 = QtGui.QIcon()
         icon1.addPixmap(
-            QtGui.QPixmap("../icons/folder2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+            QtGui.QPixmap("icons/folder2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
         )
         self.modifyPushButton.setIcon(icon1)
         self.modifyPushButton.setObjectName("modifyPushButton")
@@ -466,7 +487,7 @@ class Ui_Form(object):
         self.trashPushButton.setFont(font)
         icon2 = QtGui.QIcon()
         icon2.addPixmap(
-            QtGui.QPixmap("../icons/trash.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+            QtGui.QPixmap("icons/trash.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
         )
         self.trashPushButton.setIcon(icon2)
         self.trashPushButton.setObjectName("trashPushButton")
@@ -475,7 +496,7 @@ class Ui_Form(object):
         self.applyPushButton = QtWidgets.QPushButton(Form)
         icon3 = QtGui.QIcon()
         icon3.addPixmap(
-            QtGui.QPixmap("../icons/pose2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+            QtGui.QPixmap("icons/pose2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
         )
         self.applyPushButton.setIcon(icon3)
         self.applyPushButton.setObjectName("applyPushButton")
@@ -504,6 +525,9 @@ class Ui_Form(object):
         self.frameRangeLabel.setText(_translate("Form", "0-100"))
         self.constraintOptionsGroupBox.setTitle(
             _translate("Form", "Constraints Options")
+        )
+        self.refreshPairingListPushButton.setText(
+            _translate("Form", "Refresh selection list")
         )
         self.optionsGroupBox.setTitle(_translate("Form", "Options"))
         self.startFrameComboBox.setItemText(0, _translate("Form", "From current frame"))

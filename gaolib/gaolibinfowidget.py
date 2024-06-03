@@ -43,8 +43,6 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
         parent=None,
     ):
         super(PairingWidget, self).__init__(parent=parent)
-        # QtWidgets.QWidget.__init__(self, parent)
-        # loadUi(os.path.join(os.path.dirname(__file__), "ui/sequenceitem.ui"), self)
         self.setupUi(self)
         self.objectName = objectName
         self.objectNameLabel.setText(objectName)
@@ -90,6 +88,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             )
         )
         self.modifyPushButton.released.connect(self.modifyFolder)
+        self.refreshPairingListPushButton.released.connect(
+            self.updateConstraintPairingList
+        )
 
     def modifyFolder(self):
         """Modify existing folder"""
@@ -612,12 +613,34 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 self.mainWindow.items = self.mainWindow.getListItems()
                 self.mainWindow.setListView()
 
+    def updateConstraintPairingList(self):
+        """Update pairing list combobox"""
+        comboList = [obj.name for obj in utils.getSelectedObjects()]
+        for widget in self.pairWidgets:
+            widget.armatureComboBox.clear()
+            widget.armatureComboBox.addItems(comboList)
+            # set index
+            index = self.armatureComboBox.findText(widget.objectName)
+            if index >= 0:
+                self.armatureComboBox.setCurrentIndex(index)
+
     def selectBones(self):
         """Select bones listed in json file"""
         for file in os.listdir(self.item.path):
             if file.endswith(".json"):
                 jsonPath = os.path.join(self.item.path, file)
-        utils.selectBones(jsonPath)
+        if self.item.itemType != "CONSTRAINT SET":
+            utils.selectBones(jsonPath)
+        else:
+            pairingDict = self.getConstraintPairing()
+            utils.selectConstraintBones(jsonPath, pairingDict)
+
+    def getConstraintPairing(self):
+        """Return dict of json object name and selected objet to which we want to apply the constraint(s)"""
+        pairingDict = {}
+        for widget in self.pairWidgets:
+            pairingDict[widget.objectName] = widget.armatureComboBox.currentText()
+        return pairingDict
 
     def showInfos(self):
         """Display thumbnail and infos from json file"""
