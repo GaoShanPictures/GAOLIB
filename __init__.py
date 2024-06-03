@@ -482,7 +482,10 @@ class OT_CreateConstraintSet(bpy.types.Operator):
     bl_label = "Create Constraint Set"
 
     def execute(self, context):
-        from .gaolib.model.blenderutils import ShowMessageBox
+        from .gaolib.model.blenderutils import (
+            ShowMessageBox,
+            getConstraintsForSelection,
+        )
 
         # Make sure this tool is used after a 'New Constraint Set' action in the GAOLIB window
         if not bpy.context.scene.gaolib_tool.gaolibNewConstraintSet:
@@ -508,28 +511,34 @@ class OT_CreateConstraintSet(bpy.types.Operator):
         if not len(bpy.context.selected_pose_bones):
             ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", "ABORT")
             return {"CANCELLED"}
+        boneDict = {}
+        for objName in selectedObjects:
+            obj = bpy.data.objects.get(objName)
+            if obj.pose:
+                for bone in bpy.context.selected_pose_bones:
+                    for objBone in obj.pose.bones:
+                        if bone == objBone:
+                            if not obj.name in boneDict.keys():
+                                boneDict[obj.name] = []
+                            boneDict[obj.name].append(bone.name)
+                            break
+
         data = {
             "bones": len(bpy.context.selected_pose_bones),
+            "boneDict": boneDict,
             "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
             "objects": selectedObjects,
         }
+        constraintData = getConstraintsForSelection()
+        if not constraintData:
+            return {"CANCELLED"}
+        data["constraintData"] = constraintData
         # Write Json file
         jsonFile = os.path.join(
             os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
         )
         with open(jsonFile, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
-        print(data)
-        # # hide some overlays before rendering
-        # for area in bpy.context.screen.areas:
-        #     if area.type == "VIEW_3D":
-        #         for space in area.spaces:
-        #             if space.type == "VIEW_3D":
-        #                 space.overlay.show_axis_x = False
-        #                 space.overlay.show_axis_y = False
-        #                 space.overlay.show_floor = False
-        #                 break
-
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
         return {"FINISHED"}
