@@ -341,7 +341,6 @@ def updateSelectionSet(infoWidget, add=True):
 
 def pasteConstraints(constraintDir, pairingDict):
     """Read constraint json and apply constraints on selected bones"""
-
     # read json
     itemdata = {}
     jsonPath = os.path.join(constraintDir, "constraint_set.json")
@@ -421,6 +420,19 @@ def pasteConstraints(constraintDir, pairingDict):
                                     'bpy.data.objects.get("' + propData["name"] + '")'
                                 )
                                 exec("cons." + propName + "= elem")
+                if constData["type"] == "CHILD_OF":
+                    # set inverse
+                    print("Set inverse not implemented yet")
+                    # bpy.context.active_object.data.bones.active = bone.bone
+                    # bpy.ops.constraint.childof_set_inverse(
+                    #     constraint=cons.name, owner="BONE"
+                    # )
+
+                    # matrix_final = (
+                    #     cons.target.matrix_world
+                    #     * cons.target.pose.bones.get(cons.subtarget).matrix
+                    # )
+                    # cons.inverse_matrix = matrix_final.inverted()
 
     if len(pbList):
         ShowDialog(

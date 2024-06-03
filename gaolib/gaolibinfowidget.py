@@ -620,9 +620,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             widget.armatureComboBox.clear()
             widget.armatureComboBox.addItems(comboList)
             # set index
-            index = self.armatureComboBox.findText(widget.objectName)
+            index = widget.armatureComboBox.findText(widget.objectName)
             if index >= 0:
-                self.armatureComboBox.setCurrentIndex(index)
+                widget.armatureComboBox.setCurrentIndex(index)
 
     def selectBones(self):
         """Select bones listed in json file"""
