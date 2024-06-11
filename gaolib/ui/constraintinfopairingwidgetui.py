@@ -14,7 +14,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_ConstraintForm(object):
     def setupUi(self, ConstraintForm):
         ConstraintForm.setObjectName("ConstraintForm")
-        ConstraintForm.resize(256, 100)
+        ConstraintForm.resize(256, 119)
         ConstraintForm.setStyleSheet(
             "QMainWindow{\n"
             "    color: #b1b1b1;\n"
@@ -260,21 +260,6 @@ class Ui_ConstraintForm(object):
         self.label_2 = QtWidgets.QLabel(self.groupBox)
         self.label_2.setObjectName("label_2")
         self.gridLayout.addWidget(self.label_2, 4, 0, 1, 1)
-        self.targetBoneLabel = QtWidgets.QLabel(self.groupBox)
-        self.targetBoneLabel.setAlignment(
-            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        )
-        self.targetBoneLabel.setObjectName("targetBoneLabel")
-        self.gridLayout.addWidget(self.targetBoneLabel, 4, 1, 1, 1)
-        self.label = QtWidgets.QLabel(self.groupBox)
-        self.label.setObjectName("label")
-        self.gridLayout.addWidget(self.label, 5, 0, 1, 1)
-        self.boneLabel = QtWidgets.QLabel(self.groupBox)
-        self.boneLabel.setAlignment(
-            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
-        )
-        self.boneLabel.setObjectName("boneLabel")
-        self.gridLayout.addWidget(self.boneLabel, 0, 1, 1, 1)
         self.comboBox = QtWidgets.QComboBox(self.groupBox)
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
@@ -283,8 +268,47 @@ class Ui_ConstraintForm(object):
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
         self.comboBox.setSizePolicy(sizePolicy)
+        self.comboBox.setFocusPolicy(QtCore.Qt.WheelFocus)
         self.comboBox.setObjectName("comboBox")
-        self.gridLayout.addWidget(self.comboBox, 6, 0, 1, 2)
+        self.gridLayout.addWidget(self.comboBox, 7, 0, 1, 2)
+        self.targetBoneLabel = QtWidgets.QLabel(self.groupBox)
+        font = QtGui.QFont()
+        font.setFamily("MS Shell Dlg 2")
+        self.targetBoneLabel.setFont(font)
+        self.targetBoneLabel.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        )
+        self.targetBoneLabel.setObjectName("targetBoneLabel")
+        self.gridLayout.addWidget(self.targetBoneLabel, 4, 1, 1, 1)
+        self.boneLabel = QtWidgets.QLabel(self.groupBox)
+        font = QtGui.QFont()
+        font.setBold(False)
+        font.setWeight(50)
+        self.boneLabel.setFont(font)
+        self.boneLabel.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        )
+        self.boneLabel.setObjectName("boneLabel")
+        self.gridLayout.addWidget(self.boneLabel, 0, 1, 1, 1)
+        self.label = QtWidgets.QLabel(self.groupBox)
+        font = QtGui.QFont()
+        font.setBold(True)
+        font.setWeight(75)
+        self.label.setFont(font)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 6, 0, 1, 1)
+        self.label_3 = QtWidgets.QLabel(self.groupBox)
+        self.label_3.setObjectName("label_3")
+        self.gridLayout.addWidget(self.label_3, 1, 0, 1, 1)
+        self.sourceTargetLabel = QtWidgets.QLabel(self.groupBox)
+        font = QtGui.QFont()
+        font.setFamily("MS Shell Dlg 2")
+        self.sourceTargetLabel.setFont(font)
+        self.sourceTargetLabel.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        )
+        self.sourceTargetLabel.setObjectName("sourceTargetLabel")
+        self.gridLayout.addWidget(self.sourceTargetLabel, 1, 1, 1, 1)
         self.verticalLayout_2.addWidget(self.groupBox)
 
         self.retranslateUi(ConstraintForm)
@@ -296,5 +320,7 @@ class Ui_ConstraintForm(object):
         self.label_1.setText(_translate("ConstraintForm", "Bone :"))
         self.label_2.setText(_translate("ConstraintForm", "Target Bone :"))
         self.targetBoneLabel.setText(_translate("ConstraintForm", "TextLabel"))
-        self.label.setText(_translate("ConstraintForm", "Target Object"))
         self.boneLabel.setText(_translate("ConstraintForm", "TextLabel"))
+        self.label.setText(_translate("ConstraintForm", "Target Object"))
+        self.label_3.setText(_translate("ConstraintForm", "Source Target :"))
+        self.sourceTargetLabel.setText(_translate("ConstraintForm", "TextLabel"))

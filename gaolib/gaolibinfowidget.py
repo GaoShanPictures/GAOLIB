@@ -53,7 +53,11 @@ class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
         self.targetObject = targetObject
         self.targetBone = bone
         self.boneLabel.setText(bone)
+        self.boneLabel.setToolTip(bone)
+        self.sourceTargetLabel.setText(targetObject)
+        self.sourceTargetLabel.setToolTip(targetObject)
         self.targetBoneLabel.setText(targetBone)
+        self.targetBoneLabel.setToolTip(targetBone)
         self.comboBox.addItems(comboList)
         index = self.comboBox.findText(self.targetObject)
         if index >= 0:
