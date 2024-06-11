@@ -658,6 +658,7 @@ class GaoLib(QtWidgets.QMainWindow):
             raise
         # Reset currentPose to applied one
         self.infoWidget.currentPose = None
+        self.infoWidget.bonesToBlend = None
         self.infoWidget.blendPoseSlider.setValue(0)
 
     def writejson(self, name, directory, itemType="POSE"):
