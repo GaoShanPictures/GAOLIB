@@ -29,10 +29,35 @@ except Exception as e:
 from PySide2 import QtCore, QtGui, QtWidgets
 
 import gaolib.model.blenderutils as utils
+from gaolib.ui.constraintinfopairingwidgetui import Ui_ConstraintForm as Constraint_Form
 from gaolib.ui.constraintpairingwidgetui import Ui_Form as Pairing_Form
 from gaolib.ui.infowidgetui import Ui_Form as InfoWidget
 from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
+
+
+class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
+    def __init__(
+        self,
+        constraintName,
+        bone,
+        targetBone,
+        targetObject,
+        comboList,
+        parent=None,
+    ):
+        super(ConstrainInfoWidget, self).__init__(parent=parent)
+        self.setupUi(self)
+        self.groupBox.setTitle(constraintName)
+        self.constraintName = constraintName
+        self.targetObject = targetObject
+        self.targetBone = bone
+        self.boneLabel.setText(bone)
+        self.targetBoneLabel.setText(targetBone)
+        self.comboBox.addItems(comboList)
+        index = self.comboBox.findText(self.targetObject)
+        if index >= 0:
+            self.comboBox.setCurrentIndex(index)
 
 
 class PairingWidget(QtWidgets.QWidget, Pairing_Form):
@@ -40,6 +65,7 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
         self,
         objectName,
         comboList,
+        constraintDict,
         parent=None,
     ):
         super(PairingWidget, self).__init__(parent=parent)
@@ -50,6 +76,30 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
         index = self.armatureComboBox.findText(objectName)
         if index >= 0:
             self.armatureComboBox.setCurrentIndex(index)
+
+        self.constraintInfoWidgets = []
+
+        if objectName in constraintDict.keys():
+            if "bone_constraints" in constraintDict[objectName].keys():
+                for bone in constraintDict[objectName]["bone_constraints"]:
+                    for constraintName in constraintDict[objectName][
+                        "bone_constraints"
+                    ][bone]:
+                        consDict = constraintDict[objectName]["bone_constraints"][bone][
+                            constraintName
+                        ]
+                        targetBone = consDict["subtarget"]
+                        targetObject = consDict["target"]["name"]
+                        constraintItem = ConstrainInfoWidget(
+                            constraintName,
+                            bone,
+                            targetBone,
+                            targetObject,
+                            comboList,
+                            parent=None,
+                        )
+                        self.widgetVerticalLayout.addWidget(constraintItem)
+                        self.constraintInfoWidgets.append(constraintItem)
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
@@ -623,6 +673,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             index = widget.armatureComboBox.findText(widget.objectName)
             if index >= 0:
                 widget.armatureComboBox.setCurrentIndex(index)
+            for constraintWidget in widget.constraintInfoWidgets:
+                constraintWidget.comboBox.clear()
+                constraintWidget.comboBox.addItems(comboList)
+                index = constraintWidget.comboBox.findText(
+                    constraintWidget.targetObject
+                )
+                if index >= 0:
+                    constraintWidget.comboBox.setCurrentIndex(index)
 
     def selectBones(self):
         """Select bones listed in json file"""
@@ -639,8 +697,30 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         """Return dict of json object name and selected objet to which we want to apply the constraint(s)"""
         pairingDict = {}
         for widget in self.pairWidgets:
-            pairingDict[widget.objectName] = widget.armatureComboBox.currentText()
+            objName = widget.objectName
+            pairingDict[objName] = {}
+            pairingDict[objName]["object"] = widget.armatureComboBox.currentText()
+            pairingDict[objName]["constraints"] = {}
+            for constraintWidget in widget.constraintInfoWidgets:
+                consInfo = {
+                    "sourceTarget": constraintWidget.targetObject,
+                    "sourceTargetBone": constraintWidget.targetBone,
+                    "destinationTarget": constraintWidget.comboBox.currentText(),
+                    "destinationTargetBone": constraintWidget.targetBone,
+                }
+                pairingDict[objName]["constraints"][
+                    constraintWidget.constraintName
+                ] = consInfo
         return pairingDict
+
+    def getItemDict(self):
+        for file in os.listdir(self.item.path):
+            if file.endswith(".json"):
+                jsonPath = os.path.join(self.item.path, file)
+                itemdata = {}
+                with open(jsonPath) as file:
+                    itemdata = json.load(file)
+                    return itemdata
 
     def showInfos(self):
         """Display thumbnail and infos from json file"""
@@ -684,7 +764,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.pairWidgets = []
             comboList = [obj.name for obj in utils.getSelectedObjects()]
             for objName in self.item.objects:
-                item = PairingWidget(objName, comboList, parent=self)
+                constraintDict = self.getItemDict()["constraintData"]
+
+                item = PairingWidget(objName, comboList, constraintDict, parent=self)
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
 

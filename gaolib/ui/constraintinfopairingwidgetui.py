@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'constraintpairingwidget.ui'
+# Form implementation generated from reading ui file 'constraintinfopairingwidget.ui'
 #
 # Created by: PyQt5 UI code generator 5.15.9
 #
@@ -11,19 +11,11 @@
 from PySide2 import QtCore, QtGui, QtWidgets
 
 
-class Ui_Form(object):
-    def setupUi(self, Form):
-        Form.setObjectName("Form")
-        Form.resize(260, 53)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-        )
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(Form.sizePolicy().hasHeightForWidth())
-        Form.setSizePolicy(sizePolicy)
-        Form.setMinimumSize(QtCore.QSize(0, 0))
-        Form.setStyleSheet(
+class Ui_ConstraintForm(object):
+    def setupUi(self, ConstraintForm):
+        ConstraintForm.setObjectName("ConstraintForm")
+        ConstraintForm.resize(256, 100)
+        ConstraintForm.setStyleSheet(
             "QMainWindow{\n"
             "    color: #b1b1b1;\n"
             "    background-color: #3c3c3c;\n"
@@ -254,30 +246,55 @@ class Ui_Form(object):
             "    background-color: #111;\n"
             "}"
         )
-        self.verticalLayout = QtWidgets.QVBoxLayout(Form)
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.pairingWidget = QtWidgets.QWidget(Form)
-        self.pairingWidget.setObjectName("pairingWidget")
-        self.widgetVerticalLayout = QtWidgets.QVBoxLayout(self.pairingWidget)
-        self.widgetVerticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.widgetVerticalLayout.setSpacing(2)
-        self.widgetVerticalLayout.setObjectName("widgetVerticalLayout")
-        self.objectNameLabel = QtWidgets.QLabel(self.pairingWidget)
-        font = QtGui.QFont()
-        font.setBold(True)
-        font.setWeight(75)
-        self.objectNameLabel.setFont(font)
-        self.objectNameLabel.setObjectName("objectNameLabel")
-        self.widgetVerticalLayout.addWidget(self.objectNameLabel)
-        self.armatureComboBox = QtWidgets.QComboBox(self.pairingWidget)
-        self.armatureComboBox.setObjectName("armatureComboBox")
-        self.widgetVerticalLayout.addWidget(self.armatureComboBox)
-        self.verticalLayout.addWidget(self.pairingWidget)
+        self.verticalLayout_2 = QtWidgets.QVBoxLayout(ConstraintForm)
+        self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_2.setSpacing(0)
+        self.verticalLayout_2.setObjectName("verticalLayout_2")
+        self.groupBox = QtWidgets.QGroupBox(ConstraintForm)
+        self.groupBox.setObjectName("groupBox")
+        self.gridLayout = QtWidgets.QGridLayout(self.groupBox)
+        self.gridLayout.setObjectName("gridLayout")
+        self.label_1 = QtWidgets.QLabel(self.groupBox)
+        self.label_1.setObjectName("label_1")
+        self.gridLayout.addWidget(self.label_1, 0, 0, 1, 1)
+        self.label_2 = QtWidgets.QLabel(self.groupBox)
+        self.label_2.setObjectName("label_2")
+        self.gridLayout.addWidget(self.label_2, 4, 0, 1, 1)
+        self.targetBoneLabel = QtWidgets.QLabel(self.groupBox)
+        self.targetBoneLabel.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        )
+        self.targetBoneLabel.setObjectName("targetBoneLabel")
+        self.gridLayout.addWidget(self.targetBoneLabel, 4, 1, 1, 1)
+        self.label = QtWidgets.QLabel(self.groupBox)
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 5, 0, 1, 1)
+        self.boneLabel = QtWidgets.QLabel(self.groupBox)
+        self.boneLabel.setAlignment(
+            QtCore.Qt.AlignLeading | QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter
+        )
+        self.boneLabel.setObjectName("boneLabel")
+        self.gridLayout.addWidget(self.boneLabel, 0, 1, 1, 1)
+        self.comboBox = QtWidgets.QComboBox(self.groupBox)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed
+        )
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.comboBox.sizePolicy().hasHeightForWidth())
+        self.comboBox.setSizePolicy(sizePolicy)
+        self.comboBox.setObjectName("comboBox")
+        self.gridLayout.addWidget(self.comboBox, 6, 0, 1, 2)
+        self.verticalLayout_2.addWidget(self.groupBox)
 
-        self.retranslateUi(Form)
-        QtCore.QMetaObject.connectSlotsByName(Form)
+        self.retranslateUi(ConstraintForm)
+        QtCore.QMetaObject.connectSlotsByName(ConstraintForm)
 
-    def retranslateUi(self, Form):
+    def retranslateUi(self, ConstraintForm):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
-        self.objectNameLabel.setText(_translate("Form", "ObjectName"))
+        self.groupBox.setTitle(_translate("ConstraintForm", "GroupBox"))
+        self.label_1.setText(_translate("ConstraintForm", "Bone :"))
+        self.label_2.setText(_translate("ConstraintForm", "Target Bone :"))
+        self.targetBoneLabel.setText(_translate("ConstraintForm", "TextLabel"))
+        self.label.setText(_translate("ConstraintForm", "Target Object"))
+        self.boneLabel.setText(_translate("ConstraintForm", "TextLabel"))

@@ -120,32 +120,32 @@ def selectConstraintBones(jsonPath, pairingDict):
     # select bones
     for objName in constraintData.keys():
         boneConstraints = constraintData[objName]["bone_constraints"]
-        targetObject = None
+        constraintToObject = None
         for selected in objects:
-            if selected.name == pairingDict[objName]:
-                targetObject = selected
+            if selected.name == pairingDict[objName]["object"]:
+                constraintToObject = selected
                 break
-        if not targetObject:
+        if not constraintToObject:
             pbList.append(
                 "Did not find "
-                + pairingDict[objName]
+                + pairingDict[objName]["object"]
                 + " to be paired with "
                 + objName
                 + " amongst selected objects"
             )
             continue
         # select object
-        targetObject.select_set(True)
-        bpy.context.view_layer.objects.active = targetObject
+        constraintToObject.select_set(True)
+        bpy.context.view_layer.objects.active = constraintToObject
         # select bones
-        if not targetObject.pose:
-            pbList.append(targetObject.name + " object does not have any bones.")
+        if not constraintToObject.pose:
+            pbList.append(constraintToObject.name + " object does not have any bones.")
             continue
         for boneName in boneConstraints.keys():
-            bone = targetObject.pose.bones.get(boneName)
+            bone = constraintToObject.pose.bones.get(boneName)
             if not bone:
                 pbList.append(
-                    "Did not find bone " + boneName + " in " + targetObject.name
+                    "Did not find bone " + boneName + " in " + constraintToObject.name
                 )
                 continue
             # select bone
@@ -246,7 +246,7 @@ def getConstraintSelectedBones(objects):
             if not bones:
                 toggleObjectSelection(objects, select=True)
                 return
-            boneDict[obj.name] = bones
+            boneDict[obj] = bones
     return boneDict
 
 
@@ -259,10 +259,11 @@ def getConstraintsForSelection():
         return
     constraintDict = {}
     # get constraint datas
-    for objName in boneDict.keys():
+    for obj in boneDict.keys():
+        objName = obj.name
         objConstraints = {}
         objConstraints["bone_constraints"] = {}
-        for bone in boneDict[objName]:
+        for bone in boneDict[obj]:
             for cons in bone.constraints:
                 print(
                     "\n"
@@ -272,8 +273,9 @@ def getConstraintsForSelection():
                     + " : "
                     + cons.name
                 )
-                # ignore override contraints
-                if cons.is_override_data:
+                # ignore constraints with target set to self
+                target = cons.target
+                if target == obj:
                     continue
                 # write dict
                 if bone.name not in objConstraints["bone_constraints"].keys():
@@ -358,21 +360,27 @@ def pasteConstraints(constraintDir, pairingDict):
     # apply constraints
     for objName in constraintData.keys():
         boneConstraints = constraintData[objName]["bone_constraints"]
-        targetObject = None
+        constraintToObject = None
+
         for selected in objects:
-            if selected.name == pairingDict[objName]:
-                targetObject = selected
+            if selected.name == pairingDict[objName]["object"]:
+                constraintToObject = selected
                 break
         for boneName in boneConstraints.keys():
-            bone = targetObject.pose.bones.get(boneName)
+            bone = constraintToObject.pose.bones.get(boneName)
             if not bone:
                 pbList.append(
-                    "Did not find bone " + boneName + " in " + targetObject.name
+                    "Did not find bone " + boneName + " in " + constraintToObject.name
                 )
                 continue
             for constName, constData in boneConstraints[boneName].items():
                 cons = bone.constraints.new(constData["type"])
                 cons.name = constData["name"] + "_GAOLIB"
+                cons.target = bpy.data.objects.get(
+                    pairingDict[objName]["constraints"][constData["name"]][
+                        "destinationTarget"
+                    ]
+                )
                 for propName, propData in constData.items():
                     if propName not in [
                         "type",
@@ -382,6 +390,7 @@ def pasteConstraints(constraintDir, pairingDict):
                         "is_valid",
                         "error_location",
                         "error_rotation",
+                        "target",
                     ]:
                         if propData.__class__.__name__ != "dict":
                             try:
