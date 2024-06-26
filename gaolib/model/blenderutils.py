@@ -274,9 +274,13 @@ def getConstraintsForSelection():
                     + cons.name
                 )
                 # ignore constraints with target set to self
-                target = cons.target
-                if target == obj:
-                    continue
+                try:
+                    target = cons.target
+                    if target == obj:
+                        continue
+                except:
+                    print(cons.name + " Constraint has no target ")
+                    target = None
                 # write dict
                 if bone.name not in objConstraints["bone_constraints"].keys():
                     objConstraints["bone_constraints"][bone.name] = {}
@@ -292,7 +296,6 @@ def getConstraintsForSelection():
                         propValue = {
                             "matrix": [[elem for elem in line] for line in propValue]
                         }
-                    print(prop + " = " + str(propValue))
                     objConstraints["bone_constraints"][bone.name][cons.name][
                         prop
                     ] = propValue
@@ -376,11 +379,15 @@ def pasteConstraints(constraintDir, pairingDict):
             for constName, constData in boneConstraints[boneName].items():
                 cons = bone.constraints.new(constData["type"])
                 cons.name = constData["name"] + "_GAOLIB"
-                cons.target = bpy.data.objects.get(
-                    pairingDict[objName]["constraints"][constData["name"]][
-                        "destinationTarget"
-                    ]
-                )
+                try:
+                    cons.target = bpy.data.objects.get(
+                        pairingDict[objName]["constraints"][constData["name"]][
+                            "destinationTarget"
+                        ]
+                    )
+                except:
+                    print(constName + " : This constraint has no target ")
+                    pass
                 for propName, propData in constData.items():
                     if propName not in [
                         "type",
@@ -433,9 +440,8 @@ def pasteConstraints(constraintDir, pairingDict):
                     # set inverse
                     print("Set inverse not implemented yet")
                     # bpy.context.active_object.data.bones.active = bone.bone
-                    # bpy.ops.constraint.childof_set_inverse(
-                    #     constraint=cons.name, owner="BONE"
-                    # )
+                    # print(bpy.context)
+                    # bpy.ops.constraint.childof_set_inverse( constraint=cons.name, owner="BONE" )
 
                     # matrix_final = (
                     #     cons.target.matrix_world

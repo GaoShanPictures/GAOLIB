@@ -1084,6 +1084,15 @@ class GaoLib(QtWidgets.QMainWindow):
         itemName = self.currentListItem.name
         if itemType == "FOLDER":
             self.selectChildItemInTree(itemName)
+        # apply pose
+        # if itemType == "POSE":
+        #     self.infoWidget.selectBones()
+        #     self.applyPose(
+        #         itemType="POSE", blendPose=1, currentPose=self.infoWidget.currentPose
+        #     )
+        #     self.statusBar().showMessage(
+        #         "Applied pose " + self.infoWidget.item.name, timeout=10000
+        #     )
 
     def setListView(self):
         """Set list model and connect it to UI"""

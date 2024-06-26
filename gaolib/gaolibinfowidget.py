@@ -92,18 +92,22 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                         consDict = constraintDict[objectName]["bone_constraints"][bone][
                             constraintName
                         ]
-                        targetBone = consDict["subtarget"]
-                        targetObject = consDict["target"]["name"]
-                        constraintItem = ConstrainInfoWidget(
-                            constraintName,
-                            bone,
-                            targetBone,
-                            targetObject,
-                            comboList,
-                            parent=None,
-                        )
-                        self.widgetVerticalLayout.addWidget(constraintItem)
-                        self.constraintInfoWidgets.append(constraintItem)
+                        if "target" in consDict.keys():
+                            if "subtarget" in consDict.keys():
+                                targetBone = consDict["subtarget"]
+                            else:
+                                targetBone = None
+                            targetObject = consDict["target"]["name"]
+                            constraintItem = ConstrainInfoWidget(
+                                constraintName,
+                                bone,
+                                targetBone,
+                                targetObject,
+                                comboList,
+                                parent=None,
+                            )
+                            self.widgetVerticalLayout.addWidget(constraintItem)
+                            self.constraintInfoWidgets.append(constraintItem)
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
