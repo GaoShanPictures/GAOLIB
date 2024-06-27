@@ -14,7 +14,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(478, 358)
+        Dialog.resize(488, 375)
         Dialog.setMinimumSize(QtCore.QSize(420, 150))
         Dialog.setMaximumSize(QtCore.QSize(100000, 100000))
         Dialog.setStyleSheet(
@@ -328,6 +328,20 @@ class Ui_Dialog(object):
         self.recursiveListModeCheckBox = QtWidgets.QCheckBox(self.widget)
         self.recursiveListModeCheckBox.setObjectName("recursiveListModeCheckBox")
         self.verticalLayout_2.addWidget(self.recursiveListModeCheckBox)
+        self.label_6 = QtWidgets.QLabel(self.widget)
+        font = QtGui.QFont()
+        font.setPointSize(10)
+        self.label_6.setFont(font)
+        self.label_6.setObjectName("label_6")
+        self.verticalLayout_2.addWidget(self.label_6)
+        self.doubleClickPoseShortcutCheckBox = QtWidgets.QCheckBox(self.widget)
+        self.doubleClickPoseShortcutCheckBox.setObjectName(
+            "doubleClickPoseShortcutCheckBox"
+        )
+        self.verticalLayout_2.addWidget(self.doubleClickPoseShortcutCheckBox)
+        self.blendPoseOnWheelCheckBox = QtWidgets.QCheckBox(self.widget)
+        self.blendPoseOnWheelCheckBox.setObjectName("blendPoseOnWheelCheckBox")
+        self.verticalLayout_2.addWidget(self.blendPoseOnWheelCheckBox)
         self.buttonBox = QtWidgets.QDialogButtonBox(self.widget)
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
         self.buttonBox.setStandardButtons(
@@ -360,4 +374,13 @@ class Ui_Dialog(object):
             _translate(
                 "Dialog", "Display all items contained in subfolders recursively"
             )
+        )
+        self.label_6.setText(_translate("Dialog", "Shortcuts"))
+        self.doubleClickPoseShortcutCheckBox.setText(
+            _translate(
+                "Dialog", "Use double click on POSE items to apply  pose to 100%"
+            )
+        )
+        self.blendPoseOnWheelCheckBox.setText(
+            _translate("Dialog", "Use wheel click on POSE items to blend pose")
         )

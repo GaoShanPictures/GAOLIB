@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>478</width>
-    <height>358</height>
+    <width>488</width>
+    <height>375</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -434,6 +434,32 @@ QPlainTextEdit {
        <widget class="QCheckBox" name="recursiveListModeCheckBox">
         <property name="text">
          <string>Display all items contained in subfolders recursively</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_6">
+        <property name="font">
+         <font>
+          <pointsize>10</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Shortcuts</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="doubleClickPoseShortcutCheckBox">
+        <property name="text">
+         <string>Use double click on POSE items to apply  pose to 100%</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="blendPoseOnWheelCheckBox">
+        <property name="text">
+         <string>Use wheel click on POSE items to blend pose</string>
         </property>
        </widget>
       </item>

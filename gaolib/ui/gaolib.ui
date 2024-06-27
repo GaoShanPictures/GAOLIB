@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>774</width>
-    <height>453</height>
+    <width>805</width>
+    <height>462</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -262,8 +262,8 @@ QPlainTextEdit {
         <rect>
          <x>0</x>
          <y>0</y>
-         <width>756</width>
-         <height>394</height>
+         <width>787</width>
+         <height>403</height>
         </rect>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -550,34 +550,6 @@ QPlainTextEdit {
                 </property>
                </widget>
               </item>
-              <item>
-               <widget class="QListView" name="listView">
-                <property name="minimumSize">
-                 <size>
-                  <width>50</width>
-                  <height>50</height>
-                 </size>
-                </property>
-                <property name="editTriggers">
-                 <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
-                </property>
-                <property name="iconSize">
-                 <size>
-                  <width>130</width>
-                  <height>130</height>
-                 </size>
-                </property>
-                <property name="resizeMode">
-                 <enum>QListView::Fixed</enum>
-                </property>
-                <property name="spacing">
-                 <number>10</number>
-                </property>
-                <property name="viewMode">
-                 <enum>QListView::IconMode</enum>
-                </property>
-               </widget>
-              </item>
              </layout>
             </widget>
             <widget class="QWidget" name="widget_2" native="true">
@@ -668,7 +640,7 @@ QPlainTextEdit {
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>774</width>
+     <width>805</width>
      <height>21</height>
     </rect>
    </property>

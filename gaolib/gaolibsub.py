@@ -32,6 +32,7 @@ from PySide2.QtWidgets import QFileDialog
 
 from gaolib.createposewidget import CreatePoseWidget
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
+from gaolib.model.gaocustomlistview import GaoCustomListView
 from gaolib.model.gaolibitem import GaoLibItem
 from gaolib.model.gaoliblistmodel import GaoLibListModel
 from gaolib.model.gaolibtreeitem import GaoLibTreeItem
@@ -76,6 +77,19 @@ class GaoLib(QtWidgets.QMainWindow):
         self.rootPath = None
         self.rootList = []
         self.recursiveDisplayMode = False
+        self.useDoubleClickToApplyPose = False
+        self.useWheelToBlendPose = False
+        self.listView = GaoCustomListView(parent=self)
+        self.listView.setSpacing(10)
+        self.listView.setMinimumSize(QtCore.QSize(50, 50))
+        self.listView.setEditTriggers(
+            QtWidgets.QAbstractItemView.DoubleClicked
+            | QtWidgets.QAbstractItemView.EditKeyPressed
+        )
+        self.listView.setIconSize(QtCore.QSize(130, 130))
+        self.listView.setResizeMode(QtWidgets.QListView.Fixed)
+        self.listView.setViewMode(QtWidgets.QListView.IconMode)
+        self.verticalLayout_2.addWidget(self.listView)
         self.initUi()
         self._connectUi()
 
@@ -135,6 +149,16 @@ class GaoLib(QtWidgets.QMainWindow):
                     self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
                 else:
                     self.recursiveDisplayMode = False
+                if "useWheelToBlendPose" in itemdata.keys():
+                    self.useWheelToBlendPose = itemdata["useWheelToBlendPose"]
+                else:
+                    self.useWheelToBlendPose = False
+                if "useDoubleClickToApplyPose" in itemdata.keys():
+                    self.useDoubleClickToApplyPose = itemdata[
+                        "useDoubleClickToApplyPose"
+                    ]
+                else:
+                    self.useDoubleClickToApplyPose = False
 
     def settings(self):
         """Manage change of ROOT folder location"""
@@ -161,6 +185,10 @@ class GaoLib(QtWidgets.QMainWindow):
                         table.setCellWidget(row, 0, itemWidget)
                 if key == "recursiveDisplayMode":
                     dialog.ui.recursiveListModeCheckBox.setChecked(itemdata[key])
+                if key == "useWheelToBlendPose":
+                    dialog.ui.blendPoseOnWheelCheckBox.setChecked(itemdata[key])
+                if key == "useDoubleClickToApplyPose":
+                    dialog.ui.doubleClickPoseShortcutCheckBox.setChecked(itemdata[key])
         # File browser
         dialog.ui.browsePushButton.released.connect(
             lambda: self.openFileNameDialog(dialog)
@@ -170,17 +198,28 @@ class GaoLib(QtWidgets.QMainWindow):
         path = dialog.ui.pathLineEdit.text()
         pathName = dialog.ui.lineEdit.text()
         recursiveDisplayMode = dialog.ui.recursiveListModeCheckBox.isChecked()
+        useWheelToBlendPose = dialog.ui.blendPoseOnWheelCheckBox.isChecked()
+        useDoubleClickToApplyPose = (
+            dialog.ui.doubleClickPoseShortcutCheckBox.isChecked()
+        )
         # The user clicks OK
         if rsp == QtWidgets.QDialog.Accepted:
             self.readConfig()
+            paramsChanged = (
+                recursiveDisplayMode != self.recursiveDisplayMode
+                or useWheelToBlendPose != self.useWheelToBlendPose
+                or useDoubleClickToApplyPose != self.useDoubleClickToApplyPose
+            )
             if not len(path):
-                if recursiveDisplayMode != self.recursiveDisplayMode:
+                if paramsChanged:
                     # remember setting
                     with open(self.configPath, "w") as file:
                         json.dump(
                             {
                                 "rootpath": self.rootList,
                                 "recursiveDisplayMode": recursiveDisplayMode,
+                                "useWheelToBlendPose": useWheelToBlendPose,
+                                "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
                             },
                             file,
                             indent=4,
@@ -211,6 +250,8 @@ class GaoLib(QtWidgets.QMainWindow):
                                 {
                                     "rootpath": self.rootList,
                                     "recursiveDisplayMode": recursiveDisplayMode,
+                                    "useWheelToBlendPose": useWheelToBlendPose,
+                                    "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
                                 },
                                 file,
                                 indent=4,
@@ -233,6 +274,8 @@ class GaoLib(QtWidgets.QMainWindow):
                             {
                                 "rootpath": self.rootList,
                                 "recursiveDisplayMode": self.recursiveDisplayMode,
+                                "useWheelToBlendPose": self.useWheelToBlendPose,
+                                "useDoubleClickToApplyPose": self.useDoubleClickToApplyPose,
                             },
                             file,
                             indent=4,
@@ -1084,15 +1127,6 @@ class GaoLib(QtWidgets.QMainWindow):
         itemName = self.currentListItem.name
         if itemType == "FOLDER":
             self.selectChildItemInTree(itemName)
-        # apply pose
-        # if itemType == "POSE":
-        #     self.infoWidget.selectBones()
-        #     self.applyPose(
-        #         itemType="POSE", blendPose=1, currentPose=self.infoWidget.currentPose
-        #     )
-        #     self.statusBar().showMessage(
-        #         "Applied pose " + self.infoWidget.item.name, timeout=10000
-        #     )
 
     def setListView(self):
         """Set list model and connect it to UI"""
