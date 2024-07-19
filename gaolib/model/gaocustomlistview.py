@@ -28,7 +28,7 @@ class GaoCustomListView(QListView):
                         self.blendValue = (
                             self.mainWin.infoWidget.blendPoseSlider.value()
                         )
-                        self.mainWin.infoWidget.selectBones()
+                        # self.mainWin.infoWidget.selectBones()
         # super(GaoCustomListView, self).mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
@@ -40,7 +40,7 @@ class GaoCustomListView(QListView):
                     self.model().data(index, QtCore.Qt.UserRole).itemType
                 )
                 if self.currentItemType == "POSE":
-                    self.mainWin.infoWidget.selectBones()
+                    # self.mainWin.infoWidget.selectBones()
                     self.mainWin.applyPose(
                         itemType="POSE",
                         blendPose=1,
