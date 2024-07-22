@@ -28,7 +28,11 @@ try:
 except:
     print("Blenderutils : import error bpy")
 
-from PySide2 import QtCore, QtWidgets
+
+try:
+    from PySide2 import QtCore, QtWidgets
+except ModuleNotFoundError:
+    from PySide6 import QtCore, QtWidgets
 
 
 def context_set(c, m=False):

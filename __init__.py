@@ -74,8 +74,13 @@ dependencies = (
     Dependency(module="PySide2", package=None, name=None),
     Dependency(module="imageio", package=None, name=None),
 )
+dependenciesPySide6 = (
+    Dependency(module="PySide6", package=None, name=None),
+    Dependency(module="imageio", package=None, name=None),
+)
 
 dependencies_installed = False
+dependenciesSet = [dependencies, dependenciesPySide6]
 
 
 def import_module(module_name, global_name=None, reload=True):
@@ -224,26 +229,29 @@ class GAOLIB_OT_install_dependencies(bpy.types.Operator):
         return not dependencies_installed
 
     def execute(self, context):
-        try:
-            install_pip()
-            for dependency in dependencies:
-                install_and_import_module(
-                    module_name=dependency.module,
-                    package_name=dependency.package,
-                    global_name=dependency.name,
-                )
-        except (subprocess.CalledProcessError, ImportError) as err:
-            self.report({"ERROR"}, str(err))
-            return {"CANCELLED"}
+        for dependencies in dependenciesSet:
+            try:
+                install_pip()
+                for dependency in dependencies:
+                    install_and_import_module(
+                        module_name=dependency.module,
+                        package_name=dependency.package,
+                        global_name=dependency.name,
+                    )
+            except (subprocess.CalledProcessError, ImportError) as err:
+                self.report({"ERROR"}, str(err))
+                # return {"CANCELLED"}
+                continue
 
-        global dependencies_installed
-        dependencies_installed = True
+            global dependencies_installed
+            dependencies_installed = True
 
-        # Register the panels, operators, etc. since dependencies are installed
-        for cls in classes:
-            bpy.utils.register_class(cls)
+            # Register the panels, operators, etc. since dependencies are installed
+            for cls in classes:
+                bpy.utils.register_class(cls)
 
-        return {"FINISHED"}
+            return {"FINISHED"}
+        return {"CANCELLED"}
 
 
 class GAOLIB_OT_uninstall_dependencies(bpy.types.Operator):
@@ -258,26 +266,29 @@ class GAOLIB_OT_uninstall_dependencies(bpy.types.Operator):
         return dependencies_installed
 
     def execute(self, context):
-        try:
-            install_pip()
-            for dependency in dependencies:
-                uninstall_module(
-                    module_name=dependency.module,
-                    package_name=dependency.package,
-                    global_name=dependency.name,
-                )
-        except (subprocess.CalledProcessError, ImportError) as err:
-            self.report({"ERROR"}, str(err))
-            return {"CANCELLED"}
+        for dependencies in dependenciesSet:
+            try:
+                install_pip()
+                for dependency in dependencies:
+                    uninstall_module(
+                        module_name=dependency.module,
+                        package_name=dependency.package,
+                        global_name=dependency.name,
+                    )
+            except (subprocess.CalledProcessError, ImportError) as err:
+                self.report({"ERROR"}, str(err))
+                # return {"CANCELLED"}
+                continue
 
-        global dependencies_installed
-        dependencies_installed = False
+            global dependencies_installed
+            dependencies_installed = False
 
-        # Register the panels, operators, etc. since dependencies are installed
-        for cls in classes:
-            bpy.utils.unregister_class(cls)
+            # Register the panels, operators, etc. since dependencies are installed
+            for cls in classes:
+                bpy.utils.unregister_class(cls)
 
-        return {"FINISHED"}
+            return {"FINISHED"}
+        return {"CANCELLED"}
 
 
 class GAOLIB_preferences(bpy.types.AddonPreferences):
@@ -312,7 +323,10 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
     _counter = 0
 
     def __init__(self):
-        from PySide2 import QtWidgets
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
 
         print("Init BlenderGaoLibAppTimed")
         if QtWidgets.QApplication.instance():
@@ -349,7 +363,10 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
 
     def cancel(self, context):
         """Remove event timer when stopping the operator."""
-        from PySide2 import QtWidgets
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
 
         self._window.close()
         wm = context.window_manager
@@ -380,7 +397,10 @@ class OT_gaolib(bpy.types.Operator):
     bl_label = "GaoLib"
 
     def execute(self, context):
-        from PySide2 import QtWidgets
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
 
         if QtWidgets.QApplication.instance():
             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
@@ -821,11 +841,23 @@ def register():
     for cls in preference_classes:
         bpy.utils.register_class(cls)
 
-    try:
-        for dependency in dependencies:
-            import_module(module_name=dependency.module, global_name=dependency.name)
-        dependencies_installed = True
-    except ModuleNotFoundError:
+    foundDependenciesSet = False
+    for dependencies in dependenciesSet:
+        try:
+            for dependency in dependencies:
+
+                import_module(
+                    module_name=dependency.module, global_name=dependency.name
+                )
+
+            dependencies_installed = True
+        except ModuleNotFoundError:
+            # Don't register other panels, operators etc. if missing dependencies
+            # return
+            continue
+        foundDependenciesSet = True
+        break
+    if not foundDependenciesSet:
         # Don't register other panels, operators etc. if missing dependencies
         return
 

@@ -19,7 +19,10 @@ __author__ = "Anne Beurard"
 
 import os
 
-from PySide2 import QtCore, QtGui
+try:
+    from PySide2 import QtCore, QtGui
+except ModuleNotFoundError:
+    from PySide6 import QtCore, QtGui
 
 
 class GaoLibTreeItemModel(QtCore.QAbstractItemModel):

@@ -25,10 +25,19 @@ import shutil
 import sys
 from datetime import datetime
 
-from coretools.uiloader import loadUi
+# from coretools.uiloader import loadUi
 from PIL import Image
-from PySide2 import QtCore, QtGui, QtWidgets
-from PySide2.QtWidgets import QFileDialog
+
+try:
+    from PySide2 import QtCore, QtGui, QtWidgets
+    from PySide2.QtWidgets import QFileDialog
+
+    USE_PYSIDE6 = False
+except ModuleNotFoundError:
+    from PySide6 import QtCore, QtGui, QtWidgets
+    from PySide6.QtWidgets import QFileDialog
+
+    USE_PYSIDE6 = True
 
 from gaolib.createposewidget import CreatePoseWidget
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
@@ -39,6 +48,7 @@ from gaolib.model.gaolibtreeitem import GaoLibTreeItem
 from gaolib.model.gaolibtreeitemmodel import GaoLibTreeItemModel
 from gaolib.model.rootitemwidget import RootItemWidget
 from gaolib.model.treeitemfilterproxymodel import TreeItemFilterProxyModel
+from gaolib.ui.gaolibui import Ui_MainWindow as GaolibMainWindow
 from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.settingsdialogui import Ui_Dialog as SettingsDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
@@ -54,7 +64,7 @@ except Exception as e:
     print("IMPORT EXCEPTION : " + str(e))
 
 
-class GaoLib(QtWidgets.QMainWindow):
+class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     """GAOLIB Main window"""
 
     # Manage window resize
@@ -63,10 +73,12 @@ class GaoLib(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
 
-        loadUi(
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui/gaolib.ui"),
-            self,
-        )
+        # loadUi(
+        #     os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui/gaolib.ui"),
+        #     self,
+        # )
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        self.setupUi(self)
 
         self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
 
@@ -91,6 +103,20 @@ class GaoLib(QtWidgets.QMainWindow):
         self.listView.setViewMode(QtWidgets.QListView.IconMode)
         self.verticalLayout_2.addWidget(self.listView)
         self.initUi()
+        if USE_PYSIDE6:
+            # self.newPushButton.setMinimumSize(QtCore.QSize(50, 40))
+            # self.newPushButton.setMaximumSize(QtCore.QSize(50, 40))
+            # self.settingsPushButton.setMinimumSize(QtCore.QSize(50, 40))
+            # self.settingsPushButton.setMaximumSize(QtCore.QSize(50, 40))
+            self.settingsPushButton.setStyleSheet(
+                "QPushButton::menu-indicator { width:0px; }"
+            )
+            self.newPushButton.setStyleSheet(
+                "QPushButton::menu-indicator { width:0px; }"
+            )
+            # self.newPushButton.setStyleSheet(
+            #     "* { padding-right: 0px } QToolButton::menu-indicator { image: none }"
+            # )
         self._connectUi()
 
     def _connectUi(self):

@@ -15,7 +15,10 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-from PySide2 import QtCore, QtGui, QtWidgets
+try:
+    from PySide2 import QtCore, QtGui, QtWidgets
+except ModuleNotFoundError:
+    from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class Ui_Form(object):
@@ -261,7 +264,10 @@ class Ui_Form(object):
         font = QtGui.QFont()
         font.setBold(True)
         font.setItalic(False)
-        font.setWeight(75)
+        try:
+            font.setWeight(75)
+        except:
+            font.setWeight(QtGui.QFont.Weight(75))
         self.nameLabel.setFont(font)
         self.nameLabel.setObjectName("nameLabel")
         self.horizontalLayout.addWidget(self.nameLabel)

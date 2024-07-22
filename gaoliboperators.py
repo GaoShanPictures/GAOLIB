@@ -820,7 +820,16 @@ def register():
 
     try:
         for dependency in dependencies:
-            import_module(module_name=dependency.module, global_name=dependency.name)
+            try:
+                import_module(
+                    module_name=dependency.module, global_name=dependency.name
+                )
+            except:
+                if dependency.module == "PySide2":
+                    import_module(module_name="PySide6", global_name=dependency.name)
+                else:
+                    raise
+
         dependencies_installed = True
     except ModuleNotFoundError:
         # Don't register other panels, operators etc. if missing dependencies

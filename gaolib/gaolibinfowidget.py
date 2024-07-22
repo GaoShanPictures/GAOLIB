@@ -26,7 +26,10 @@ try:
 except Exception as e:
     print("IMPORT EXCEPTION : " + str(e))
 
-from PySide2 import QtCore, QtGui, QtWidgets
+try:
+    from PySide2 import QtCore, QtGui, QtWidgets
+except ModuleNotFoundError:
+    from PySide6 import QtCore, QtGui, QtWidgets
 
 import gaolib.model.blenderutils as utils
 from gaolib.ui.constraintinfopairingwidgetui import Ui_ConstraintForm as Constraint_Form
