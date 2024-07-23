@@ -8,6 +8,7 @@ The design of the user interface of this project, and its main purpose are inspi
 
 
 ## Latest Updates
+- GAOLIB Now Available for blender 4.2 ! 
 
 - New Features : Recursive display of items in central view option, apply pose when double click item option and blend pose when wheel click option are available in the settings window.
 
