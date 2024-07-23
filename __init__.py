@@ -17,7 +17,7 @@
 bl_info = {
     "name": "GAOLIB",
     "author": "Anne Beurard",
-    "version": (1, 1, 0),
+    "version": (2, 0, 0),
     "blender": (3, 0, 0),
     "location": "View 3D",
     "warning": "Requires installation of dependencies",
