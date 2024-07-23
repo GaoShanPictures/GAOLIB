@@ -17,8 +17,8 @@ except ModuleNotFoundError:
 class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
-        Dialog.resize(488, 375)
-        Dialog.setMinimumSize(QtCore.QSize(420, 150))
+        Dialog.resize(488, 488)
+        Dialog.setMinimumSize(QtCore.QSize(450, 470))
         Dialog.setMaximumSize(QtCore.QSize(100000, 100000))
         Dialog.setStyleSheet(
             "QMainWindow{\n"

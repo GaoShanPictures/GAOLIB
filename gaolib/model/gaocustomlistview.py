@@ -42,7 +42,11 @@ class GaoCustomListView(QListView):
         except ModuleNotFoundError:
             import PySide6
 
-            return event.position(), event.position().x(), event.position().y()
+            return (
+                event.position().toPoint(),
+                event.position().x(),
+                event.position().y(),
+            )
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         super(GaoCustomListView, self).mousePressEvent(event)
