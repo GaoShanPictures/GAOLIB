@@ -266,29 +266,32 @@ class GAOLIB_OT_uninstall_dependencies(bpy.types.Operator):
         return dependencies_installed
 
     def execute(self, context):
-        for dependencies in dependenciesSet:
-            try:
-                install_pip()
-                for dependency in dependencies:
-                    uninstall_module(
-                        module_name=dependency.module,
-                        package_name=dependency.package,
-                        global_name=dependency.name,
-                    )
-            except (subprocess.CalledProcessError, ImportError) as err:
-                self.report({"ERROR"}, str(err))
-                # return {"CANCELLED"}
-                continue
+        dependenciesList = []
 
-            global dependencies_installed
-            dependencies_installed = False
+        for dset in dependenciesSet:
+            for dependencies in dset:
+                dependenciesList.append(dependencies)
 
-            # Register the panels, operators, etc. since dependencies are installed
-            for cls in classes:
-                bpy.utils.unregister_class(cls)
+        try:
+            install_pip()
+            for dependency in dependenciesList:
+                uninstall_module(
+                    module_name=dependency.module,
+                    package_name=dependency.package,
+                    global_name=dependency.name,
+                )
+        except (subprocess.CalledProcessError, ImportError) as err:
+            self.report({"ERROR"}, str(err))
+            return {"CANCELLED"}
 
-            return {"FINISHED"}
-        return {"CANCELLED"}
+        global dependencies_installed
+        dependencies_installed = False
+
+        # Register the panels, operators, etc. since dependencies are installed
+        for cls in classes:
+            bpy.utils.unregister_class(cls)
+
+        return {"FINISHED"}
 
 
 class GAOLIB_preferences(bpy.types.AddonPreferences):
