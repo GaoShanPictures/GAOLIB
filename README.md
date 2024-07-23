@@ -9,7 +9,7 @@ The design of the user interface of this project, and its main purpose are inspi
 
 ## Latest Updates
 
-- New Feature : Recursive display of items in central view option available in the settings window.
+- New Features : Recursive display of items in central view option, apply pose when double click item option and blend pose when wheel click option are available in the settings window.
 
 - New Feature : Modify folder name, location and icon. Modify animation/pose/selection set item name and location.
 
