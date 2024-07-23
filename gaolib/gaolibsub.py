@@ -314,9 +314,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     def openFileNameDialog(self, dialog, openDirectory=None):
         """File browser to change the ROOT location"""
         fileDialog = QFileDialog(self)
-        fileDialog.setFileMode(QFileDialog.DirectoryOnly)
-
-        options = fileDialog.Options()
+        if USE_PYSIDE6:
+            fileDialog.setFileMode(QFileDialog.Directory)
+        else:
+            fileDialog.setFileMode(QFileDialog.DirectoryOnly)
+            options = fileDialog.Options()
         if openDirectory:
             openDirectory = os.path.realpath(openDirectory)
             fileDialog.setDirectory(os.path.dirname(openDirectory))
@@ -1017,11 +1019,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         else:
             self.rootPath = selectedItem.path
 
-    def recursivelyPopulateTreeView(self, parentItem, itemPath, newName=None):
+    def recursivelyPopulateTreeView(self, parentItem, itemPath, newName=None, step=0):
         """Recursively populate treeView by parsing directories from the ROOT directory"""
         ancestors = parentItem.ancestors + [parentItem]
-
         for directory in os.listdir(itemPath):
+            if step == 0 and directory != "ROOT":
+                continue
             directoryPath = os.path.join(itemPath, directory)
             if (
                 os.path.isdir(directoryPath)
@@ -1038,7 +1041,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 )
                 parentItem.addChild(item)
 
-                self.recursivelyPopulateTreeView(item, directoryPath)
+                self.recursivelyPopulateTreeView(item, directoryPath, step=step + 1)
 
     def getListItems(self):
         """Display current selected folder content in listView"""
