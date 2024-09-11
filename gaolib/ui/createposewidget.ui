@@ -322,8 +322,11 @@ QPlainTextEdit {
       </item>
       <item row="1" column="1">
        <widget class="QSpinBox" name="fromRangeSpinBox">
+        <property name="minimum">
+         <number>-10000000</number>
+        </property>
         <property name="maximum">
-         <number>1000000</number>
+         <number>10000000</number>
         </property>
        </widget>
       </item>
@@ -352,8 +355,11 @@ QPlainTextEdit {
       </item>
       <item row="1" column="3">
        <widget class="QSpinBox" name="toRangeSpinBox">
+        <property name="minimum">
+         <number>-10000000</number>
+        </property>
         <property name="maximum">
-         <number>1000000</number>
+         <number>10000000</number>
         </property>
         <property name="value">
          <number>100</number>
