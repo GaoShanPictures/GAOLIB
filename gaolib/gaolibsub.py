@@ -731,6 +731,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget.currentPose = None
         self.infoWidget.bonesToBlend = None
         self.infoWidget.blendPoseSlider.setValue(0)
+        print("UNDO PUSH")
+        bpy.ops.ed.undo_push()
 
     def writejson(self, name, directory, itemType="POSE"):
         """Create json file corresponding to pose/animation item"""
@@ -837,6 +839,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.frameEnd = bpy.context.scene.frame_end
         self.xres = bpy.context.scene.render.resolution_x
         self.yres = bpy.context.scene.render.resolution_y
+        self.respercentage = bpy.context.scene.render.resolution_percentage
         self.use_stamp = bpy.context.scene.render.use_stamp
         self.color_mode = bpy.context.scene.render.image_settings.color_mode
         # Modify render settings
@@ -847,6 +850,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
         bpy.context.scene.render.resolution_x = 200
         bpy.context.scene.render.resolution_y = 200
+        bpy.context.scene.render.resolution_percentage = 100
         if itemType == "ANIMATION":
             bpy.context.scene.frame_step = self.createPosewidget.spinBox.value()
             bpy.context.scene.frame_start = (
@@ -945,6 +949,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         bpy.context.scene.render.image_settings.file_format = self.renderFormat
         bpy.context.scene.render.resolution_x = self.xres
         bpy.context.scene.render.resolution_y = self.yres
+        bpy.context.scene.render.resolution_percentage = self.respercentage
         bpy.context.scene.render.use_stamp = self.use_stamp
         bpy.context.scene.render.image_settings.color_mode = self.color_mode
         if itemType == "ANIMATION":

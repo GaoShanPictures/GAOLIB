@@ -187,7 +187,6 @@ def selectBones(jsonPath):
         if obj.type != "ARMATURE":
             ShowDialog("Please, select an ARMATURE object.", title="Abort action")
             return
-        print("SELECT BONES")
         # Select bones
         for bone in bones:
             if obj.pose.bones.get(bone):
@@ -564,6 +563,14 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                     if bone in selection:
                         index = fc.array_index
                         value = kp.co.y
+                        try:
+                            data = eval("selectedObject." + data_path)
+                            convertedValue = eval(
+                                data.__class__.__name__ + "(" + str(value) + ")"
+                            )
+                            value = convertedValue
+                        except:
+                            pass
                         frame = frameIn + sourceFrame - sourceFrameIn
 
                         bpy.context.scene.frame_current = int(frame)
@@ -586,7 +593,10 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                                 exec(cmd)
                                 count_op += 1
                             else:
-                                rot = int(value)
+                                try:
+                                    rot = int(value)
+                                except:
+                                    rot = int(float(value))
                                 rotmodeDict = {
                                     0: "QUATERNION",
                                     1: "XYZ",
@@ -607,11 +617,19 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                                 exec(cmd)
                                 count_op += 1
 
+                        except KeyError as e:
+                            print(
+                                "WARNING : KeyError for command : "
+                                + cmd
+                                + "\n"
+                                + str(e)
+                            )
+                            continue
                         except Exception as e:
                             ShowDialog(
                                 "Paste anim exception : " + str(e), title="Abort action"
                             )
-                            return
+                            raise
                         count_op += 1
                         selectedObject.keyframe_insert(
                             data_path=data_path, index=index, frame=frame
