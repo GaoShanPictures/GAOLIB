@@ -193,6 +193,23 @@ def selectBones(jsonPath):
                 obj.data.bones.get(bone).select = True
             else:
                 print("Not found : " + bone)
+        # check selected bones
+        pbList = []
+        selectedBones = getSelectedBones()
+        for bone in bones:
+            found = False
+            for posebone in selectedBones:
+                if posebone.name == bone:
+                    found = True
+                    break
+            if not found:
+                pbList.append(bone)
+        if len(pbList):
+            ShowDialog(
+                "Some bones could not be selected (visibility turned off or non-existent):\n\n"
+                + "\n".join(pbList),
+                title="Warning",
+            )
 
 
 def copyAnim(animDir):
@@ -234,7 +251,14 @@ def getSelectedBones():
         for bone in obj.data.bones:
             if bone.select:
                 posebone = obj.pose.bones[bone.name]
-                bones.append(posebone)
+                if not posebone.bone.hide and (
+                    (
+                        len(posebone.bone.collections)
+                        and posebone.bone.collections[0].is_visible_effectively
+                    )
+                    or not len(posebone.bone.collections)
+                ):
+                    bones.append(posebone)
     return bones
 
 
