@@ -8,7 +8,7 @@ The design of the user interface of this project, and its main purpose are inspi
 
 
 ## Latest Updates
-- GAOLIB Now Available for blender 4.2 ! 
+- GAOLIB Now Available for blender 4.2 ! Not fully tested on 4.4 yet 
 
 - New Features : Recursive display of items in central view option, apply pose when double click item option and blend pose when wheel click option are available in the settings window.
 
@@ -38,7 +38,7 @@ The design of the user interface of this project, and its main purpose are inspi
 - Former note : 'In order to remove properly the add-on from Blender, the user has to do it from a Blender session in which the Gaolib main window has not been opened. Otherwise, when trying to remove the add-on it will raise an Error in Windows (WinError 32:  The process cannot access the file because it is being used by another process).' bug has been fixed ! However, after installing a new version of GAOLIB, you may need to close and reopen Bender (Read more about it in the note section).
 
 ## Prerequisite
-GAOLIB works with Blender 2.93. It has not fully been tested on Blender 3, but the first tests seem to be working as well. 
+GAOLIB works with Blender 2.93 and above. It has not fully been tested on Blender 4.4, but the first tests seem to be working as well. 
 
 ## Installation
 
@@ -49,9 +49,9 @@ Download the zip of the add-on and install it in the 'Add-ons' section of the Bl
 Edit > Preferences > Add-ons > Install... > Select the zip file in your files > Install Add-on.
 
 Then enable the add-on.
-This add-on uses PySide2 and imageio as external dependencies. They can be installed directly from the add-on preferences by clicking on the 'Install dependencies' button. 
+This add-on uses PySide2 or Pyside6 and imageio as external dependencies. They can be installed directly from the add-on preferences by clicking on the 'Install dependencies' button. 
 
-In case there is any problem with the installed dependencies, an 'Uninstall dependencies' button is also available. To complete the uninstallation, the user is asked for confirmation in the system console for each dependency used. 
+In case there is any problem with the installed dependencies, an 'Uninstall dependencies' button is also available. To complete the uninstallation, the user is asked for confirmation in the system console for each dependency used. REMEMBER TO OPEN THE CONSOLE BEFORE TRYING TO UNINSTALL THE DEPENDENCIES.
 
 
 ## Usage
@@ -85,7 +85,7 @@ The animation is created if the selected object in the scene is an armature and 
 </p>
 
 ## Note
-This project is the first version of a work in progress. We are aware that some things can be improved and we are still looking for a way to change them. Amongst them : 
+This project is a work in progress. We are aware that some things can be improved and we are still looking for a way to change them. Amongst them : 
 
 - The user has to define a non empty path in the Blender preferences, File Paths section for Temporary files. If not, he/she won't be able to create new items in the library.
 
@@ -111,9 +111,10 @@ This project is the first version of a work in progress. We are aware that some 
 GAOLIB requires the following packages to be installed : PySide2 and imageio. It should be possible to install them from the Blender Preferences, in the Add-ons section, selecting the GAOLIB Add-on. However, if the installation doesn't work (cf image above), the users has to install the dependencies on their own, that is to say in Blender's python console, the commands 'import PySide2' and 'import imageio' should not raise any error.
 There are several ways to acheive that. 
 
-- One of them uses pip, for me the command to run in a terminal looks like this (make sure you give the right path to blender's python.exe): 
+- One of them uses pip, for me the command to run in a terminal looks like this (make sure you give the right path to blender's python.exe, for each version of blender h e path will change, see one example below): 
 
 "C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install PySide2
+(for newer versins of blender use PySide6 : "C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install PySide6)
 
 "C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install imageio
 
