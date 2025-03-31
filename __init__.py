@@ -325,7 +325,8 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
     _timer = None
     _counter = 0
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         try:
             from PySide2 import QtWidgets
         except ModuleNotFoundError:
