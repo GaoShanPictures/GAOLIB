@@ -589,7 +589,11 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                             count_op += 1
                         except TypeError:
                             index = -1
-                            cmd = "selectedObject." + data_path + " = " + str(value)
+                            valueType = eval(
+                                f"selectedObject.{data_path}.__class__.__name__"
+                            )
+                            typedValue = eval(f"{valueType}({value})")
+                            cmd = f"selectedObject.{data_path} = {typedValue}"
                             if not "rotation_mode" in data_path:
                                 exec(cmd)
                                 count_op += 1
