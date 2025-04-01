@@ -514,6 +514,14 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         if selectedObject.animation_data is None:
             selectedObject.animation_data_create()
         selectedObject.animation_data.action = action
+
+        if hasattr(action, "slots"):  # manage slots or blender 4.4
+            suitable_slots = selectedObject.animation_data.action_suitable_slots
+            if suitable_slots:
+                selectedObject.animation_data.action_slot = suitable_slots[0]
+            else:
+                slot = action.slots.new(id_type="OBJECT", name=selectedObject.name)
+                selectedObject.animation_data.action_slot = slot
         ShowDialog("Quick Paste Action done !")
 
     else:
