@@ -864,18 +864,21 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
         elif itemType == "CONSTRAINT SET":
             bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
-        # unhide hidden overlay params
+        # unhide hidden overlay params using context set in create item operators
         try:
-            for area in bpy.context.screen.areas:
-                if area.type == "VIEW_3D":
-                    for space in area.spaces:
-                        if space.type == "VIEW_3D":
-                            space.overlay.show_bones = True
-                            space.overlay.show_axis_x = True
-                            space.overlay.show_axis_y = True
-                            space.overlay.show_floor = True
-                            break
-        except:
+            with bpy.context.temp_override(
+                area=self.context["area"],
+                region=self.context["region"],
+                region_data=self.context["region_data"],
+                screen=self.context["screen"],
+                space_data=self.context["space_data"],
+                window=self.context["window"],
+            ):
+                if itemType in ["ANIMATION", "POSE"]:
+                    bpy.context.space_data.overlay.show_overlays = True
+                elif itemType == "SELECTION SET":
+                    bpy.ops.development.show_overlay_params()
+        except Exception as e:
             print("Could not set the overlay parameters")
 
         itemdata = {}
@@ -951,6 +954,41 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
+
+    def oneClickCreateItem(self, itemType="POSE"):
+        """TEST optim create item, need to set self.context before use. Not ready yet"""
+        # first step createThumbnailGegin
+        self.createThumbnail(itemType=itemType)
+
+        # # Test to call create thumbnail after rendering but does not seem to work
+        # bpy.app.handlers.render_complete.append(
+        #     lambda: self.createThumbnail(itemType=itemType)
+        # )
+
+        # set context with self.context before calling create item operator
+        with bpy.context.temp_override(
+            area=self.context["area"],
+            region=self.context["region"],
+            region_data=self.context["region_data"],
+            screen=self.context["screen"],
+            space_data=self.context["space_data"],
+            window=self.context["window"],
+        ):
+            if itemType == "POSE":
+                bpy.ops.development.create_pose()
+            elif itemType == "ANIMATION":
+                bpy.ops.development.create_animation()
+            elif itemType == "SELECTION SET":
+                bpy.ops.development.create_selection_set()
+            elif itemType == "CONSTRAINT SET":
+                bpy.ops.development.create_constraint_set()
+        # last step : createThumbnailEnd => PB render seems to be done in another thread try to read create thumbnail before end of rendering
+        self.createThumbnail(itemType=itemType)
+
+        # # Test to call create thumbnail after rendering but does not seem to work
+        # bpy.app.handlers.render_complete.remove(
+        #     lambda: self.createThumbnail(itemType=itemType)
+        # )
 
     def resizeEvent(self, event):
         """Manage window resizing"""

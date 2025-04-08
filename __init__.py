@@ -427,15 +427,13 @@ class OT_ShowOverlayParams(bpy.types.Operator):
     bl_label = "Show bones"
 
     def execute(self, context):
-        for area in bpy.context.screen.areas:
-            if area.type == "VIEW_3D":
-                for space in area.spaces:
-                    if space.type == "VIEW_3D":
-                        space.overlay.show_bones = True
-                        space.overlay.show_axis_x = True
-                        space.overlay.show_axis_y = True
-                        space.overlay.show_floor = True
-                        break
+        area = bpy.context.area
+        space = bpy.context.space_data
+        space.overlay.show_overlays = True
+        space.overlay.show_bones = True
+        space.overlay.show_axis_x = True
+        space.overlay.show_axis_y = True
+        space.overlay.show_floor = True
         return {"FINISHED"}
 
 
@@ -447,6 +445,9 @@ class OT_CreateSelectionSet(bpy.types.Operator):
 
     def execute(self, context):
         from .gaolib.model.blenderutils import ShowMessageBox
+
+        # Get current context to pass it to Gaolib
+        bpy.ops.development.get_blender_context()
 
         # Make sure this tool is used after a 'New Selection Set' action in the GAOLIB window
         if not bpy.context.scene.gaolib_tool.gaolibNewSelectionSet:
@@ -485,17 +486,17 @@ class OT_CreateSelectionSet(bpy.types.Operator):
             json.dump(data, file, indent=4, sort_keys=True)
 
         # hide some overlays before rendering
-        for area in bpy.context.screen.areas:
-            if area.type == "VIEW_3D":
-                for space in area.spaces:
-                    if space.type == "VIEW_3D":
-                        space.overlay.show_axis_x = False
-                        space.overlay.show_axis_y = False
-                        space.overlay.show_floor = False
-                        break
-
+        space = bpy.context.space_data
+        overlayHide = ["show_axis_x", "show_axis_y", "show_floor"]
+        overlayHidden = []
+        for toHide in overlayHide:
+            isVisible = eval("space.overlay." + toHide)
+            if isVisible:
+                exec("space.overlay." + toHide + " = False")
+                overlayHidden.append(toHide)
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+
         return {"FINISHED"}
 
 
@@ -510,6 +511,9 @@ class OT_CreateConstraintSet(bpy.types.Operator):
             ShowMessageBox,
             getConstraintsForSelection,
         )
+
+        # Get current context to pass it to Gaolib
+        bpy.ops.development.get_blender_context()
 
         # Make sure this tool is used after a 'New Constraint Set' action in the GAOLIB window
         if not bpy.context.scene.gaolib_tool.gaolibNewConstraintSet:
@@ -565,6 +569,7 @@ class OT_CreateConstraintSet(bpy.types.Operator):
             json.dump(data, file, indent=4, sort_keys=True)
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+
         return {"FINISHED"}
 
 
@@ -576,6 +581,10 @@ class OT_CreatePose(bpy.types.Operator):
 
     def execute(self, context):
         from .gaolib.model.blenderutils import ShowMessageBox
+
+        # Get current context to pass it to Gaolib
+        bpy.ops.development.get_blender_context()
+        contextCopy = context.copy()
 
         # Make sure this tool is used after a 'New Pose' action in the GAOLIB window
         if not bpy.context.scene.gaolib_tool.gaolibNewPose:
@@ -614,20 +623,38 @@ class OT_CreatePose(bpy.types.Operator):
             json.dump(data, file, indent=4, sort_keys=True)
         # Copy selection
         bpy.ops.pose.copy()
-
         # hide some overlays before rendering
-        for area in bpy.context.screen.areas:
-            if area.type == "VIEW_3D":
-                for space in area.spaces:
-                    if space.type == "VIEW_3D":
-                        space.overlay.show_bones = False
-                        space.overlay.show_axis_x = False
-                        space.overlay.show_axis_y = False
-                        space.overlay.show_floor = False
-                        break
-
+        space = bpy.context.space_data
+        space.overlay.show_overlays = False
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return {"FINISHED"}
+
+
+class OT_GetBlenderContext(bpy.types.Operator):
+    """Set context attribute to GAOLIB"""
+
+    bl_idname = "development.get_blender_context"
+    bl_label = "Get Blender Context"
+
+    def execute(self, context):
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
+
+        app = None
+        gaolib = None
+        if QtWidgets.QApplication.instance():
+            app = QtWidgets.QApplication.instance()
+            for widget in app.topLevelWidgets():
+                if widget.__class__.__name__ == "GaoLib":
+                    gaolib = widget
+        else:
+            return {"CANCELLED"}
+        if not gaolib:
+            return {"CANCELLED"}
+        gaolib.context = context.copy()
         return {"FINISHED"}
 
 
@@ -639,6 +666,9 @@ class OT_CreateAnimation(bpy.types.Operator):
 
     def execute(self, context):
         from .gaolib.model.blenderutils import ShowMessageBox
+
+        # Get current context to pass it to Gaolib
+        bpy.ops.development.get_blender_context()
 
         # Make sure this tool is used after a 'New Animation' action in the GAOLIB window
         if not bpy.context.scene.gaolib_tool.gaolibNewAnimation:
@@ -748,24 +778,16 @@ class OT_CreateAnimation(bpy.types.Operator):
         filename = "animation.blend"
         filepath = os.path.join(animDir, filename)
         bpy.data.libraries.write(filepath, set([newAction]))
-
         # hide some overlays before rendering
-        for area in bpy.context.screen.areas:
-            if area.type == "VIEW_3D":
-                for space in area.spaces:
-                    if space.type == "VIEW_3D":
-                        space.overlay.show_bones = False
-                        space.overlay.show_axis_x = False
-                        space.overlay.show_axis_y = False
-                        space.overlay.show_floor = False
-                        break
-
+        space = bpy.context.space_data
+        space.overlay.show_overlays = False
         # Render
         print("Render animation")
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
         # Delete temp action
         currentObject.animation_data.action = currentAction
         bpy.data.actions.remove(newAction)
+
         return {"FINISHED"}
 
 
@@ -831,6 +853,7 @@ classes = [
     OT_CreateConstraintSet,
     OT_ShowOverlayParams,
     OT_CreateAnimation,
+    OT_GetBlenderContext,
     GaolibCustomProperties,
     VIEW3D_PT_Gaolib,
 ]
