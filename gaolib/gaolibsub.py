@@ -133,22 +133,24 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         iconFolder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "icons")
         createMenu = QtWidgets.QMenu(self.newPushButton)
         poseIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "pose2.png")))
-        createMenu.addAction(poseIcon, "New Pose", lambda: self.createItem("POSE"))
+        createMenu.addAction(poseIcon, "New Pose", lambda: self.createItemSetUI("POSE"))
         animIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "anim2.png")))
-        createMenu.addAction(animIcon, "New Animation", self.createAnim)
+        createMenu.addAction(animIcon, "New Animation", self.createAnimSetUI)
         constraintIcon = QtGui.QIcon(
             QtGui.QPixmap(os.path.join(iconFolder, "constraint.png"))
         )
         createMenu.addAction(
             constraintIcon,
             "New Constraint Set",
-            lambda: self.createItem("CONSTRAINT SET"),
+            lambda: self.createItemSetUI("CONSTRAINT SET"),
         )
         selectIcon = QtGui.QIcon(
             QtGui.QPixmap(os.path.join(iconFolder, "selectionset.png"))
         )
         createMenu.addAction(
-            selectIcon, "New Selection Set", lambda: self.createItem("SELECTION SET")
+            selectIcon,
+            "New Selection Set",
+            lambda: self.createItemSetUI("SELECTION SET"),
         )
         folderIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "folder2.png")))
         createMenu.addAction(folderIcon, "New Folder", self.createFolder)
@@ -486,8 +488,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
         self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-    def createGenericItem(self):
-        """Create new animation/pose/selection/constraint set item"""
+    def createGenericItemSetUI(self):
+        """Prepare UI to create new animation/pose/selection/constraint set item"""
         # Temporary path for thumnail
         self.thumbTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory,
@@ -512,10 +514,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         for i in reversed(range(self.verticalLayout_5.count())):
             self.verticalLayout_5.itemAt(i).widget().deleteLater()
 
-    def createAnim(self):
-        """Sets the UI to Create new animation item"""
+    def createAnimSetUI(self):
+        """Prepare UI to Create new animation item"""
         itemType = "ANIMATION"
-        self.createGenericItem()
+        self.createGenericItemSetUI()
         # Create widget for create anim
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
         self.verticalLayout_5.addWidget(self.createPosewidget)
@@ -534,9 +536,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             "value", bpy.context.scene.frame_end
         )
 
-    def createItem(self, itemType):
-        """Sets the UI to Create new pose item"""
-        self.createGenericItem()
+    def createItemSetUI(self, itemType):
+        """Prepare UI to Create new pose item"""
+        self.createGenericItemSetUI()
         # Create widget for create pose
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
         self.verticalLayout_5.addWidget(self.createPosewidget)
@@ -774,15 +776,249 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         with open(jsonFile, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
 
-    def createThumbnail(self, itemType="POSE"):
-        """Create the animation/pose thumbnail"""
+    def contextCheck(self, itemType):
+        """Check if context and selections are compatible with the creation of item"""
+        # Check that a temporary path is set
         if not os.path.exists(bpy.context.preferences.filepaths.temporary_directory):
-            QtWidgets.QMessageBox.about(
-                self,
-                "Abort action",
+            utils.ShowDialog(
                 "Please add a valid path for Blender temporary files in : Edit > Preferences > File Paths > Temporary Files",
+                title="Abort action",
             )
             return
+        # Check area (VIEW_3D exists)
+        foundSpace = False
+        for screen in bpy.data.screens:
+            for area in screen.areas:
+                for space in area.spaces:
+                    if space == self.context["space_data"]:
+                        foundSpace = True
+        if not foundSpace:
+            utils.ShowDialog('Context is lost ! Please, use "Get Context" tool.')
+            return False
+        # set context with self.context
+        with bpy.context.temp_override(
+            area=self.context["area"],
+            region=self.context["region"],
+            region_data=self.context["region_data"],
+            screen=self.context["screen"],
+            space_data=self.context["space_data"],
+            window=self.context["window"],
+        ):
+            # Check number of selected objects
+            selectedObjects = []
+            for o in bpy.context.selected_objects:
+                selectedObjects.append(o.name)
+            if itemType == "CONSTRAINT SET":
+                # # constraint set need at least one object selected
+                if len(selectedObjects) == 0:
+                    utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
+                    return False
+            else:
+                # # animation, pose and selection set need nly one objet selected
+                if len(selectedObjects) != 1:
+                    utils.ShowDialog("PLEASE, SELECT EXACTLY ONE OBJECT.")
+                    return False
+            # Check POSE mode
+            if bpy.context.object.mode != "POSE":
+                utils.ShowDialog("PLEASE, SET POSE MODE.")
+                return False
+            # Count bones
+            if not len(bpy.context.selected_pose_bones):
+                utils.ShowDialog("PLEASE, SELECT AT LEAST ONE BONE.")
+                return False
+        return True
+
+    def poseCreateThumbnail(self):
+        """Save new item datas and thumbnail to temp directory"""
+        # Get selectd object
+        selectedObjects = []
+        for o in bpy.context.selected_objects:
+            selectedObjects.append(o.name)
+        # Write Json file
+        data = {
+            "bones": len(bpy.context.selected_pose_bones),
+            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "objects": selectedObjects,
+        }
+        jsonFile = os.path.join(
+            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
+        )
+        with open(jsonFile, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        # Copy selection
+        bpy.ops.pose.copy()
+        # hide some overlays before rendering
+        space = bpy.context.space_data
+        space.overlay.show_overlays = False
+        # Render
+        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+
+    def animCreateThumbnail(self):
+        """Save new item datas and thumbnail to temp directory"""
+        # get frame range
+        frameIn = bpy.context.scene.frame_start
+        frameOut = bpy.context.scene.frame_end
+        # Get selectd object
+        selectedObjects = []
+        for o in bpy.context.selected_objects:
+            selectedObjects.append(o.name)
+        # Write Json file
+        data = {
+            "bones": len(bpy.context.selected_pose_bones),
+            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "objects": selectedObjects,
+        }
+        jsonFile = os.path.join(
+            os.path.dirname(os.path.dirname(bpy.context.scene.render.filepath)),
+            "temp.json",
+        )
+        with open(jsonFile, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        # Copy Animation
+        currentObject = bpy.context.selected_objects[0]
+        try:
+            currentAction = currentObject.animation_data.action
+        except:
+            utils.ShowDialog("FOUND NO ACTION ON SELECTED OBJECT.", title="ABORT")
+            return
+        newAction = currentAction.copy()
+        newAction.name = "Animation"
+        currentObject.animation_data.action = None
+        currentObject.animation_data.action = newAction
+        # key first frame
+        bpy.context.scene.frame_set(frameIn)
+        for bone in bpy.context.selected_pose_bones:
+            bone.keyframe_insert(data_path="rotation_mode", frame=frameIn)
+            for axis in range(3):
+                if not bone.lock_location[axis]:
+                    bone.keyframe_insert(
+                        data_path="location", index=axis, frame=frameIn
+                    )
+                if not bone.lock_rotation[axis]:
+                    bone.keyframe_insert(
+                        data_path="rotation_euler", index=axis, frame=frameIn
+                    )
+                if not bone.lock_scale[axis]:
+                    bone.keyframe_insert(data_path="scale", index=axis, frame=frameIn)
+            for key in bone.keys():
+                try:
+                    bone.keyframe_insert(data_path='["' + key + '"]', frame=frameIn)
+                except Exception as e:
+                    pass
+        keyLastFrame = self.createPosewidget.keyLastCheckBox.isChecked()
+        if keyLastFrame:
+            bpy.context.scene.frame_set(frameOut)
+            for bone in bpy.context.selected_pose_bones:
+                bone.keyframe_insert(data_path="rotation_mode", frame=frameOut)
+                for axis in range(3):
+                    if not bone.lock_location[axis]:
+                        bone.keyframe_insert(
+                            data_path="location", index=axis, frame=frameOut
+                        )
+                    if not bone.lock_rotation[axis]:
+                        bone.keyframe_insert(
+                            data_path="rotation_euler", index=axis, frame=frameOut
+                        )
+                    if not bone.lock_scale[axis]:
+                        bone.keyframe_insert(
+                            data_path="scale", index=axis, frame=frameOut
+                        )
+                for key in bone.keys():
+                    try:
+                        bone.keyframe_insert(
+                            data_path='["' + key + '"]', frame=frameOut
+                        )
+                    except Exception as e:
+                        pass
+        # Create animation.blend file
+        animDir = bpy.context.preferences.filepaths.temporary_directory
+        filename = "animation.blend"
+        filepath = os.path.join(animDir, filename)
+        bpy.data.libraries.write(filepath, set([newAction]))
+        # hide some overlays before rendering
+        space = bpy.context.space_data
+        space.overlay.show_overlays = False
+        # Render
+        print("Render animation")
+        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
+        # Delete temp action
+        currentObject.animation_data.action = currentAction
+        bpy.data.actions.remove(newAction)
+
+    def constraintCreateThumbnail(self):
+        """Save new item datas and thumbnail to temp directory"""
+        # Get selected objects
+        selectedObjects = []
+        for o in bpy.context.selected_objects:
+            selectedObjects.append(o.name)
+        # get contraint datas
+        boneDict = {}
+        for objName in selectedObjects:
+            obj = bpy.data.objects.get(objName)
+            if obj.pose:
+                for bone in bpy.context.selected_pose_bones:
+                    for objBone in obj.pose.bones:
+                        if bone == objBone:
+                            if not obj.name in boneDict.keys():
+                                boneDict[obj.name] = []
+                            boneDict[obj.name].append(bone.name)
+                            break
+
+        data = {
+            "bones": len(bpy.context.selected_pose_bones),
+            "boneDict": boneDict,
+            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "objects": selectedObjects,
+        }
+        constraintData = utils.getConstraintsForSelection()
+        if not constraintData:
+            utils.ShowDialog("Found no constraint data.", title="ABORT")
+            return
+        # Write Json file
+        jsonFile = os.path.join(
+            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
+        )
+        with open(jsonFile, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        # Render
+        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+
+    def selectionCreateThumbnail(self):
+        """Save new item datas and thumbnail to temp directory"""
+        # Get selected objects
+        selectedObjects = []
+        for o in bpy.context.selected_objects:
+            selectedObjects.append(o.name)
+        # Write Json file
+        data = {
+            "bones": len(bpy.context.selected_pose_bones),
+            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "objects": selectedObjects,
+        }
+        jsonFile = os.path.join(
+            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
+        )
+        with open(jsonFile, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        # hide some overlays before rendering
+        space = bpy.context.space_data
+        overlayHide = ["show_axis_x", "show_axis_y", "show_floor"]
+        overlayHidden = []
+        for toHide in overlayHide:
+            isVisible = eval("space.overlay." + toHide)
+            if isVisible:
+                exec("space.overlay." + toHide + " = False")
+                overlayHidden.append(toHide)
+        # Render
+        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+
+    def createThumbnail(self, itemType="POSE"):
+        """Create item thumbnail and prepare to save as new item"""
+        # check context and selection
+        isValid = self.contextCheck(itemType)
+        if not isValid:
+            return
+        # Set temporary paths to store thumbnail and item datas
         self.thumbTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory,
             "temp",
@@ -791,44 +1027,19 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.jsonTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory, "temp", "temp.json"
         )
-        bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
-        bpy.context.scene.gaolib_tool.gaolibNewPose = False
-        bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
-        bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
-        if self.beginCreateThumb:
-            self.createThumbnailBegin(itemType=itemType)
-            self.beginCreateThumb = False
-        else:
-            self.createThumbnailEnd(itemType=itemType)
-            self.beginCreateThumb = True
-
-    def createThumbnailBegin(self, itemType="POSE"):
-        """First click on the create thumbnail button, prepare the scene for creating the animation/pose files"""
+        # PRE RENDER SETTINGS
         if itemType == "ANIMATION":
-            bpy.context.scene.gaolib_tool.gaolibNewAnimation = True
             self.createPosewidget.movie = None
-            photoButtonText = "Please use the Create\nAnimation Tool in Blender\nWhen it is done\nclick HERE again"
             renderpath = os.path.join(
-                os.path.dirname(self.thumbTempPath), "sequence", "thumbnail.####.png"
+                os.path.dirname(self.thumbTempPath),
+                "sequence",
+                "thumbnail.####.png",
             )
-            bpy.context.scene.gaolib_tool.gaolibKeyLastFrame = (
-                self.createPosewidget.keyLastCheckBox.isChecked()
-            )
-        elif itemType == "POSE":
-            bpy.context.scene.gaolib_tool.gaolibNewPose = True
-            photoButtonText = "Please use the Create\nPose Tool in Blender\nWhen it is done\nclick HERE again"
+            # bpy.context.scene.gaolib_tool.gaolibKeyLastFrame = (
+            #     self.createPosewidget.keyLastCheckBox.isChecked()
+            # )
+        else:
             renderpath = self.thumbTempPath
-        elif itemType == "SELECTION SET":
-            bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = True
-            photoButtonText = "Please use the Create\nSelection Set \nTool in Blender\nWhen it is done\nclick HERE again"
-            renderpath = self.thumbTempPath
-        elif itemType == "CONSTRAINT SET":
-            bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = True
-            photoButtonText = "Please use the Create\nConstraint Set \nTool in Blender\nWhen it is done\nclick HERE again"
-            renderpath = self.thumbTempPath
-
-        self.createPosewidget.pushButton.setText(photoButtonText)
-        self.createPosewidget.pushButton.setIcon(QtGui.QIcon())
         # Remember current render settings
         self.renderPath = bpy.context.scene.render.filepath
         self.renderFormat = bpy.context.scene.render.image_settings.file_format
@@ -853,17 +1064,105 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 self.createPosewidget.fromRangeSpinBox.value()
             )
             bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
+        # set context with self.context before calling blender operations
+        with bpy.context.temp_override(
+            area=self.context["area"],
+            region=self.context["region"],
+            region_data=self.context["region_data"],
+            screen=self.context["screen"],
+            space_data=self.context["space_data"],
+            window=self.context["window"],
+        ):
+            if itemType == "POSE":
+                self.poseCreateThumbnail()
+            elif itemType == "ANIMATION":
+                self.animCreateThumbnail()
+            elif itemType == "CONSTRAINT SET":
+                self.constraintCreateThumbnail()
+            elif itemType == "SELECTION SET":
+                self.selectionCreateThumbnail()
+
+        # bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
+        # bpy.context.scene.gaolib_tool.gaolibNewPose = False
+        # bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
+        # bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
+        # if self.beginCreateThumb:
+        #     self.createThumbnailBegin(itemType=itemType)
+        #     self.beginCreateThumb = False
+        # else:
+        #     self.createThumbnailEnd(itemType=itemType)
+        #     self.beginCreateThumb = True
+
+        bpy.app.timers.register(
+            lambda: self.createThumbnailEnd(itemType=itemType), first_interval=0.1
+        )
+
+    # def createThumbnailBegin(self, itemType="POSE"):
+    #     """First click on the create thumbnail button, prepare the scene for creating the animation/pose files"""
+    #     if itemType == "ANIMATION":
+    #         bpy.context.scene.gaolib_tool.gaolibNewAnimation = True
+    #         self.createPosewidget.movie = None
+    #         photoButtonText = "Please use the Create\nAnimation Tool in Blender\nWhen it is done\nclick HERE again"
+    #         renderpath = os.path.join(
+    #             os.path.dirname(self.thumbTempPath), "sequence", "thumbnail.####.png"
+    #         )
+    #         bpy.context.scene.gaolib_tool.gaolibKeyLastFrame = (
+    #             self.createPosewidget.keyLastCheckBox.isChecked()
+    #         )
+    #     elif itemType == "POSE":
+    #         bpy.context.scene.gaolib_tool.gaolibNewPose = True
+    #         photoButtonText = "Please use the Create\nPose Tool in Blender\nWhen it is done\nclick HERE again"
+    #         renderpath = self.thumbTempPath
+    #     elif itemType == "SELECTION SET":
+    #         bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = True
+    #         photoButtonText = "Please use the Create\nSelection Set \nTool in Blender\nWhen it is done\nclick HERE again"
+    #         renderpath = self.thumbTempPath
+    #     elif itemType == "CONSTRAINT SET":
+    #         bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = True
+    #         photoButtonText = "Please use the Create\nConstraint Set \nTool in Blender\nWhen it is done\nclick HERE again"
+    #         renderpath = self.thumbTempPath
+
+    #     self.createPosewidget.pushButton.setText(photoButtonText)
+    #     self.createPosewidget.pushButton.setIcon(QtGui.QIcon())
+    #     # Remember current render settings
+    #     self.renderPath = bpy.context.scene.render.filepath
+    #     self.renderFormat = bpy.context.scene.render.image_settings.file_format
+    #     self.frameStep = bpy.context.scene.frame_step
+    #     self.frameStart = bpy.context.scene.frame_start
+    #     self.frameEnd = bpy.context.scene.frame_end
+    #     self.xres = bpy.context.scene.render.resolution_x
+    #     self.yres = bpy.context.scene.render.resolution_y
+    #     self.use_stamp = bpy.context.scene.render.use_stamp
+    #     self.color_mode = bpy.context.scene.render.image_settings.color_mode
+    #     # Modify render settings
+    #     bpy.context.scene.render.filepath = renderpath
+    #     bpy.context.scene.render.image_settings.file_format = "PNG"
+    #     bpy.context.scene.render.use_stamp = False
+    #     bpy.context.scene.render.image_settings.color_mode = "RGB"
+
+    #     bpy.context.scene.render.resolution_x = 200
+    #     bpy.context.scene.render.resolution_y = 200
+    #     if itemType == "ANIMATION":
+    #         bpy.context.scene.frame_step = self.createPosewidget.spinBox.value()
+    #         bpy.context.scene.frame_start = (
+    #             self.createPosewidget.fromRangeSpinBox.value()
+    #         )
+    #         bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
 
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
-        if itemType == "ANIMATION":
-            bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
-        elif itemType == "POSE":
-            bpy.context.scene.gaolib_tool.gaolibNewPose = False
-        elif itemType == "SELECTION SET":
-            bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
-        elif itemType == "CONSTRAINT SET":
-            bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
+        if not os.path.exists(bpy.context.scene.render.filepath):
+            # Try again in 0.1 sec
+            print("wait for render to be ready")
+            return 0.1
+        # if itemType == "ANIMATION":
+        #     bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
+        # elif itemType == "POSE":
+        #     bpy.context.scene.gaolib_tool.gaolibNewPose = False
+        # elif itemType == "SELECTION SET":
+        #     bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
+        # elif itemType == "CONSTRAINT SET":
+        #     bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
         # unhide hidden overlay params using context set in create item operators
         try:
             with bpy.context.temp_override(
@@ -954,41 +1253,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
-
-    def oneClickCreateItem(self, itemType="POSE"):
-        """TEST optim create item, need to set self.context before use. Not ready yet"""
-        # first step createThumbnailGegin
-        self.createThumbnail(itemType=itemType)
-
-        # # Test to call create thumbnail after rendering but does not seem to work
-        # bpy.app.handlers.render_complete.append(
-        #     lambda: self.createThumbnail(itemType=itemType)
-        # )
-
-        # set context with self.context before calling create item operator
-        with bpy.context.temp_override(
-            area=self.context["area"],
-            region=self.context["region"],
-            region_data=self.context["region_data"],
-            screen=self.context["screen"],
-            space_data=self.context["space_data"],
-            window=self.context["window"],
-        ):
-            if itemType == "POSE":
-                bpy.ops.development.create_pose()
-            elif itemType == "ANIMATION":
-                bpy.ops.development.create_animation()
-            elif itemType == "SELECTION SET":
-                bpy.ops.development.create_selection_set()
-            elif itemType == "CONSTRAINT SET":
-                bpy.ops.development.create_constraint_set()
-        # last step : createThumbnailEnd => PB render seems to be done in another thread try to read create thumbnail before end of rendering
-        self.createThumbnail(itemType=itemType)
-
-        # # Test to call create thumbnail after rendering but does not seem to work
-        # bpy.app.handlers.render_complete.remove(
-        #     lambda: self.createThumbnail(itemType=itemType)
-        # )
 
     def resizeEvent(self, event):
         """Manage window resizing"""

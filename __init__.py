@@ -410,6 +410,8 @@ class OT_gaolib(bpy.types.Operator):
             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
         else:
             run_timed_modal_gaolib_operator()
+
+        bpy.ops.development.get_blender_context()
         return {"FINISHED"}
 
     @classmethod
@@ -631,33 +633,6 @@ class OT_CreatePose(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class OT_GetBlenderContext(bpy.types.Operator):
-    """Set context attribute to GAOLIB"""
-
-    bl_idname = "development.get_blender_context"
-    bl_label = "Get Blender Context"
-
-    def execute(self, context):
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
-
-        app = None
-        gaolib = None
-        if QtWidgets.QApplication.instance():
-            app = QtWidgets.QApplication.instance()
-            for widget in app.topLevelWidgets():
-                if widget.__class__.__name__ == "GaoLib":
-                    gaolib = widget
-        else:
-            return {"CANCELLED"}
-        if not gaolib:
-            return {"CANCELLED"}
-        gaolib.context = context.copy()
-        return {"FINISHED"}
-
-
 class OT_CreateAnimation(bpy.types.Operator):
     """Create a Json file with the animation informations and render"""
 
@@ -791,6 +766,33 @@ class OT_CreateAnimation(bpy.types.Operator):
         return {"FINISHED"}
 
 
+class OT_GetBlenderContext(bpy.types.Operator):
+    """Set context attribute to GAOLIB"""
+
+    bl_idname = "development.get_blender_context"
+    bl_label = "Get Blender Context"
+
+    def execute(self, context):
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
+
+        app = None
+        gaolib = None
+        if QtWidgets.QApplication.instance():
+            app = QtWidgets.QApplication.instance()
+            for widget in app.topLevelWidgets():
+                if widget.__class__.__name__ == "GaoLib":
+                    gaolib = widget
+        else:
+            return {"CANCELLED"}
+        if not gaolib:
+            return {"CANCELLED"}
+        gaolib.context = context.copy()
+        return {"FINISHED"}
+
+
 # ----------------------------------GAOLIB PROPERTIES-----------------------------------------
 
 
@@ -822,20 +824,21 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
     def draw(self, context):
         col4 = self.layout.column(align=True)
         col4.operator("development.gaolib_operator", text="GAOLIB", icon="EVENT_G")
-        col4.operator(
-            "development.create_selection_set",
-            text="Create Selection Set",
-            icon="GROUP_BONE",
-        )
-        col4.operator("development.create_pose", text="Create Pose", icon="POSE_HLT")
-        col4.operator(
-            "development.create_animation", text="Create Animation", icon="ANIM"
-        )
-        col4.operator(
-            "development.create_constraint_set",
-            text="Create Constraint Set",
-            icon="CONSTRAINT_BONE",
-        )
+        # col4.operator(
+        #     "development.create_selection_set",
+        #     text="Create Selection Set",
+        #     icon="GROUP_BONE",
+        # )
+        # col4.operator("development.create_pose", text="Create Pose", icon="POSE_HLT")
+        # col4.operator(
+        #     "development.create_animation", text="Create Animation", icon="ANIM"
+        # )
+        # col4.operator(
+        #     "development.create_constraint_set",
+        #     text="Create Constraint Set",
+        #     icon="CONSTRAINT_BONE",
+        # )
+        col4.operator("development.get_blender_context", text="Get Context")
         col4.operator(
             "development.show_overlay_params",
             text="Show overlay hidden",
@@ -848,11 +851,11 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
 
 classes = [
     OT_gaolib,
-    OT_CreatePose,
-    OT_CreateSelectionSet,
-    OT_CreateConstraintSet,
+    # OT_CreatePose,
+    # OT_CreateSelectionSet,
+    # OT_CreateConstraintSet,
+    # OT_CreateAnimation,
     OT_ShowOverlayParams,
-    OT_CreateAnimation,
     OT_GetBlenderContext,
     GaolibCustomProperties,
     VIEW3D_PT_Gaolib,
