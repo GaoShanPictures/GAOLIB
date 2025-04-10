@@ -25,7 +25,6 @@ import shutil
 import sys
 from datetime import datetime
 
-# from coretools.uiloader import loadUi
 from PIL import Image
 
 try:
@@ -73,10 +72,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
 
-        # loadUi(
-        #     os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui/gaolib.ui"),
-        #     self,
-        # )
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.setupUi(self)
 
@@ -104,19 +99,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.verticalLayout_2.addWidget(self.listView)
         self.initUi()
         if USE_PYSIDE6:
-            # self.newPushButton.setMinimumSize(QtCore.QSize(50, 40))
-            # self.newPushButton.setMaximumSize(QtCore.QSize(50, 40))
-            # self.settingsPushButton.setMinimumSize(QtCore.QSize(50, 40))
-            # self.settingsPushButton.setMaximumSize(QtCore.QSize(50, 40))
             self.settingsPushButton.setStyleSheet(
                 "QPushButton::menu-indicator { width:0px; }"
             )
             self.newPushButton.setStyleSheet(
                 "QPushButton::menu-indicator { width:0px; }"
             )
-            # self.newPushButton.setStyleSheet(
-            #     "* { padding-right: 0px } QToolButton::menu-indicator { image: none }"
-            # )
         self._connectUi()
 
     def _connectUi(self):
@@ -488,6 +476,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
         self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
+    def cleanTempFolder(self):
+        if os.path.exists(self.jsonTempPath):
+            os.remove(self.jsonTempPath)
+        if os.path.exists(self.thumbTempPath):
+            os.remove(self.thumbTempPath)
+        sequencePath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
+        if os.path.exists(sequencePath):
+            shutil.rmtree(sequencePath)
+        os.makedirs(sequencePath)
+
     def createGenericItemSetUI(self):
         """Prepare UI to create new animation/pose/selection/constraint set item"""
         # Temporary path for thumnail
@@ -501,15 +499,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             "temp",
             "temp.json",
         )
-        # Delete files before creating new item
-        if os.path.exists(self.jsonTempPath):
-            os.remove(self.jsonTempPath)
-        if os.path.exists(self.thumbTempPath):
-            os.remove(self.thumbTempPath)
-        sequencePath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
-        if os.path.exists(sequencePath):
-            shutil.rmtree(sequencePath)
-        os.makedirs(sequencePath)
+        # # Delete files before creating new item
+        self.cleanTempFolder()
         # Clear information layout
         for i in reversed(range(self.verticalLayout_5.count())):
             self.verticalLayout_5.itemAt(i).widget().deleteLater()
@@ -974,6 +965,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         if not constraintData:
             utils.ShowDialog("Found no constraint data.", title="ABORT")
             return
+        data["constraintData"] = constraintData
         # Write Json file
         jsonFile = os.path.join(
             os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
@@ -1014,6 +1006,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createThumbnail(self, itemType="POSE"):
         """Create item thumbnail and prepare to save as new item"""
+        # Clean any existing temp files
+        self.cleanTempFolder()
         # check context and selection
         isValid = self.contextCheck(itemType)
         if not isValid:
@@ -1035,9 +1029,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 "sequence",
                 "thumbnail.####.png",
             )
-            # bpy.context.scene.gaolib_tool.gaolibKeyLastFrame = (
-            #     self.createPosewidget.keyLastCheckBox.isChecked()
-            # )
         else:
             renderpath = self.thumbTempPath
         # Remember current render settings
@@ -1081,89 +1072,34 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 self.constraintCreateThumbnail()
             elif itemType == "SELECTION SET":
                 self.selectionCreateThumbnail()
-
-        # bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
-        # bpy.context.scene.gaolib_tool.gaolibNewPose = False
-        # bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
-        # bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
-        # if self.beginCreateThumb:
-        #     self.createThumbnailBegin(itemType=itemType)
-        #     self.beginCreateThumb = False
-        # else:
-        #     self.createThumbnailEnd(itemType=itemType)
-        #     self.beginCreateThumb = True
-
+        # Wait for end of render to call createThumbnailEnd
         bpy.app.timers.register(
             lambda: self.createThumbnailEnd(itemType=itemType), first_interval=0.1
         )
 
-    # def createThumbnailBegin(self, itemType="POSE"):
-    #     """First click on the create thumbnail button, prepare the scene for creating the animation/pose files"""
-    #     if itemType == "ANIMATION":
-    #         bpy.context.scene.gaolib_tool.gaolibNewAnimation = True
-    #         self.createPosewidget.movie = None
-    #         photoButtonText = "Please use the Create\nAnimation Tool in Blender\nWhen it is done\nclick HERE again"
-    #         renderpath = os.path.join(
-    #             os.path.dirname(self.thumbTempPath), "sequence", "thumbnail.####.png"
-    #         )
-    #         bpy.context.scene.gaolib_tool.gaolibKeyLastFrame = (
-    #             self.createPosewidget.keyLastCheckBox.isChecked()
-    #         )
-    #     elif itemType == "POSE":
-    #         bpy.context.scene.gaolib_tool.gaolibNewPose = True
-    #         photoButtonText = "Please use the Create\nPose Tool in Blender\nWhen it is done\nclick HERE again"
-    #         renderpath = self.thumbTempPath
-    #     elif itemType == "SELECTION SET":
-    #         bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = True
-    #         photoButtonText = "Please use the Create\nSelection Set \nTool in Blender\nWhen it is done\nclick HERE again"
-    #         renderpath = self.thumbTempPath
-    #     elif itemType == "CONSTRAINT SET":
-    #         bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = True
-    #         photoButtonText = "Please use the Create\nConstraint Set \nTool in Blender\nWhen it is done\nclick HERE again"
-    #         renderpath = self.thumbTempPath
-
-    #     self.createPosewidget.pushButton.setText(photoButtonText)
-    #     self.createPosewidget.pushButton.setIcon(QtGui.QIcon())
-    #     # Remember current render settings
-    #     self.renderPath = bpy.context.scene.render.filepath
-    #     self.renderFormat = bpy.context.scene.render.image_settings.file_format
-    #     self.frameStep = bpy.context.scene.frame_step
-    #     self.frameStart = bpy.context.scene.frame_start
-    #     self.frameEnd = bpy.context.scene.frame_end
-    #     self.xres = bpy.context.scene.render.resolution_x
-    #     self.yres = bpy.context.scene.render.resolution_y
-    #     self.use_stamp = bpy.context.scene.render.use_stamp
-    #     self.color_mode = bpy.context.scene.render.image_settings.color_mode
-    #     # Modify render settings
-    #     bpy.context.scene.render.filepath = renderpath
-    #     bpy.context.scene.render.image_settings.file_format = "PNG"
-    #     bpy.context.scene.render.use_stamp = False
-    #     bpy.context.scene.render.image_settings.color_mode = "RGB"
-
-    #     bpy.context.scene.render.resolution_x = 200
-    #     bpy.context.scene.render.resolution_y = 200
-    #     if itemType == "ANIMATION":
-    #         bpy.context.scene.frame_step = self.createPosewidget.spinBox.value()
-    #         bpy.context.scene.frame_start = (
-    #             self.createPosewidget.fromRangeSpinBox.value()
-    #         )
-    #         bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
-
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
-        if not os.path.exists(bpy.context.scene.render.filepath):
-            # Try again in 0.1 sec
-            print("wait for render to be ready")
-            return 0.1
-        # if itemType == "ANIMATION":
-        #     bpy.context.scene.gaolib_tool.gaolibNewAnimation = False
-        # elif itemType == "POSE":
-        #     bpy.context.scene.gaolib_tool.gaolibNewPose = False
-        # elif itemType == "SELECTION SET":
-        #     bpy.context.scene.gaolib_tool.gaolibNewSelectionSet = False
-        # elif itemType == "CONSTRAINT SET":
-        #     bpy.context.scene.gaolib_tool.gaolibNewConstraintSet = False
-        # unhide hidden overlay params using context set in create item operators
+        # Chec if render is done before ending
+        lastFrame = bpy.context.scene.render.filepath.replace(
+            ".####.", "." + format(bpy.context.scene.frame_end, "04d") + "."
+        )
+        lastFrameList = []
+        for i in range(bpy.context.scene.frame_step):
+            lastFrameList.append(
+                bpy.context.scene.render.filepath.replace(
+                    ".####.", "." + format(bpy.context.scene.frame_end + i, "04d") + "."
+                )
+            )
+        foundLastFrame = False
+        for lastFramePath in lastFrameList:
+            if os.path.exists(lastFramePath):
+                foundLastFrame = True
+                break
+        if not foundLastFrame:
+            # Try again in 0.5 sec
+            print("Wait for " + lastFrame)
+            return 0.5
+        # Reset overlays
         try:
             with bpy.context.temp_override(
                 area=self.context["area"],
