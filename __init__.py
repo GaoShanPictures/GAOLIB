@@ -80,7 +80,7 @@ dependenciesPySide6 = (
 )
 
 dependencies_installed = False
-dependenciesSet = [dependencies, dependenciesPySide6]
+dependenciesSet = [dependenciesPySide6, dependencies]
 
 
 def import_module(module_name, global_name=None, reload=True):
