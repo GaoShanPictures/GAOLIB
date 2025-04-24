@@ -408,7 +408,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                     not additiveMode
                                     and selectedbone.rotation_euler[axis]
                                     != posebone.rotation_euler[axis]
-                                ) or (additiveMode and posebone.rotation[axis] != 0):
+                                ) or (
+                                    additiveMode and posebone.rotation_euler[axis] != 0
+                                ):
                                     if posebone not in bonesToBlend.keys():
                                         bonesToBlend[posebone] = selectedbone
                                     break
@@ -421,7 +423,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                     bonesToBlend[posebone] = selectedbone
                                 break
                     if rotationMode == "QUATERNION":
-                        if not selectedbone.lock_rotation[0]:
+                        if not selectedbone.lock_rotation_w:
                             if (
                                 not additiveMode
                                 and selectedbone.rotation_quaternion[0]
@@ -432,7 +434,8 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                 if posebone not in bonesToBlend.keys():
                                     bonesToBlend[posebone] = selectedbone
                         for axis in range(3):
-                            if not selectedbone.lock_rotation[axis + 1]:
+
+                            if not selectedbone.lock_rotation[axis]:
                                 if (
                                     not additiveMode
                                     and selectedbone.rotation_quaternion[axis + 1]

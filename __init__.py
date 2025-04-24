@@ -17,8 +17,8 @@
 bl_info = {
     "name": "GAOLIB",
     "author": "Anne Beurard",
-    "version": (2, 0, 0),
-    "blender": (3, 0, 0),
+    "version": (3, 0, 0),
+    "blender": (4, 0, 0),
     "location": "View 3D",
     "warning": "Requires installation of dependencies",
     "description": "Animation and Pose library tool for Blender.",
@@ -332,7 +332,6 @@ class BlenderGaoLibAppTimed(bpy.types.Operator):
         except ModuleNotFoundError:
             from PySide6 import QtWidgets
 
-        print("Init BlenderGaoLibAppTimed")
         if QtWidgets.QApplication.instance():
             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
         self._app = QtWidgets.QApplication(sys.argv)
@@ -410,6 +409,8 @@ class OT_gaolib(bpy.types.Operator):
             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
         else:
             run_timed_modal_gaolib_operator()
+
+        bpy.ops.development.get_blender_context()
         return {"FINISHED"}
 
     @classmethod
@@ -437,200 +438,6 @@ class OT_ShowOverlayParams(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class OT_CreateSelectionSet(bpy.types.Operator):
-    """Create a Json file with the selection set informations and render"""
-
-    bl_idname = "development.create_selection_set"
-    bl_label = "Create Selection Set"
-
-    def execute(self, context):
-        from .gaolib.model.blenderutils import ShowMessageBox
-
-        # Get current context to pass it to Gaolib
-        bpy.ops.development.get_blender_context()
-
-        # Make sure this tool is used after a 'New Selection Set' action in the GAOLIB window
-        if not bpy.context.scene.gaolib_tool.gaolibNewSelectionSet:
-            ShowMessageBox(
-                "This tool can ONLY be used with GAOLIB after creating a new Selection Set. (Camera Button)",
-                "ABORT",
-            )
-            return {"CANCELLED"}
-
-        # Check if selected object is in pose mode
-        if bpy.context.object.mode != "POSE":
-            ShowMessageBox("PLEASE, SET POSE MODE.", "ABORT")
-            return {"CANCELLED"}
-
-        # Get Name of selection
-        selectedObjects = []
-        for o in bpy.context.selected_objects:
-            selectedObjects.append(o.name)
-        if len(selectedObjects) != 1:
-            ShowMessageBox("PLEASE, SELECT EXACTLY ONE OBJECT.", "ABORT")
-            return {"CANCELLED"}
-        # Count bones
-        if not len(bpy.context.selected_pose_bones):
-            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", "ABORT")
-            return {"CANCELLED"}
-        data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
-            "objects": selectedObjects,
-        }
-        # Write Json file
-        jsonFile = os.path.join(
-            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
-        )
-        with open(jsonFile, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
-
-        # hide some overlays before rendering
-        space = bpy.context.space_data
-        overlayHide = ["show_axis_x", "show_axis_y", "show_floor"]
-        overlayHidden = []
-        for toHide in overlayHide:
-            isVisible = eval("space.overlay." + toHide)
-            if isVisible:
-                exec("space.overlay." + toHide + " = False")
-                overlayHidden.append(toHide)
-        # Render
-        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
-
-        return {"FINISHED"}
-
-
-class OT_CreateConstraintSet(bpy.types.Operator):
-    """Create a Json file with the constraint set informations and render"""
-
-    bl_idname = "development.create_constraint_set"
-    bl_label = "Create Constraint Set"
-
-    def execute(self, context):
-        from .gaolib.model.blenderutils import (
-            ShowMessageBox,
-            getConstraintsForSelection,
-        )
-
-        # Get current context to pass it to Gaolib
-        bpy.ops.development.get_blender_context()
-
-        # Make sure this tool is used after a 'New Constraint Set' action in the GAOLIB window
-        if not bpy.context.scene.gaolib_tool.gaolibNewConstraintSet:
-            ShowMessageBox(
-                "This tool can ONLY be used with GAOLIB after creating a new Constraint Set. (Camera Button)",
-                "ABORT",
-            )
-            return {"CANCELLED"}
-
-        # Check if selected object is in pose mode
-        if bpy.context.object.mode != "POSE":
-            ShowMessageBox("PLEASE, SET POSE MODE.", "ABORT")
-            return {"CANCELLED"}
-
-        # Get Name of selection
-        selectedObjects = []
-        for o in bpy.context.selected_objects:
-            selectedObjects.append(o.name)
-        if len(selectedObjects) == 0:
-            ShowMessageBox("PLEASE, SELECT AT LEAST ONE OBJECT.", "ABORT")
-            return {"CANCELLED"}
-        # Count bones
-        if not len(bpy.context.selected_pose_bones):
-            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", "ABORT")
-            return {"CANCELLED"}
-        boneDict = {}
-        for objName in selectedObjects:
-            obj = bpy.data.objects.get(objName)
-            if obj.pose:
-                for bone in bpy.context.selected_pose_bones:
-                    for objBone in obj.pose.bones:
-                        if bone == objBone:
-                            if not obj.name in boneDict.keys():
-                                boneDict[obj.name] = []
-                            boneDict[obj.name].append(bone.name)
-                            break
-
-        data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneDict": boneDict,
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
-            "objects": selectedObjects,
-        }
-        constraintData = getConstraintsForSelection()
-        if not constraintData:
-            return {"CANCELLED"}
-        data["constraintData"] = constraintData
-        # Write Json file
-        jsonFile = os.path.join(
-            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
-        )
-        with open(jsonFile, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
-        # Render
-        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
-
-        return {"FINISHED"}
-
-
-class OT_CreatePose(bpy.types.Operator):
-    """Create a Json file with the pose informations and render"""
-
-    bl_idname = "development.create_pose"
-    bl_label = "Create Pose"
-
-    def execute(self, context):
-        from .gaolib.model.blenderutils import ShowMessageBox
-
-        # Get current context to pass it to Gaolib
-        bpy.ops.development.get_blender_context()
-        contextCopy = context.copy()
-
-        # Make sure this tool is used after a 'New Pose' action in the GAOLIB window
-        if not bpy.context.scene.gaolib_tool.gaolibNewPose:
-            ShowMessageBox(
-                "This tool can ONLY be used with GAOLIB after creating a new Pose. (Camera Button)",
-                "ABORT",
-            )
-            return {"CANCELLED"}
-
-        # Check if selected object is in pose mode
-        if bpy.context.object.mode != "POSE":
-            ShowMessageBox("PLEASE, SET POSE MODE.", "ABORT")
-            return {"CANCELLED"}
-
-        # Get Name of selection
-        selectedObjects = []
-        for o in bpy.context.selected_objects:
-            selectedObjects.append(o.name)
-        if len(selectedObjects) != 1:
-            ShowMessageBox("PLEASE, SELECT EXACTLY ONE OBJECT.", "ABORT")
-            return {"CANCELLED"}
-        # Count bones
-        if not len(bpy.context.selected_pose_bones):
-            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", "ABORT")
-            return {"CANCELLED"}
-        data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
-            "objects": selectedObjects,
-        }
-        # Write Json file
-        jsonFile = os.path.join(
-            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
-        )
-        with open(jsonFile, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
-        # Copy selection
-        bpy.ops.pose.copy()
-        # hide some overlays before rendering
-        space = bpy.context.space_data
-        space.overlay.show_overlays = False
-        # Render
-        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
-        return {"FINISHED"}
-
-
 class OT_GetBlenderContext(bpy.types.Operator):
     """Set context attribute to GAOLIB"""
 
@@ -655,139 +462,6 @@ class OT_GetBlenderContext(bpy.types.Operator):
         if not gaolib:
             return {"CANCELLED"}
         gaolib.context = context.copy()
-        return {"FINISHED"}
-
-
-class OT_CreateAnimation(bpy.types.Operator):
-    """Create a Json file with the animation informations and render"""
-
-    bl_idname = "development.create_animation"
-    bl_label = "Create Animation"
-
-    def execute(self, context):
-        from .gaolib.model.blenderutils import ShowMessageBox
-
-        # Get current context to pass it to Gaolib
-        bpy.ops.development.get_blender_context()
-
-        # Make sure this tool is used after a 'New Animation' action in the GAOLIB window
-        if not bpy.context.scene.gaolib_tool.gaolibNewAnimation:
-            print(
-                "This tool can ONLY be used with GAOLIB after creating a new Animation. (Camera Button)"
-            )
-            ShowMessageBox(
-                "This tool can ONLY be used with GAOLIB after creating a new Animation. (Camera Button)",
-                "ABORT",
-            )
-            return {"CANCELLED"}
-
-        # Check if selected object is in pose mode
-        if bpy.context.object.mode != "POSE":
-            print("PLEASE, SET POSE MODE.")
-            ShowMessageBox("PLEASE, SET POSE MODE.", "ABORT")
-            return {"CANCELLED"}
-
-        frameIn = bpy.context.scene.frame_start
-        frameOut = bpy.context.scene.frame_end
-        # Get Name of selection
-        selectedObjects = []
-        for o in bpy.context.selected_objects:
-            selectedObjects.append(o.name)
-        if len(selectedObjects) != 1:
-            print("PLEASE, SELECT EXACTLY ONE OBJECT.")
-            ShowMessageBox("PLEASE, SELECT EXACTLY ONE OBJECT.", "ABORT")
-            return {"CANCELLED"}
-        # Count bones
-        if not len(bpy.context.selected_pose_bones):
-            ShowMessageBox("PLEASE, SELECT AT LEAST ONE BONE.", "ABORT")
-            return {"CANCELLED"}
-        data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
-            "objects": selectedObjects,
-        }
-        jsonFile = os.path.join(
-            os.path.dirname(os.path.dirname(bpy.context.scene.render.filepath)),
-            "temp.json",
-        )
-        with open(jsonFile, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
-        print("Copy animation")
-        # Copy Animation
-        currentObject = bpy.context.selected_objects[0]
-        try:
-            currentAction = currentObject.animation_data.action
-        except:
-            print("FOUND NO ACTION ON SELECTED OBJECT.")
-            ShowMessageBox("FOUND NO ACTION ON SELECTED OBJECT.", "ABORT")
-            return {"CANCELLED"}
-        newAction = currentAction.copy()
-        newAction.name = "Animation"
-        currentObject.animation_data.action = None
-        currentObject.animation_data.action = newAction
-        # key first frame
-        print("Key first frame for selected bones")
-        bpy.context.scene.frame_set(frameIn)
-        for bone in bpy.context.selected_pose_bones:
-            bone.keyframe_insert(data_path="rotation_mode", frame=frameIn)
-            for axis in range(3):
-                if not bone.lock_location[axis]:
-                    bone.keyframe_insert(
-                        data_path="location", index=axis, frame=frameIn
-                    )
-                if not bone.lock_rotation[axis]:
-                    bone.keyframe_insert(
-                        data_path="rotation_euler", index=axis, frame=frameIn
-                    )
-                if not bone.lock_scale[axis]:
-                    bone.keyframe_insert(data_path="scale", index=axis, frame=frameIn)
-            for key in bone.keys():
-                try:
-                    bone.keyframe_insert(data_path='["' + key + '"]', frame=frameIn)
-                except Exception as e:
-                    pass
-        if bpy.context.scene.gaolib_tool.gaolibKeyLastFrame:
-            print("Key last frame for selected bones")
-            bpy.context.scene.frame_set(frameOut)
-            for bone in bpy.context.selected_pose_bones:
-                bone.keyframe_insert(data_path="rotation_mode", frame=frameOut)
-                for axis in range(3):
-                    if not bone.lock_location[axis]:
-                        bone.keyframe_insert(
-                            data_path="location", index=axis, frame=frameOut
-                        )
-                    if not bone.lock_rotation[axis]:
-                        bone.keyframe_insert(
-                            data_path="rotation_euler", index=axis, frame=frameOut
-                        )
-                    if not bone.lock_scale[axis]:
-                        bone.keyframe_insert(
-                            data_path="scale", index=axis, frame=frameOut
-                        )
-                for key in bone.keys():
-                    try:
-                        bone.keyframe_insert(
-                            data_path='["' + key + '"]', frame=frameOut
-                        )
-                    except Exception as e:
-                        pass
-
-        # Create animation.blend file
-        print("Create animation.blend file")
-        animDir = bpy.context.preferences.filepaths.temporary_directory
-        filename = "animation.blend"
-        filepath = os.path.join(animDir, filename)
-        bpy.data.libraries.write(filepath, set([newAction]))
-        # hide some overlays before rendering
-        space = bpy.context.space_data
-        space.overlay.show_overlays = False
-        # Render
-        print("Render animation")
-        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
-        # Delete temp action
-        currentObject.animation_data.action = currentAction
-        bpy.data.actions.remove(newAction)
-
         return {"FINISHED"}
 
 
@@ -823,18 +497,7 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
         col4 = self.layout.column(align=True)
         col4.operator("development.gaolib_operator", text="GAOLIB", icon="EVENT_G")
         col4.operator(
-            "development.create_selection_set",
-            text="Create Selection Set",
-            icon="GROUP_BONE",
-        )
-        col4.operator("development.create_pose", text="Create Pose", icon="POSE_HLT")
-        col4.operator(
-            "development.create_animation", text="Create Animation", icon="ANIM"
-        )
-        col4.operator(
-            "development.create_constraint_set",
-            text="Create Constraint Set",
-            icon="CONSTRAINT_BONE",
+            "development.get_blender_context", text="Get Context", icon="WINDOW"
         )
         col4.operator(
             "development.show_overlay_params",
@@ -848,11 +511,7 @@ class VIEW3D_PT_Gaolib(bpy.types.Panel):
 
 classes = [
     OT_gaolib,
-    OT_CreatePose,
-    OT_CreateSelectionSet,
-    OT_CreateConstraintSet,
     OT_ShowOverlayParams,
-    OT_CreateAnimation,
     OT_GetBlenderContext,
     GaolibCustomProperties,
     VIEW3D_PT_Gaolib,
