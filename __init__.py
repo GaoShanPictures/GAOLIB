@@ -314,83 +314,108 @@ preference_classes = (
 # ---------------------------------- GAOLIB APP -----------------------------------------
 
 
-class BlenderGaoLibAppTimed(bpy.types.Operator):
-    """Run a Qt app inside of Blender, without blocking Blender."""
+# class BlenderGaoLibAppTimed(bpy.types.Operator):
+#     """Run a Qt app inside of Blender, without blocking Blender."""
 
-    bl_idname = "wm.run_gaolib_app_timed"
-    bl_label = "Run Gaolib app"
+#     bl_idname = "wm.run_gaolib_app_timed"
+#     bl_label = "Run Gaolib app"
 
-    _app = None
-    _window = None
-    _timer = None
-    _counter = 0
+#     _app = None
+#     _window = None
+#     _timer = None
+#     _counter = 0
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         try:
+#             from PySide2 import QtWidgets
+#         except ModuleNotFoundError:
+#             from PySide6 import QtWidgets
 
-        if QtWidgets.QApplication.instance():
-            QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
-        self._app = QtWidgets.QApplication(sys.argv)
+#         if QtWidgets.QApplication.instance():
+#             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
+#         self._app = QtWidgets.QApplication(sys.argv)
 
-    def modal(self, context, event):
-        """Run modal."""
-        if event.type == "TIMER":
-            try:
-                if self._window and not self._window.isVisible():
-                    self.cancel(context)
-                    return {"FINISHED"}
-            except RuntimeError as e:
-                # Gaolib already closed
-                return {"FINISHED"}
-            # self._app.processEvents()
-            self._counter += 1
-        return {"PASS_THROUGH"}
+#     def modal(self, context, event):
+#         """Run modal."""
+#         if event.type == "TIMER":
+#             try:
+#                 if self._window and not self._window.isVisible():
+#                     self.cancel(context)
+#                     return {"FINISHED"}
+#             except RuntimeError as e:
+#                 # Gaolib already closed
+#                 return {"FINISHED"}
+#             # self._app.processEvents()
+#             self._counter += 1
+#         return {"PASS_THROUGH"}
 
-    def execute(self, context):
-        """Process the event loop of the Qt app."""
-        from .gaolib.gaolibsub import GaoLib
+#     def execute(self, context):
+#         """Process the event loop of the Qt app."""
+#         from .gaolib.gaolibsub import GaoLib
 
-        self._window = GaoLib()
+#         self._window = GaoLib()
 
-        self._window.show()
-        wm = context.window_manager
-        # Run every 0.01 seconds
-        self._timer = wm.event_timer_add(0.01, window=context.window)
-        wm.modal_handler_add(self)
+#         self._window.show()
+#         wm = context.window_manager
+#         # Run every 0.01 seconds
+#         self._timer = wm.event_timer_add(0.01, window=context.window)
+#         wm.modal_handler_add(self)
 
-        return {"RUNNING_MODAL"}
+#         return {"RUNNING_MODAL"}
 
-    def cancel(self, context):
-        """Remove event timer when stopping the operator."""
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
+#     def cancel(self, context):
+#         """Remove event timer when stopping the operator."""
+#         try:
+#             from PySide2 import QtWidgets
+#         except ModuleNotFoundError:
+#             from PySide6 import QtWidgets
 
-        self._window.close()
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
-        # self._app.shutdown()
-        QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
+#         self._window.close()
+#         wm = context.window_manager
+#         wm.event_timer_remove(self._timer)
+#         # self._app.shutdown()
+#         QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
 
-    @classmethod
-    def poll(cls, context):
-        return context.space_data is not None
+#     @classmethod
+#     def poll(cls, context):
+#         return context.space_data is not None
 
 
-def run_timed_modal_gaolib_operator():
-    """Run the app with help of a timed modal operator."""
-    try:
-        bpy.utils.register_class(BlenderGaoLibAppTimed)
-    except ValueError:
-        print("BlenderGaoLibAppTimed class already registered")
-    # Launch immediately. You can also launch it manually by running this
-    # command the Blender Python console.
-    bpy.ops.wm.run_gaolib_app_timed()
+# def run_timed_modal_gaolib_operator():
+#     """Run the app with help of a timed modal operator."""
+#     try:
+#         bpy.utils.register_class(BlenderGaoLibAppTimed)
+#     except ValueError:
+#         print("BlenderGaoLibAppTimed class already registered")
+#     # Launch immediately. You can also launch it manually by running this
+#     # command the Blender Python console.
+#     bpy.ops.wm.run_gaolib_app_timed()
+
+
+# class OT_gaolibBACKUP(bpy.types.Operator):
+#     """GAOLIB TOOL"""
+
+#     bl_idname = "development.gaolib_operator"
+#     bl_label = "GaoLib"
+
+#     def execute(self, context):
+#         try:
+#             from PySide2 import QtWidgets
+#         except ModuleNotFoundError:
+#             from PySide6 import QtWidgets
+
+#         if QtWidgets.QApplication.instance():
+#             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
+#         else:
+#             run_timed_modal_gaolib_operator()
+
+#         bpy.ops.development.get_blender_context()
+#         return {"FINISHED"}
+
+#     @classmethod
+#     def poll(cls, context):
+#         return context.space_data is not None
 
 
 class OT_gaolib(bpy.types.Operator):
@@ -399,19 +424,54 @@ class OT_gaolib(bpy.types.Operator):
     bl_idname = "development.gaolib_operator"
     bl_label = "GaoLib"
 
+    _app = None
+    _widget = None
+    _timer: bpy.types.Timer = None
+
+    def modal(self, context, event):
+        # Finish running operator if window is closed
+        if not self._widget.isVisible():
+            context.window_manager.event_timer_remove(self._timer)
+            return {"FINISHED"}
+        else:
+            # Procecess any events
+            self._app.processEvents()
+        return {"PASS_THROUGH"}
+
     def execute(self, context):
         try:
             from PySide2 import QtWidgets
         except ModuleNotFoundError:
             from PySide6 import QtWidgets
+        from .gaolib.gaolibsub import GaoLib
 
-        if QtWidgets.QApplication.instance():
-            QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
-        else:
-            run_timed_modal_gaolib_operator()
+        print("Linux compatible ?")
+        # Create instance of app if it exists (allows for multiple windows)
+        self._app = QtWidgets.QApplication.instance()
+        # if self._app:
+        #     QtWidgets.QApplication.shutdown(self._app)
+        #     return {"FINISHED"}
+        if not self._app:
+            self._app = QtWidgets.QApplication()
 
+        # Show QT Widget
+        self._widget = GaoLib()
+        self._widget.show()
+
+        # Timer controls when modal() function is called
+        wm = context.window_manager
+        self._timer = wm.event_timer_add(0.05, window=context.window)
+        wm.modal_handler_add(self)
+        # Get current context
         bpy.ops.development.get_blender_context()
-        return {"FINISHED"}
+        return {"RUNNING_MODAL"}
+
+    def cancel(self, context):
+        """Remove event timer when stopping the operator."""
+        self._widget.close()
+        wm = context.window_manager
+        wm.event_timer_remove(self._timer)
+        QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
 
     @classmethod
     def poll(cls, context):
