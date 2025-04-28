@@ -428,14 +428,29 @@ class OT_gaolib(bpy.types.Operator):
     _widget = None
     _timer: bpy.types.Timer = None
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
+
+        if QtWidgets.QApplication.instance():
+            QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
+        self._app = QtWidgets.QApplication(sys.argv)
+
     def modal(self, context, event):
         # Finish running operator if window is closed
-        if not self._widget.isVisible():
+        try:
+            if not self._widget.isVisible():
+                context.window_manager.event_timer_remove(self._timer)
+                return {"FINISHED"}
+        except RuntimeError:
+            # widget already deleted
             context.window_manager.event_timer_remove(self._timer)
             return {"FINISHED"}
-        else:
-            # Procecess any events
-            self._app.processEvents()
+        # Procecess any events
+        self._app.processEvents()
         return {"PASS_THROUGH"}
 
     def execute(self, context):
@@ -445,19 +460,10 @@ class OT_gaolib(bpy.types.Operator):
             from PySide6 import QtWidgets
         from .gaolib.gaolibsub import GaoLib
 
-        print("Linux compatible ?")
-        # Create instance of app if it exists (allows for multiple windows)
-        self._app = QtWidgets.QApplication.instance()
-        # if self._app:
-        #     QtWidgets.QApplication.shutdown(self._app)
-        #     return {"FINISHED"}
-        if not self._app:
-            self._app = QtWidgets.QApplication()
-
+        print("Linux compatible ??")
         # Show QT Widget
         self._widget = GaoLib()
         self._widget.show()
-
         # Timer controls when modal() function is called
         wm = context.window_manager
         self._timer = wm.event_timer_add(0.05, window=context.window)
@@ -468,6 +474,11 @@ class OT_gaolib(bpy.types.Operator):
 
     def cancel(self, context):
         """Remove event timer when stopping the operator."""
+        try:
+            from PySide2 import QtWidgets
+        except ModuleNotFoundError:
+            from PySide6 import QtWidgets
+
         self._widget.close()
         wm = context.window_manager
         wm.event_timer_remove(self._timer)
