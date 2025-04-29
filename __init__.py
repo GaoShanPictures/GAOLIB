@@ -460,7 +460,6 @@ class OT_gaolib(bpy.types.Operator):
             from PySide6 import QtWidgets
         from .gaolib.gaolibsub import GaoLib
 
-        print("Linux compatible ??")
         # Show QT Widget
         self._widget = GaoLib()
         self._widget.show()

@@ -464,18 +464,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 expandedIndexes.append(mappedIdx)
         return expandedIndexes
 
-    def updateTreeFilter(self):
-        """Update QSortFilterProxyModel for tree View"""
-        self.treeItemProxyModel = TreeItemFilterProxyModel()
-        self.treeItemProxyModel.setSourceModel(self.treeModel)
-        self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
-
-        self.hierarchyTreeView.setModel(self.treeItemProxyModel)
-        self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
-        self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
-        self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
-        self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
-
     def cleanTempFolder(self):
         if os.path.exists(self.jsonTempPath):
             os.remove(self.jsonTempPath)
@@ -776,12 +764,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 title="Abort action",
             )
             return
-        tempDir = os.path.join(
-            bpy.context.preferences.filepaths.temporary_directory, "temp"
-        )
-        # create temp dir is does not exist
-        if not os.path.isdir(tempDir):
-            os.makedirs(tempDir)
         # Check area (VIEW_3D exists)
         foundSpace = False
         for screen in bpy.data.screens:
@@ -1418,6 +1400,19 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.proxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
         self.listView.doubleClicked.connect(self.itemDoubleClick)
 
+    def updateTreeFilter(self):
+        """Update QSortFilterProxyModel for tree View"""
+        print("call update tree filter")
+        self.treeItemProxyModel = TreeItemFilterProxyModel()
+        self.treeItemProxyModel.setSourceModel(self.treeModel)
+        self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
+
+        self.hierarchyTreeView.setModel(self.treeItemProxyModel)
+        self.treeSelectionModel = self.hierarchyTreeView.selectionModel()
+        self.treeSelectionModel.selectionChanged.connect(self.folderSelected)
+        self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
+        self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
     def setTreeView(self):
         """Set Tree model and connect it to UI"""
         self.readConfig()
@@ -1472,21 +1467,37 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.hierarchyTreeView.expandToDepth(-1)
         else:
             self.hierarchyTreeView.collapseAll()
-        # Set case sensitivity to insensitive
-        regExp = QtCore.QRegExp(str(filterText))
-        regExp.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self.treeItemProxyModel.text = filterText
-        self.treeItemProxyModel.setFilterRegExp(regExp)
-        self.treeItemProxyModel.setFilterKeyColumn(1)
+
+        if USE_PYSIDE6:
+            regExp = QtCore.QRegularExpression(
+                str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
+            )
+            self.treeItemProxyModel.text = filterText
+            self.treeItemProxyModel.setFilterRegularExpression(regExp)
+            self.hierarchyTreeView.expandAll()
+        else:
+            regExp = QtCore.QRegExp(str(filterText))
+            # Set case sensitivity to insensitive
+            regExp.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+            self.treeItemProxyModel.text = filterText
+            self.treeItemProxyModel.setFilterRegExp(regExp)
+            self.treeItemProxyModel.setFilterKeyColumn(1)
 
     @QtCore.Slot()
     def filterList(self):
         """Manage text filter research for ListView"""
         filterText = self.searchEdit.text()
-        regExp = QtCore.QRegExp(str(filterText))
-        regExp.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-        self.proxyModel.setFilterRegExp(regExp)
-        self.proxyModel.setFilterKeyColumn(1)
+        if USE_PYSIDE6:
+            regExp = QtCore.QRegularExpression(
+                str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
+            )
+            self.proxyModel.setFilterRegularExpression(regExp)
+        else:
+            regExp = QtCore.QRegExp(str(filterText))
+            # Set case sensitivity to insensitive
+            regExp.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+            self.proxyModel.setFilterRegExp(regExp)
+            self.proxyModel.setFilterKeyColumn(1)
 
 
 if __name__ == "__main__":
