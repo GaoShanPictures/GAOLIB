@@ -1009,6 +1009,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.jsonTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory, "temp", "temp.json"
         )
+        if not os.path.isdir(os.path.dirname(self.jsonTempPath)):
+            os.makedirs(os.path.dirname(self.jsonTempPath))
         # PRE RENDER SETTINGS
         if itemType == "ANIMATION":
             self.createPosewidget.movie = None
@@ -1402,7 +1404,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def updateTreeFilter(self):
         """Update QSortFilterProxyModel for tree View"""
-        print("call update tree filter")
         self.treeItemProxyModel = TreeItemFilterProxyModel()
         self.treeItemProxyModel.setSourceModel(self.treeModel)
         self.treeItemProxyModel.setSortRole(QtCore.Qt.DisplayRole)
