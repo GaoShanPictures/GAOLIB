@@ -776,6 +776,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 title="Abort action",
             )
             return
+        tempDir = os.path.join(
+            bpy.context.preferences.filepaths.temporary_directory, "temp"
+        )
+        # create temp dir is does not exist
+        if not os.path.isdir(tempDir):
+            os.makedirs(tempDir)
         # Check area (VIEW_3D exists)
         foundSpace = False
         for screen in bpy.data.screens:
