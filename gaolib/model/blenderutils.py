@@ -537,6 +537,14 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         if selectedObject.animation_data is None:
             selectedObject.animation_data_create()
         selectedObject.animation_data.action = action
+
+        if hasattr(action, "slots"):  # manage slots or blender 4.4
+            suitable_slots = selectedObject.animation_data.action_suitable_slots
+            if suitable_slots:
+                selectedObject.animation_data.action_slot = suitable_slots[0]
+            else:
+                slot = action.slots.new(id_type="OBJECT", name=selectedObject.name)
+                selectedObject.animation_data.action_slot = slot
         ShowDialog("Quick Paste Action done !")
 
     else:
@@ -612,7 +620,11 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                             count_op += 1
                         except TypeError:
                             index = -1
-                            cmd = "selectedObject." + data_path + " = " + str(value)
+                            valueType = eval(
+                                f"selectedObject.{data_path}.__class__.__name__"
+                            )
+                            typedValue = eval(f"{valueType}({value})")
+                            cmd = f"selectedObject.{data_path} = {typedValue}"
                             if not "rotation_mode" in data_path:
                                 exec(cmd)
                                 count_op += 1

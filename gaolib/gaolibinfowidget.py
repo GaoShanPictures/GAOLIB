@@ -408,7 +408,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                                     not additiveMode
                                     and selectedbone.rotation_euler[axis]
                                     != posebone.rotation_euler[axis]
-                                ) or (additiveMode and posebone.rotation[axis] != 0):
+                                ) or (
+                                    additiveMode and posebone.rotation_euler[axis] != 0
+                                ):
                                     if posebone not in bonesToBlend.keys():
                                         bonesToBlend[posebone] = selectedbone
                                     break
@@ -1062,6 +1064,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.label_4.setVisible(False)
             self.selectBonesPushButton.setVisible(False)
         if self.item.itemType == "ANIMATION":
+            self.optionsGroupBox.setVisible(True)
             self.label_5.setVisible(True)
             self.frameRangeLabel.setVisible(True)
             self.animOptionsWidget.setVisible(True)

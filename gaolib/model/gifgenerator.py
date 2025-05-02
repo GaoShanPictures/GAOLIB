@@ -31,6 +31,7 @@ def generateGif(sequence, fps=25):
         images.append(imageio.imread(os.path.join(sequence, filename)))
         nbFrames += 1
     gifFile = os.path.join(os.path.dirname(sequence), "thumbnail.gif")
-    print("Generate GIF from path : " + str(sequence) + " duration : " + str(1.0 / fps))
-    imageio.mimsave(gifFile, images, duration=1.0 / fps, loop=0)
+    print("Generate GIF from path : " + str(sequence) + " fps : " + str(fps))
+    # imageio.mimsave(gifFile, images, duration=1.0 / fps, loop=0)
+    imageio.mimsave(gifFile, images, fps=fps, loop=0)
     return gifFile
