@@ -25,7 +25,7 @@ import imageio
 def generateGif(sequence, fps=25):
     """Generate a gif file from the given image sequence"""
     images = []
-    filenames = os.listdir(sequence)
+    filenames = sorted(os.listdir(sequence))
     nbFrames = 0
     for filename in filenames:
         images.append(imageio.imread(os.path.join(sequence, filename)))
