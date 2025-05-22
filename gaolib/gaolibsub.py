@@ -514,6 +514,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.createPosewidget.toRangeSpinBox.setProperty(
             "value", bpy.context.scene.frame_end
         )
+        try:
+            selectedObjs = utils.getSelectedObjects()
+            if len(selectedObjs):
+                selectedObj = selectedObjs[0]
+                if selectedObj.animation_data and selectedObj.animation_data.action:
+                    self.createPosewidget.nameLineEdit.setText(
+                        selectedObj.animation_data.action.name.replace(".", "_")
+                    )
+        except Exception as e:
+            print("Automatic name setting failed : " + str(e))
 
     def createItemSetUI(self, itemType):
         """Prepare UI to Create new pose item"""

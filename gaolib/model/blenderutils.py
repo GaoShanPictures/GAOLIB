@@ -508,9 +508,12 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         ShowDialog("APPEND ACTION WENT WRONG.", title="Abort action")
         return
     # PASTE action
+    actionName = os.path.basename(animDir).split(".")[0]  # + "_ACTION"
+    if "action" not in actionName.lower():
+        actionName = actionName + "Action"
     if quickPaste:
         # Paste entire action in new action
-        action.name = os.path.basename(animDir).split(".")[0] + "_ACTION"
+        action.name = actionName
         if selectedObject.animation_data is None:
             selectedObject.animation_data_create()
         selectedObject.animation_data.action = action
@@ -522,8 +525,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             else:
                 slot = action.slots.new(id_type="OBJECT", name=selectedObject.name)
                 selectedObject.animation_data.action_slot = slot
-        ShowDialog("Quick Paste Action done !")
-
+        infoWidget.parent.statusBar().showMessage("Quick Paste Action done !", 1500)
     else:
         # Paste into current action the keyframes corresponding to selected range
         action.name = "TEMP_ACTION"
@@ -553,7 +555,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             selectedObject.animation_data_create()
         # If no action on selected object, create one
         if selectedObject.animation_data.action is None:
-            gaolibAction = bpy.data.actions.new("gaolib_action")
+            gaolibAction = bpy.data.actions.new(actionName)
             selectedObject.animation_data.action = gaolibAction
 
         count_op = 0
@@ -651,7 +653,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                     fc.group = group
         # clean action
         bpy.data.actions.remove(action)
-        ShowDialog("Paste animation done !")
+        infoWidget.parent.statusBar().showMessage("Paste animation done !", 1500)
 
 
 def copyPose(poseDir):
