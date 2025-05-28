@@ -577,7 +577,7 @@ QPlainTextEdit {
          <item>
           <widget class="QCheckBox" name="quickPasteCheckBox">
            <property name="text">
-            <string>Quick Paste Action</string>
+            <string>New Action</string>
            </property>
           </widget>
          </item>

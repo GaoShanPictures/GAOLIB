@@ -1079,7 +1079,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
-        # Chec if render is done before ending
+        # Check if render is done before ending
         lastFrame = bpy.context.scene.render.filepath.replace(
             ".####.", "." + format(bpy.context.scene.frame_end, "04d") + "."
         )
@@ -1114,7 +1114,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 elif itemType == "SELECTION SET":
                     bpy.ops.development.show_overlay_params()
         except Exception as e:
-            print("Could not set the overlay parameters")
+            print("Could not set the overlay parameters : " + str(e))
 
         itemdata = {}
         # Read Json Datas
@@ -1189,6 +1189,31 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
+
+        # Close render window
+        try:
+            override = None
+            for w in bpy.context.window_manager.windows:
+                for area in w.screen.areas:
+                    if area.type == "IMAGE_EDITOR":
+                        for rgn in area.regions:
+                            if rgn.type == "WINDOW":
+                                override = {
+                                    "window": w,
+                                    "screen": w.screen,
+                                    "area": area,
+                                    "region": rgn,
+                                    "workspace": w.workspace,
+                                }
+            if override:
+                with bpy.context.temp_override(
+                    area=override["area"],
+                    region=override["region"],
+                    window=override["window"],
+                ):
+                    bpy.ops.render.view_cancel()
+        except Exception as e:
+            print("Couldn't close redner window : " + str(e))
 
     def resizeEvent(self, event):
         """Manage window resizing"""

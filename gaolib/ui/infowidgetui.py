@@ -553,7 +553,7 @@ class Ui_Form(object):
         self.startFrameComboBox.setItemText(2, _translate("Form", "From source start"))
         self.label_9.setText(_translate("Form", "Source from"))
         self.label_10.setText(_translate("Form", "to"))
-        self.quickPasteCheckBox.setText(_translate("Form", "Quick Paste Action"))
+        self.quickPasteCheckBox.setText(_translate("Form", "New Action"))
         self.flippedCheckBox.setText(_translate("Form", "Flipped on X-Axis"))
         self.additiveModeCheckBox.setText(_translate("Form", "Additive Mode"))
         self.blendPoseLabel.setText(_translate("Form", "Blend Pose 0%"))

@@ -459,7 +459,7 @@ QPlainTextEdit {
       <item>
        <widget class="QCheckBox" name="blendPoseOnWheelCheckBox">
         <property name="text">
-         <string>Use wheel click on POSE items to blend pose</string>
+         <string>Keep wheel pressed and drag mouse on POSE items to blend pose</string>
         </property>
        </widget>
       </item>
