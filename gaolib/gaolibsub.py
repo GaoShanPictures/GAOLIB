@@ -1151,7 +1151,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             thumbpath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
             # Create GIF
             try:
-                thumbpath = generateGif(thumbpath, fps=bpy.context.scene.render.fps)
+                thumbpath = generateGif(
+                    thumbpath,
+                    fps=int(
+                        bpy.context.scene.render.fps / bpy.context.scene.frame_step
+                    ),
+                )
             except Exception as e:
                 print("An error occured during GIF generation : " + str(e))
         else:
@@ -1161,7 +1166,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 movie = QtGui.QMovie(thumbpath, QtCore.QByteArray(), self)
                 movie.frameChanged.connect(self.createPosewidget.updateMovie)
                 movie.setCacheMode(QtGui.QMovie.CacheAll)
-                movie.setSpeed(100)
+                movie.setSpeed(
+                    130
+                )  # movie is 1.2 times slower than gif (120 does not work...)
                 self.createPosewidget.movie = movie
                 movie.start()
                 movie.stop()
@@ -1254,7 +1261,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
         if selectedItem.itemType == "POSE":
-            # self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType, flipped=self.infoWidget.flippedCheckBox.isChecked()))
             self.infoWidget.applyPushButton.released.connect(
                 lambda: self.applyPose(
                     itemType=selectedItem.itemType,

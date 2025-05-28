@@ -191,6 +191,11 @@ def selectBones(jsonPath):
         # Select bones
         for bone in bones:
             if obj.pose.bones.get(bone):
+                if obj.data.bones.get(bone).hide:
+                    obj.data.bones.get(bone).hide = False
+                for collection in obj.data.bones.get(bone).collections:
+                    collection.is_visible = True
+                    break
                 obj.data.bones.get(bone).select = True
             else:
                 print("Not found : " + bone)
@@ -749,11 +754,6 @@ def deleteRefPose(refPose, infoWidget):
 def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=False):
     """Paste pose from library on selected armature object for selected bones"""
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
-    # Remember selection
-    selection = getSelectedBones()
-    # Remember current pose
-    if not currentPose:
-        currentPose = getCurrentPose()
     # get pose selection set
     itemdata = {}
     jsonPath = os.path.join(poseDir, "pose.json")
@@ -763,6 +763,16 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     for key in itemdata["metadata"].keys():
         if key == "boneNames":
             selectionSetBones = itemdata["metadata"]["boneNames"]
+    # Remember selection
+    selection = getSelectedBones()
+    if not len(selection):
+        # If no bone is selected select all
+        print("No selected bones, select all by default")
+        selectBones(jsonPath)
+        selection = getSelectedBones()
+    # Remember current pose
+    if not currentPose:
+        currentPose = getCurrentPose()
     # Append pose object
     refPose = getRefPoseFromLib(poseDir, selection)
     pose = refPose.pose

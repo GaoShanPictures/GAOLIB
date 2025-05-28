@@ -376,6 +376,11 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 selectionSetBones = itemdata["metadata"]["boneNames"]
         # Remember current pose
         selection = utils.getSelectedBones()
+        if not len(selection):
+            # If no bone is selected select all
+            print("No selected bones, select all by default for blending pose")
+            self.selectBones()
+            selection = utils.getSelectedBones()
         if not self.currentPose:
             self.currentPose = utils.getCurrentPose()
         # Append pose object
@@ -1086,7 +1091,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.movie = QtGui.QMovie(self.thumbpath, QtCore.QByteArray(), self)
             self.movie.setScaledSize(QtCore.QSize(200, 200))
             self.movie.setCacheMode(QtGui.QMovie.CacheNone)
-            self.movie.setSpeed(100)
+            self.movie.setSpeed(130)  # movie is 1.2 times slower than gif
             self.thumbnailLabel.setMovie(self.movie)
             self.movie.start()
             self.movie.stop()
