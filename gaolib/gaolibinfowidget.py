@@ -113,6 +113,36 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                             self.constraintInfoWidgets.append(constraintItem)
 
 
+class CustomSliderWidget(QtWidgets.QSlider):
+    def __init__(self, parent=None):
+        super(CustomSliderWidget, self).__init__(parent=parent)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        # manage cancel blending at right click
+        if event.button() == QtCore.Qt.RightButton:
+            self.setValue(0)
+            self.valueChanged.disconnect()
+            self.valueChanged.connect(lambda: self.setValue(0))
+            self.parentInfoWidget.mainWindow.statusBar().showMessage(
+                "Cancel Blending",
+                timeout=5000,
+            )
+
+        super(CustomSliderWidget, self).mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.valueChanged.disconnect()
+            self.valueChanged.connect(
+                lambda: self.parentInfoWidget.blendSliderChanged(
+                    self.parentInfoWidget.item.path,
+                    blend=self.parentInfoWidget.blendPoseSlider.value() / 100,
+                )
+            )
+
+        super(CustomSliderWidget, self).mouseReleaseEvent(event)
+
+
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
     """Manage display of the selected list item informations"""
 
@@ -128,6 +158,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.bonesToBlend = None
         self.toggleAdditive = False
         utils.removeOrphans()
+
+        # recast blendPoseSlider
+        self.blendPoseSlider.__class__ = CustomSliderWidget
+        self.blendPoseSlider.parentInfoWidget = self
 
         # For animation item use gif thumbnail
         self.movie = None
@@ -471,22 +505,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if self.toggleAdditive:
             self.toggleAdditive = False
             return
-        # # get pose selection set
-        # itemdata = {}
-        # jsonPath = os.path.join(poseDir, "pose.json")
-        # with open(jsonPath) as file:
-        #     itemdata = json.load(file)
-        # selectionSetBones = []
-        # for key in itemdata["metadata"].keys():
-        #     if key == "boneNames":
-        #         selectionSetBones = itemdata["metadata"]["boneNames"]
-        # # Remember current pose
-        # selection = utils.getSelectedBones()
-        # if not self.currentPose:
-        #     self.currentPose = utils.getCurrentPose()
-        # # Append pose object
-        # if not self.refPose:
-        #     self.refPose = utils.getRefPoseFromLib(poseDir, selection)
         if not self.bonesToBlend:
             self.bonesToBlend = self.getBonesToBlend(poseDir, additiveMode=additiveMode)
 

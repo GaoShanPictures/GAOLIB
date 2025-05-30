@@ -29,6 +29,7 @@ class GaoCustomListView(QListView):
     def __init__(self, parent=None):
         super(GaoCustomListView, self).__init__(parent)
         self.middle_button_pressed = False
+        self.cancelBlending = False
         self.pressedPositionX = 0
         self.mainWin = parent
         self.currentItemType = None
@@ -49,10 +50,18 @@ class GaoCustomListView(QListView):
             )
 
     def mousePressEvent(self, event: QtGui.QMouseEvent):
-        super(GaoCustomListView, self).mousePressEvent(event)
+        # prevent right click from selecting an item
+        if (
+            event.button() == QtCore.Qt.LeftButton
+            or event.button() == QtCore.Qt.MiddleButton
+        ):
+            super(GaoCustomListView, self).mousePressEvent(event)
+        # get mouve position
         eventPosition, eventX, eventY = self.getEventPosition(event)
+        # manage blending
         if self.mainWin.useWheelToBlendPose:
             if event.button() == QtCore.Qt.MiddleButton:
+                # begin blending for POSE item
                 index = self.indexAt(eventPosition)
                 if index.isValid():
                     self.middle_button_pressed = True
@@ -66,8 +75,16 @@ class GaoCustomListView(QListView):
                         self.blendValue = (
                             self.mainWin.infoWidget.blendPoseSlider.value()
                         )
-                        # self.mainWin.infoWidget.selectBones()
-        # super(GaoCustomListView, self).mousePressEvent(event)
+            if event.button() == QtCore.Qt.RightButton:
+                # Cancel blending for POSE item
+                if self.currentItemType == "POSE":
+                    self.cancelBlending = True
+                    self.mainWin.infoWidget.blendPoseSlider.setValue(0)
+                    self.blendValue = 0
+                    self.mainWin.statusBar().showMessage(
+                        "Cancel Blending",
+                        timeout=5000,
+                    )
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent):
         if self.mainWin.useDoubleClickToApplyPose:
@@ -94,7 +111,7 @@ class GaoCustomListView(QListView):
     def mouseMoveEvent(self, event: QtGui.QMouseEvent):
         if self.mainWin.useWheelToBlendPose:
             if self.currentItemType == "POSE":
-                if self.middle_button_pressed:
+                if self.middle_button_pressed and not self.cancelBlending:
                     eventPosition, eventX, eventY = self.getEventPosition(event)
                     self.current_pos = eventPosition
                     if (eventX - self.pressedPositionX) / 2 + self.blendValue < 0:
@@ -107,7 +124,6 @@ class GaoCustomListView(QListView):
                         )
                     if self.mainWin.infoWidget.blendPoseSlider.value() != newBlendValue:
                         self.mainWin.infoWidget.blendPoseSlider.setValue(newBlendValue)
-                    # print(newBlendValue)
                     self.mainWin.statusBar().showMessage(
                         "Blend pose to " + str(newBlendValue) + "%", timeout=5000
                     )
@@ -115,6 +131,9 @@ class GaoCustomListView(QListView):
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         if self.mainWin.useWheelToBlendPose:
+            if event.button() == QtCore.Qt.RightButton:
+                # prevent selection of other item if right click for cancelling blending
+                return
             if self.currentItemType == "POSE":
                 if (
                     event.button() == QtCore.Qt.MiddleButton
@@ -122,6 +141,7 @@ class GaoCustomListView(QListView):
                 ):
                     eventPosition, eventX, eventY = self.getEventPosition(event)
                     self.middle_button_pressed = False
+                    self.cancelBlending = False
                     self.end_pos = eventPosition
                     blendValue = self.mainWin.infoWidget.blendPoseSlider.value()
                     if blendValue > 0:
@@ -133,4 +153,6 @@ class GaoCustomListView(QListView):
                         self.mainWin.statusBar().showMessage(
                             "Applied pose to " + str(blendValue) + "%", timeout=5000
                         )
+                    return
+
         super(GaoCustomListView, self).mouseReleaseEvent(event)
