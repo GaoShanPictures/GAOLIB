@@ -1109,7 +1109,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.movie = QtGui.QMovie(self.thumbpath, QtCore.QByteArray(), self)
             self.movie.setScaledSize(QtCore.QSize(200, 200))
             self.movie.setCacheMode(QtGui.QMovie.CacheNone)
-            self.movie.setSpeed(130)  # movie is 1.2 times slower than gif
+            self.movie.setSpeed(100)
             self.thumbnailLabel.setMovie(self.movie)
             self.movie.start()
             self.movie.stop()

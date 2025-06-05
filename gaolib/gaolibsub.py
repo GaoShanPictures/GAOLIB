@@ -1166,9 +1166,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 movie = QtGui.QMovie(thumbpath, QtCore.QByteArray(), self)
                 movie.frameChanged.connect(self.createPosewidget.updateMovie)
                 movie.setCacheMode(QtGui.QMovie.CacheAll)
-                movie.setSpeed(
-                    130
-                )  # movie is 1.2 times slower than gif (120 does not work...)
+                movie.setSpeed(100)
                 self.createPosewidget.movie = movie
                 movie.start()
                 movie.stop()
