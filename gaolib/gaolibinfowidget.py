@@ -127,7 +127,6 @@ class CustomSliderWidget(QtWidgets.QSlider):
                 "Cancel Blending",
                 timeout=5000,
             )
-
         super(CustomSliderWidget, self).mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
@@ -1043,24 +1042,34 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
         # Set visibility of widgets
-        self.animOptionsWidget.setVisible(False)
-        self.constraintOptionsGroupBox.setVisible(False)
-        self.selectionSetOptionsWidget.setVisible(False)
-        self.label_5.setVisible(False)
-        self.frameRangeLabel.setVisible(False)
-        self.poseOptionsWidget.setVisible(False)
-        self.optionsGroupBox.setVisible(False)
         if self.item.itemType == "POSE":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
             self.applyPushButton.setText("APPLY 100 %")
-            self.optionsGroupBox.setVisible(True)
+            # self.optionsGroupBox.setVisible(True)
+            # self.poseOptionsWidget.setVisible(True)
             self.flippedCheckBox.setVisible(False)
             self.flippedCheckBox.setEnabled(False)
-            self.poseOptionsWidget.setVisible(True)
-        if self.item.itemType == "SELECTION SET":
+        elif self.item.itemType == "SELECTION SET":
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
             self.applyPushButton.setVisible(False)
-            self.selectionSetOptionsWidget.setVisible(True)
-        if self.item.itemType == "CONSTRAINT SET":
-            self.constraintOptionsGroupBox.setVisible(True)
+            # self.selectionSetOptionsWidget.setVisible(True)
+        elif self.item.itemType == "CONSTRAINT SET":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
+            # self.constraintOptionsGroupBox.setVisible(True)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/constraint.png"),
@@ -1078,7 +1087,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
 
-        if self.item.itemType == "FOLDER":
+        elif self.item.itemType == "FOLDER":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
             self.applyPushButton.setVisible(False)
             self.ownerLabel.setVisible(False)
             self.dateLabel.setVisible(False)
@@ -1087,11 +1103,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.label_3.setVisible(False)
             self.label_4.setVisible(False)
             self.selectBonesPushButton.setVisible(False)
-        if self.item.itemType == "ANIMATION":
-            self.optionsGroupBox.setVisible(True)
-            self.label_5.setVisible(True)
-            self.frameRangeLabel.setVisible(True)
-            self.animOptionsWidget.setVisible(True)
+        elif self.item.itemType == "ANIMATION":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            # self.optionsGroupBox.setVisible(True)
+            self.constraintOptionsGroupBox.setVisible(False)
+            # self.label_5.setVisible(True)
+            # self.frameRangeLabel.setVisible(True)
+            # self.animOptionsWidget.setVisible(True)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/anim2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off

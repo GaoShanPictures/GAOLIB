@@ -442,15 +442,16 @@ class OT_gaolib(bpy.types.Operator):
     def modal(self, context, event):
         # Finish running operator if window is closed
         try:
-            if not self._widget.isVisible():
+            if self._widget and not self._widget.isVisible():
                 context.window_manager.event_timer_remove(self._timer)
                 return {"FINISHED"}
-        except RuntimeError:
+            # Procecess any events
+            self._app.processEvents()
+        except Exception as e:
+            print("Caught Exception : " + str(e))
             # widget already deleted
             context.window_manager.event_timer_remove(self._timer)
             return {"FINISHED"}
-        # Procecess any events
-        self._app.processEvents()
         return {"PASS_THROUGH"}
 
     def execute(self, context):
