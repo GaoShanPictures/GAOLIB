@@ -530,6 +530,17 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.createGenericItemSetUI()
         # Create widget for create pose
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
+        if itemType == "POSE":
+            try:
+                selectedObjs = utils.getSelectedObjects()
+                if len(selectedObjs):
+                    selectedObj = selectedObjs[0]
+                    if selectedObj.animation_data and selectedObj.animation_data.action:
+                        self.createPosewidget.nameLineEdit.setText(
+                            selectedObj.animation_data.action.name.replace(".", "_")
+                        )
+            except Exception as e:
+                print("Automatic name setting failed : " + str(e))
         self.verticalLayout_5.addWidget(self.createPosewidget)
 
         self.beginCreateThumb = True  # remember step of createThumbnail

@@ -72,6 +72,8 @@ class GaoCustomListView(QListView):
                     )
                     if self.currentItemType == "POSE":
                         self.pressedPositionX = eventX
+                        # set to 100%
+                        self.mainWin.infoWidget.blendPoseSlider.setValue(100)
                         self.blendValue = (
                             self.mainWin.infoWidget.blendPoseSlider.value()
                         )
