@@ -28,8 +28,12 @@ except Exception as e:
 
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
+
+    USE_PYSIDE6 = False
 except ModuleNotFoundError:
     from PySide6 import QtCore, QtGui, QtWidgets
+
+    USE_PYSIDE6 = True
 
 import gaolib.model.blenderutils as utils
 from gaolib.ui.constraintinfopairingwidgetui import Ui_ConstraintForm as Constraint_Form
@@ -179,12 +183,29 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.additiveModeCheckBox.stateChanged.connect(self.additiveModeToggle)
         self.blendPoseSlider.valueChanged.connect(
             lambda: self.blendSliderChanged(
-                self.item.path, blend=self.blendPoseSlider.value() / 100
+                self.item.path,
+                blend=self.blendPoseSlider.value() / 100,
             )
         )
         self.modifyPushButton.released.connect(self.modifyFolder)
         self.refreshPairingListPushButton.released.connect(
             self.updateConstraintPairingList
+        )
+        if USE_PYSIDE6:
+            self.flippedCheckBox.checkStateChanged.connect(self.flippedChange)
+        else:
+            self.flippedCheckBox.stateChanged.connect(self.flippedChange)
+
+    def flippedChange(self):
+        self.blendPoseSlider.setValue(0)
+        if self.bonesToBlend:
+            utils.deleteRefPose(self.refPose, self)
+            self.refPose = None
+            self.bonesToBlend = None
+            utils.removeOrphans()
+        self.bonesToBlend = self.getBonesToBlend(
+            self.item.path,
+            additiveMode=self.additiveModeCheckBox.isChecked(),
         )
 
     def modifyFolder(self):
@@ -397,6 +418,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.bonesToBlend = None
 
     def getBonesToBlend(self, poseDir, additiveMode=False):
+        flipped = self.flippedCheckBox.isChecked()
         bonesToBlend = {}
         # get pose selection set
         itemdata = {}
@@ -418,7 +440,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.currentPose = utils.getCurrentPose()
         # Append pose object
         if not self.refPose:
-            self.refPose = utils.getRefPoseFromLib(poseDir, selection)
+            self.refPose = utils.getRefPoseFromLib(poseDir, selection, flipped=flipped)
         # populate bonesToBlend dict to only blend on bones with modified value
         for posebone in self.refPose.pose.bones:
             for selectedbone in selection:
@@ -1051,8 +1073,8 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.applyPushButton.setText("APPLY 100 %")
             # self.optionsGroupBox.setVisible(True)
             # self.poseOptionsWidget.setVisible(True)
-            self.flippedCheckBox.setVisible(False)
-            self.flippedCheckBox.setEnabled(False)
+            # self.flippedCheckBox.setVisible(False)
+            # self.flippedCheckBox.setEnabled(False)
         elif self.item.itemType == "SELECTION SET":
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)

@@ -49,6 +49,18 @@ class GaoCustomListView(QListView):
                 event.position().y(),
             )
 
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent):
+        super(GaoCustomListView, self).keyPressEvent(event)
+        if self.mainWin.infoWidget.flippedCheckBox.isVisible():
+            if event.key() == QtCore.Qt.Key_Shift:
+                self.mainWin.infoWidget.flippedCheckBox.setChecked(False)
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent):
+        super(GaoCustomListView, self).keyPressEvent(event)
+        if self.mainWin.infoWidget.flippedCheckBox.isVisible():
+            if event.key() == QtCore.Qt.Key_Shift:
+                self.mainWin.infoWidget.flippedCheckBox.setChecked(True)
+
     def mousePressEvent(self, event: QtGui.QMouseEvent):
         # prevent right click from selecting an item
         if (
@@ -151,6 +163,7 @@ class GaoCustomListView(QListView):
                             itemType="POSE",
                             blendPose=blendValue / 100,
                             currentPose=self.mainWin.infoWidget.currentPose,
+                            flipped=self.mainWin.infoWidget.flippedCheckBox.isChecked(),
                         )
                         self.mainWin.statusBar().showMessage(
                             "Applied pose to " + str(blendValue) + "%", timeout=5000

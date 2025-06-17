@@ -847,6 +847,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             json.dump(data, file, indent=4, sort_keys=True)
         # Copy selection
         bpy.ops.pose.copy()
+        # create mirror and original buffer files
+        tempDir = bpy.context.preferences.filepaths.temporary_directory
+        tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
+        tempCopy = os.path.join(tempDir, "copybuffer_pose_original.blend")
+        shutil.copyfile(tempPose, tempCopy)
+        bpy.ops.pose.paste(flipped=True)
+        bpy.ops.pose.copy()
+        tempCopy = os.path.join(tempDir, "copybuffer_pose_flipped.blend")
+        shutil.copyfile(tempPose, tempCopy)
+        bpy.ops.pose.paste(flipped=True)
         # hide some overlays before rendering
         space = bpy.context.space_data
         space.overlay.show_overlays = False
@@ -1229,7 +1239,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 ):
                     bpy.ops.render.view_cancel()
         except Exception as e:
-            print("Couldn't close redner window : " + str(e))
+            print("Couldn't close render window : " + str(e))
 
     def resizeEvent(self, event):
         """Manage window resizing"""
@@ -1270,11 +1280,18 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
         if selectedItem.itemType == "POSE":
+            # check if exists mirror pose
+            itemDir = selectedItem.path
+            flipped = os.path.join(itemDir, "pose_flipped.blend")
+            if not os.path.isfile(flipped):
+                self.infoWidget.flippedCheckBox.setVisible(False)
+                self.infoWidget.flippedCheckBox.setEnabled(False)
             self.infoWidget.applyPushButton.released.connect(
                 lambda: self.applyPose(
                     itemType=selectedItem.itemType,
                     blendPose=self.infoWidget.blendPoseSlider.value() / 100,
                     currentPose=self.infoWidget.currentPose,
+                    flipped=self.infoWidget.flippedCheckBox.isChecked(),
                 )
             )
 
@@ -1437,10 +1454,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def setListView(self):
         """Set list model and connect it to UI"""
-        try:
-            self.listView.doubleClicked.disconnect()
-        except:
-            pass
+        if USE_PYSIDE6:
+            if self.listView.isSignalConnected(
+                QtCore.QMetaMethod.fromSignal(self.listView.doubleClicked)
+            ):
+                self.listView.doubleClicked.disconnect()
+        else:
+            try:
+                self.listView.doubleClicked.disconnect()
+            except:
+                pass
         # Manage ListView (central widget)
         # Create Qt Model
         model = GaoLibListModel(self.items)

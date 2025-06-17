@@ -664,9 +664,12 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
 def copyPose(poseDir):
     """Copy pose temporary file to library"""
     tempDir = bpy.context.preferences.filepaths.temporary_directory
-    tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
+    tempPose = os.path.join(tempDir, "copybuffer_pose_original.blend")
+    flipped = os.path.join(tempDir, "copybuffer_pose_flipped.blend")
     tempCopy = os.path.join(poseDir, "pose.blend")
+    flippedCopy = os.path.join(poseDir, "pose_flipped.blend")
     shutil.copyfile(tempPose, tempCopy)
+    shutil.copyfile(flipped, flippedCopy)
 
 
 def getCurrentPose():
@@ -712,11 +715,14 @@ def getCurrentPose():
     return currentPose
 
 
-def getRefPoseFromLib(poseDir, selection):
+def getRefPoseFromLib(poseDir, selection, flipped=False):
     """Retrieve pose from given poseDir directory"""
     selectionNames = [posebone.bone.name for posebone in selection]
     # Append pose object
-    posePath = os.path.join(poseDir, "pose.blend")
+    if flipped:
+        posePath = os.path.join(poseDir, "pose_flipped.blend")
+    else:
+        posePath = os.path.join(poseDir, "pose.blend")
     fileObjects = []
     with bpy.data.libraries.load(str(posePath)) as (data_from, _):
         fileObjects = [obj for obj in data_from.objects]
@@ -727,7 +733,6 @@ def getRefPoseFromLib(poseDir, selection):
             "COPIED FILE CONTAINS ZERO OR MORE THAN ONE OBJECT", title="Abort action"
         )
         return
-
     refPose = importObject(posePath)
     pose = refPose.pose
     refBones = []
@@ -751,7 +756,13 @@ def deleteRefPose(refPose, infoWidget):
     infoWidget.refPose = None
 
 
-def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=False):
+def pastePose(
+    poseDir,
+    flipped=False,
+    blend=1,
+    currentPose=None,
+    additiveMode=False,
+):
     """Paste pose from library on selected armature object for selected bones"""
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
     # get pose selection set
@@ -774,7 +785,7 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     if not currentPose:
         currentPose = getCurrentPose()
     # Append pose object
-    refPose = getRefPoseFromLib(poseDir, selection)
+    refPose = getRefPoseFromLib(poseDir, selection, flipped=flipped)
     pose = refPose.pose
     exceptionMessage = None
     # Copy properties from ref bones current object
@@ -1006,7 +1017,6 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     except Exception as e:
         print("Blend Pose Exception : " + str(e) + "\n" + str(traceback.format_exc()))
         exceptionMessage = "Blend Pose Exception : " + str(e)
-
     # Clean orphans
     removeOrphans()
     # Show message if exception
