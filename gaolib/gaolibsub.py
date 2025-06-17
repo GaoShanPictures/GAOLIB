@@ -796,37 +796,42 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             utils.ShowDialog('Context is lost ! Please, use "Get Context" tool.')
             return False
         # set context with self.context
-        with bpy.context.temp_override(
-            area=self.context["area"],
-            region=self.context["region"],
-            region_data=self.context["region_data"],
-            screen=self.context["screen"],
-            space_data=self.context["space_data"],
-            window=self.context["window"],
-        ):
-            # Check number of selected objects
-            selectedObjects = []
-            for o in bpy.context.selected_objects:
-                selectedObjects.append(o.name)
-            if itemType == "CONSTRAINT SET":
-                # # constraint set need at least one object selected
-                if len(selectedObjects) == 0:
-                    utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
+        try:
+            with bpy.context.temp_override(
+                area=self.context["area"],
+                region=self.context["region"],
+                region_data=self.context["region_data"],
+                screen=self.context["screen"],
+                space_data=self.context["space_data"],
+                window=self.context["window"],
+            ):
+                # Check number of selected objects
+                selectedObjects = []
+                for o in bpy.context.selected_objects:
+                    selectedObjects.append(o.name)
+                if itemType == "CONSTRAINT SET":
+                    # # constraint set need at least one object selected
+                    if len(selectedObjects) == 0:
+                        utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
+                        return False
+                else:
+                    # # animation, pose and selection set need nly one objet selected
+                    if len(selectedObjects) != 1:
+                        utils.ShowDialog("PLEASE, SELECT EXACTLY ONE OBJECT.")
+                        return False
+                # Check POSE mode
+                if bpy.context.object.mode != "POSE":
+                    utils.ShowDialog("PLEASE, SET POSE MODE.")
                     return False
-            else:
-                # # animation, pose and selection set need nly one objet selected
-                if len(selectedObjects) != 1:
-                    utils.ShowDialog("PLEASE, SELECT EXACTLY ONE OBJECT.")
+                # Count bones
+                if not len(bpy.context.selected_pose_bones):
+                    utils.ShowDialog("PLEASE, SELECT AT LEAST ONE BONE.")
                     return False
-            # Check POSE mode
-            if bpy.context.object.mode != "POSE":
-                utils.ShowDialog("PLEASE, SET POSE MODE.")
-                return False
-            # Count bones
-            if not len(bpy.context.selected_pose_bones):
-                utils.ShowDialog("PLEASE, SELECT AT LEAST ONE BONE.")
-                return False
-        return True
+            return True
+        except Exception as e:
+            utils.ShowDialog('Context is lost ! Please, use "Get Context" tool.')
+            print('Context is lost ! Please, use "Get Context" tool.\n' + str(e))
+            return False
 
     def poseCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
