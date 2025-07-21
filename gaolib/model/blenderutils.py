@@ -190,6 +190,11 @@ def selectBones(jsonPath):
         # Select bones
         for bone in bones:
             if obj.pose.bones.get(bone):
+                if obj.data.bones.get(bone).hide:
+                    obj.data.bones.get(bone).hide = False
+                for collection in obj.data.bones.get(bone).collections:
+                    collection.is_visible = True
+                    break
                 obj.data.bones.get(bone).select = True
             else:
                 print("Not found : " + bone)
@@ -531,9 +536,12 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         ShowDialog("APPEND ACTION WENT WRONG.", title="Abort action")
         return
     # PASTE action
+    actionName = os.path.basename(animDir).split(".")[0]  # + "_ACTION"
+    if "action" not in actionName.lower():
+        actionName = actionName + "Action"
     if quickPaste:
         # Paste entire action in new action
-        action.name = os.path.basename(animDir).split(".")[0] + "_ACTION"
+        action.name = actionName
         if selectedObject.animation_data is None:
             selectedObject.animation_data_create()
         selectedObject.animation_data.action = action
@@ -545,8 +553,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             else:
                 slot = action.slots.new(id_type="OBJECT", name=selectedObject.name)
                 selectedObject.animation_data.action_slot = slot
-        ShowDialog("Quick Paste Action done !")
-
+        infoWidget.parent.statusBar().showMessage("Quick Paste Action done !", 1500)
     else:
         # Paste into current action the keyframes corresponding to selected range
         action.name = "TEMP_ACTION"
@@ -576,7 +583,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             selectedObject.animation_data_create()
         # If no action on selected object, create one
         if selectedObject.animation_data.action is None:
-            gaolibAction = bpy.data.actions.new("gaolib_action")
+            gaolibAction = bpy.data.actions.new(actionName)
             selectedObject.animation_data.action = gaolibAction
 
         count_op = 0
@@ -693,15 +700,18 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                     fc.group = group
         # clean action
         bpy.data.actions.remove(action)
-        ShowDialog("Paste animation done !")
+        infoWidget.parent.statusBar().showMessage("Paste animation done !", 1500)
 
 
 def copyPose(poseDir):
     """Copy pose temporary file to library"""
     tempDir = bpy.context.preferences.filepaths.temporary_directory
-    tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
+    tempPose = os.path.join(tempDir, "copybuffer_pose_original.blend")
+    flipped = os.path.join(tempDir, "copybuffer_pose_flipped.blend")
     tempCopy = os.path.join(poseDir, "pose.blend")
+    flippedCopy = os.path.join(poseDir, "pose_flipped.blend")
     shutil.copyfile(tempPose, tempCopy)
+    shutil.copyfile(flipped, flippedCopy)
 
 
 def getCurrentPose():
@@ -747,11 +757,14 @@ def getCurrentPose():
     return currentPose
 
 
-def getRefPoseFromLib(poseDir, selection):
+def getRefPoseFromLib(poseDir, selection, flipped=False):
     """Retrieve pose from given poseDir directory"""
     selectionNames = [posebone.bone.name for posebone in selection]
     # Append pose object
-    posePath = os.path.join(poseDir, "pose.blend")
+    if flipped:
+        posePath = os.path.join(poseDir, "pose_flipped.blend")
+    else:
+        posePath = os.path.join(poseDir, "pose.blend")
     fileObjects = []
     with bpy.data.libraries.load(str(posePath)) as (data_from, _):
         fileObjects = [obj for obj in data_from.objects]
@@ -762,7 +775,6 @@ def getRefPoseFromLib(poseDir, selection):
             "COPIED FILE CONTAINS ZERO OR MORE THAN ONE OBJECT", title="Abort action"
         )
         return
-
     refPose = importObject(posePath)
     pose = refPose.pose
     refBones = []
@@ -786,14 +798,15 @@ def deleteRefPose(refPose, infoWidget):
     infoWidget.refPose = None
 
 
-def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=False):
+def pastePose(
+    poseDir,
+    flipped=False,
+    blend=1,
+    currentPose=None,
+    additiveMode=False,
+):
     """Paste pose from library on selected armature object for selected bones"""
     insertKeyframes = bpy.context.scene.tool_settings.use_keyframe_insert_auto
-    # Remember selection
-    selection = getSelectedBones()
-    # Remember current pose
-    if not currentPose:
-        currentPose = getCurrentPose()
     # get pose selection set
     itemdata = {}
     jsonPath = os.path.join(poseDir, "pose.json")
@@ -803,8 +816,18 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     for key in itemdata["metadata"].keys():
         if key == "boneNames":
             selectionSetBones = itemdata["metadata"]["boneNames"]
+    # Remember selection
+    selection = getSelectedBones()
+    if not len(selection):
+        # If no bone is selected select all
+        print("No selected bones, select all by default")
+        selectBones(jsonPath)
+        selection = getSelectedBones()
+    # Remember current pose
+    if not currentPose:
+        currentPose = getCurrentPose()
     # Append pose object
-    refPose = getRefPoseFromLib(poseDir, selection)
+    refPose = getRefPoseFromLib(poseDir, selection, flipped=flipped)
     pose = refPose.pose
     exceptionMessage = None
     # Copy properties from ref bones current object
@@ -1036,7 +1059,6 @@ def pastePose(poseDir, flipped=False, blend=1, currentPose=None, additiveMode=Fa
     except Exception as e:
         print("Blend Pose Exception : " + str(e) + "\n" + str(traceback.format_exc()))
         exceptionMessage = "Blend Pose Exception : " + str(e)
-
     # Clean orphans
     removeOrphans()
     # Show message if exception

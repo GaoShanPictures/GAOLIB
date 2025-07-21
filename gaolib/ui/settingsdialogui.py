@@ -385,5 +385,8 @@ class Ui_Dialog(object):
             )
         )
         self.blendPoseOnWheelCheckBox.setText(
-            _translate("Dialog", "Use wheel click on POSE items to blend pose")
+            _translate(
+                "Dialog",
+                "Keep wheel pressed and drag mouse on POSE items to blend pose",
+            )
         )

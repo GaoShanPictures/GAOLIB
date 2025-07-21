@@ -514,12 +514,33 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.createPosewidget.toRangeSpinBox.setProperty(
             "value", bpy.context.scene.frame_end
         )
+        try:
+            selectedObjs = utils.getSelectedObjects()
+            if len(selectedObjs):
+                selectedObj = selectedObjs[0]
+                if selectedObj.animation_data and selectedObj.animation_data.action:
+                    self.createPosewidget.nameLineEdit.setText(
+                        selectedObj.animation_data.action.name.replace(".", "_")
+                    )
+        except Exception as e:
+            print("Automatic name setting failed : " + str(e))
 
     def createItemSetUI(self, itemType):
         """Prepare UI to Create new pose item"""
         self.createGenericItemSetUI()
         # Create widget for create pose
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
+        if itemType == "POSE":
+            try:
+                selectedObjs = utils.getSelectedObjects()
+                if len(selectedObjs):
+                    selectedObj = selectedObjs[0]
+                    if selectedObj.animation_data and selectedObj.animation_data.action:
+                        self.createPosewidget.nameLineEdit.setText(
+                            selectedObj.animation_data.action.name.replace(".", "_")
+                        )
+            except Exception as e:
+                print("Automatic name setting failed : " + str(e))
         self.verticalLayout_5.addWidget(self.createPosewidget)
 
         self.beginCreateThumb = True  # remember step of createThumbnail
@@ -777,37 +798,42 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             utils.ShowDialog('Context is lost ! Please, use "Get Context" tool.')
             return False
         # set context with self.context
-        with bpy.context.temp_override(
-            area=self.context["area"],
-            region=self.context["region"],
-            region_data=self.context["region_data"],
-            screen=self.context["screen"],
-            space_data=self.context["space_data"],
-            window=self.context["window"],
-        ):
-            # Check number of selected objects
-            selectedObjects = []
-            for o in bpy.context.selected_objects:
-                selectedObjects.append(o.name)
-            if itemType == "CONSTRAINT SET":
-                # # constraint set need at least one object selected
-                if len(selectedObjects) == 0:
-                    utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
+        try:
+            with bpy.context.temp_override(
+                area=self.context["area"],
+                region=self.context["region"],
+                region_data=self.context["region_data"],
+                screen=self.context["screen"],
+                space_data=self.context["space_data"],
+                window=self.context["window"],
+            ):
+                # Check number of selected objects
+                selectedObjects = []
+                for o in bpy.context.selected_objects:
+                    selectedObjects.append(o.name)
+                if itemType == "CONSTRAINT SET":
+                    # # constraint set need at least one object selected
+                    if len(selectedObjects) == 0:
+                        utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
+                        return False
+                else:
+                    # # animation, pose and selection set need nly one objet selected
+                    if len(selectedObjects) != 1:
+                        utils.ShowDialog("PLEASE, SELECT EXACTLY ONE OBJECT.")
+                        return False
+                # Check POSE mode
+                if bpy.context.object.mode != "POSE":
+                    utils.ShowDialog("PLEASE, SET POSE MODE.")
                     return False
-            else:
-                # # animation, pose and selection set need nly one objet selected
-                if len(selectedObjects) != 1:
-                    utils.ShowDialog("PLEASE, SELECT EXACTLY ONE OBJECT.")
+                # Count bones
+                if not len(bpy.context.selected_pose_bones):
+                    utils.ShowDialog("PLEASE, SELECT AT LEAST ONE BONE.")
                     return False
-            # Check POSE mode
-            if bpy.context.object.mode != "POSE":
-                utils.ShowDialog("PLEASE, SET POSE MODE.")
-                return False
-            # Count bones
-            if not len(bpy.context.selected_pose_bones):
-                utils.ShowDialog("PLEASE, SELECT AT LEAST ONE BONE.")
-                return False
-        return True
+            return True
+        except Exception as e:
+            utils.ShowDialog('Context is lost ! Please, use "Get Context" tool.')
+            print('Context is lost ! Please, use "Get Context" tool.\n' + str(e))
+            return False
 
     def poseCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -828,6 +854,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             json.dump(data, file, indent=4, sort_keys=True)
         # Copy selection
         bpy.ops.pose.copy()
+        # create mirror and original buffer files
+        tempDir = bpy.context.preferences.filepaths.temporary_directory
+        tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
+        tempCopy = os.path.join(tempDir, "copybuffer_pose_original.blend")
+        shutil.copyfile(tempPose, tempCopy)
+        bpy.ops.pose.paste(flipped=True)
+        bpy.ops.pose.copy()
+        tempCopy = os.path.join(tempDir, "copybuffer_pose_flipped.blend")
+        shutil.copyfile(tempPose, tempCopy)
+        bpy.ops.pose.paste(flipped=True)
         # hide some overlays before rendering
         space = bpy.context.space_data
         space.overlay.show_overlays = False
@@ -1073,7 +1109,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
-        # Chec if render is done before ending
+        # Check if render is done before ending
         lastFrame = bpy.context.scene.render.filepath.replace(
             ".####.", "." + format(bpy.context.scene.frame_end, "04d") + "."
         )
@@ -1108,7 +1144,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 elif itemType == "SELECTION SET":
                     bpy.ops.development.show_overlay_params()
         except Exception as e:
-            print("Could not set the overlay parameters")
+            print("Could not set the overlay parameters : " + str(e))
 
         itemdata = {}
         # Read Json Datas
@@ -1145,7 +1181,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             thumbpath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
             # Create GIF
             try:
-                thumbpath = generateGif(thumbpath, fps=bpy.context.scene.render.fps)
+                thumbpath = generateGif(
+                    thumbpath,
+                    fps=int(
+                        bpy.context.scene.render.fps / bpy.context.scene.frame_step
+                    ),
+                )
             except Exception as e:
                 print("An error occured during GIF generation : " + str(e))
         else:
@@ -1184,6 +1225,31 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
+
+        # Close render window
+        try:
+            override = None
+            for w in bpy.context.window_manager.windows:
+                for area in w.screen.areas:
+                    if area.type == "IMAGE_EDITOR":
+                        for rgn in area.regions:
+                            if rgn.type == "WINDOW":
+                                override = {
+                                    "window": w,
+                                    "screen": w.screen,
+                                    "area": area,
+                                    "region": rgn,
+                                    "workspace": w.workspace,
+                                }
+            if override:
+                with bpy.context.temp_override(
+                    area=override["area"],
+                    region=override["region"],
+                    window=override["window"],
+                ):
+                    bpy.ops.render.view_cancel()
+        except Exception as e:
+            print("Couldn't close render window : " + str(e))
 
     def resizeEvent(self, event):
         """Manage window resizing"""
@@ -1224,12 +1290,18 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
         if selectedItem.itemType == "POSE":
-            # self.infoWidget.applyPushButton.released.connect(lambda: self.applyPose(itemType=selectedItem.itemType, flipped=self.infoWidget.flippedCheckBox.isChecked()))
+            # check if exists mirror pose
+            itemDir = selectedItem.path
+            flipped = os.path.join(itemDir, "pose_flipped.blend")
+            if not os.path.isfile(flipped):
+                self.infoWidget.flippedCheckBox.setVisible(False)
+                self.infoWidget.flippedCheckBox.setEnabled(False)
             self.infoWidget.applyPushButton.released.connect(
                 lambda: self.applyPose(
                     itemType=selectedItem.itemType,
                     blendPose=self.infoWidget.blendPoseSlider.value() / 100,
                     currentPose=self.infoWidget.currentPose,
+                    flipped=self.infoWidget.flippedCheckBox.isChecked(),
                 )
             )
 
@@ -1392,10 +1464,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def setListView(self):
         """Set list model and connect it to UI"""
-        try:
-            self.listView.doubleClicked.disconnect()
-        except:
-            pass
+        if USE_PYSIDE6:
+            if self.listView.isSignalConnected(
+                QtCore.QMetaMethod.fromSignal(self.listView.doubleClicked)
+            ):
+                self.listView.doubleClicked.disconnect()
+        else:
+            try:
+                self.listView.doubleClicked.disconnect()
+            except:
+                pass
         # Manage ListView (central widget)
         # Create Qt Model
         model = GaoLibListModel(self.items)

@@ -28,8 +28,12 @@ except Exception as e:
 
 try:
     from PySide2 import QtCore, QtGui, QtWidgets
+
+    USE_PYSIDE6 = False
 except ModuleNotFoundError:
     from PySide6 import QtCore, QtGui, QtWidgets
+
+    USE_PYSIDE6 = True
 
 import gaolib.model.blenderutils as utils
 from gaolib.ui.constraintinfopairingwidgetui import Ui_ConstraintForm as Constraint_Form
@@ -113,6 +117,35 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                             self.constraintInfoWidgets.append(constraintItem)
 
 
+class CustomSliderWidget(QtWidgets.QSlider):
+    def __init__(self, parent=None):
+        super(CustomSliderWidget, self).__init__(parent=parent)
+
+    def mousePressEvent(self, event: QtGui.QMouseEvent):
+        # manage cancel blending at right click
+        if event.button() == QtCore.Qt.RightButton:
+            self.setValue(0)
+            self.valueChanged.disconnect()
+            self.valueChanged.connect(lambda: self.setValue(0))
+            self.parentInfoWidget.mainWindow.statusBar().showMessage(
+                "Cancel Blending",
+                timeout=5000,
+            )
+        super(CustomSliderWidget, self).mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
+        if event.button() == QtCore.Qt.LeftButton:
+            self.valueChanged.disconnect()
+            self.valueChanged.connect(
+                lambda: self.parentInfoWidget.blendSliderChanged(
+                    self.parentInfoWidget.item.path,
+                    blend=self.parentInfoWidget.blendPoseSlider.value() / 100,
+                )
+            )
+
+        super(CustomSliderWidget, self).mouseReleaseEvent(event)
+
+
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
     """Manage display of the selected list item informations"""
 
@@ -128,6 +161,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.bonesToBlend = None
         self.toggleAdditive = False
         utils.removeOrphans()
+
+        # recast blendPoseSlider
+        self.blendPoseSlider.__class__ = CustomSliderWidget
+        self.blendPoseSlider.parentInfoWidget = self
 
         # For animation item use gif thumbnail
         self.movie = None
@@ -146,12 +183,29 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.additiveModeCheckBox.stateChanged.connect(self.additiveModeToggle)
         self.blendPoseSlider.valueChanged.connect(
             lambda: self.blendSliderChanged(
-                self.item.path, blend=self.blendPoseSlider.value() / 100
+                self.item.path,
+                blend=self.blendPoseSlider.value() / 100,
             )
         )
         self.modifyPushButton.released.connect(self.modifyFolder)
         self.refreshPairingListPushButton.released.connect(
             self.updateConstraintPairingList
+        )
+        if USE_PYSIDE6:
+            self.flippedCheckBox.checkStateChanged.connect(self.flippedChange)
+        else:
+            self.flippedCheckBox.stateChanged.connect(self.flippedChange)
+
+    def flippedChange(self):
+        self.blendPoseSlider.setValue(0)
+        if self.bonesToBlend:
+            utils.deleteRefPose(self.refPose, self)
+            self.refPose = None
+            self.bonesToBlend = None
+            utils.removeOrphans()
+        self.bonesToBlend = self.getBonesToBlend(
+            self.item.path,
+            additiveMode=self.additiveModeCheckBox.isChecked(),
         )
 
     def modifyFolder(self):
@@ -364,6 +418,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.bonesToBlend = None
 
     def getBonesToBlend(self, poseDir, additiveMode=False):
+        flipped = self.flippedCheckBox.isChecked()
         bonesToBlend = {}
         # get pose selection set
         itemdata = {}
@@ -376,11 +431,16 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 selectionSetBones = itemdata["metadata"]["boneNames"]
         # Remember current pose
         selection = utils.getSelectedBones()
+        if not len(selection):
+            # If no bone is selected select all
+            print("No selected bones, select all by default for blending pose")
+            self.selectBones()
+            selection = utils.getSelectedBones()
         if not self.currentPose:
             self.currentPose = utils.getCurrentPose()
         # Append pose object
         if not self.refPose:
-            self.refPose = utils.getRefPoseFromLib(poseDir, selection)
+            self.refPose = utils.getRefPoseFromLib(poseDir, selection, flipped=flipped)
         # populate bonesToBlend dict to only blend on bones with modified value
         for posebone in self.refPose.pose.bones:
             for selectedbone in selection:
@@ -465,22 +525,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if self.toggleAdditive:
             self.toggleAdditive = False
             return
-        # # get pose selection set
-        # itemdata = {}
-        # jsonPath = os.path.join(poseDir, "pose.json")
-        # with open(jsonPath) as file:
-        #     itemdata = json.load(file)
-        # selectionSetBones = []
-        # for key in itemdata["metadata"].keys():
-        #     if key == "boneNames":
-        #         selectionSetBones = itemdata["metadata"]["boneNames"]
-        # # Remember current pose
-        # selection = utils.getSelectedBones()
-        # if not self.currentPose:
-        #     self.currentPose = utils.getCurrentPose()
-        # # Append pose object
-        # if not self.refPose:
-        #     self.refPose = utils.getRefPoseFromLib(poseDir, selection)
         if not self.bonesToBlend:
             self.bonesToBlend = self.getBonesToBlend(poseDir, additiveMode=additiveMode)
 
@@ -1019,24 +1063,34 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
         # Set visibility of widgets
-        self.animOptionsWidget.setVisible(False)
-        self.constraintOptionsGroupBox.setVisible(False)
-        self.selectionSetOptionsWidget.setVisible(False)
-        self.label_5.setVisible(False)
-        self.frameRangeLabel.setVisible(False)
-        self.poseOptionsWidget.setVisible(False)
-        self.optionsGroupBox.setVisible(False)
         if self.item.itemType == "POSE":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
             self.applyPushButton.setText("APPLY 100 %")
-            self.optionsGroupBox.setVisible(True)
-            self.flippedCheckBox.setVisible(False)
-            self.flippedCheckBox.setEnabled(False)
-            self.poseOptionsWidget.setVisible(True)
-        if self.item.itemType == "SELECTION SET":
+            # self.optionsGroupBox.setVisible(True)
+            # self.poseOptionsWidget.setVisible(True)
+            # self.flippedCheckBox.setVisible(False)
+            # self.flippedCheckBox.setEnabled(False)
+        elif self.item.itemType == "SELECTION SET":
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
             self.applyPushButton.setVisible(False)
-            self.selectionSetOptionsWidget.setVisible(True)
-        if self.item.itemType == "CONSTRAINT SET":
-            self.constraintOptionsGroupBox.setVisible(True)
+            # self.selectionSetOptionsWidget.setVisible(True)
+        elif self.item.itemType == "CONSTRAINT SET":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
+            # self.constraintOptionsGroupBox.setVisible(True)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/constraint.png"),
@@ -1054,7 +1108,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
 
-        if self.item.itemType == "FOLDER":
+        elif self.item.itemType == "FOLDER":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
             self.applyPushButton.setVisible(False)
             self.ownerLabel.setVisible(False)
             self.dateLabel.setVisible(False)
@@ -1063,11 +1124,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.label_3.setVisible(False)
             self.label_4.setVisible(False)
             self.selectBonesPushButton.setVisible(False)
-        if self.item.itemType == "ANIMATION":
-            self.optionsGroupBox.setVisible(True)
-            self.label_5.setVisible(True)
-            self.frameRangeLabel.setVisible(True)
-            self.animOptionsWidget.setVisible(True)
+        elif self.item.itemType == "ANIMATION":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            # self.optionsGroupBox.setVisible(True)
+            self.constraintOptionsGroupBox.setVisible(False)
+            # self.label_5.setVisible(True)
+            # self.frameRangeLabel.setVisible(True)
+            # self.animOptionsWidget.setVisible(True)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/anim2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
