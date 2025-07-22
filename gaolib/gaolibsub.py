@@ -64,7 +64,7 @@ except Exception as e:
 
 
 class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
-    """GAOLIB Main window"""
+    """GAOLIB Main window."""
 
     # Manage window resize
     resized = QtCore.Signal()
