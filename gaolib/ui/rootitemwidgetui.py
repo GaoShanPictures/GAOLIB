@@ -15,10 +15,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-except ModuleNotFoundError:
-    from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class Ui_Form(object):

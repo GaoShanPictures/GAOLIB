@@ -21,10 +21,7 @@ __author__ = "Anne Beurard"
 import json
 import os
 
-try:
-    from PySide2 import QtWidgets
-except ModuleNotFoundError:
-    from PySide6 import QtWidgets
+from PySide6 import QtWidgets
 
 from gaolib.ui.rootitemwidgetui import Ui_Form
 

@@ -17,12 +17,9 @@
 
 __author__ = "Anne Beurard"
 
-try:
-    from PySide2 import QtCore, QtGui
-    from PySide2.QtWidgets import QListView
-except ModuleNotFoundError:
-    from PySide6 import QtCore, QtGui
-    from PySide6.QtWidgets import QListView
+
+from PySide6 import QtCore, QtGui
+from PySide6.QtWidgets import QListView
 
 
 class GaoCustomListView(QListView):
@@ -36,18 +33,11 @@ class GaoCustomListView(QListView):
         self.blendValue = 0
 
     def getEventPosition(self, event):
-        try:
-            import PySide2
-
-            return event.pos(), event.x(), event.y()
-        except ModuleNotFoundError:
-            import PySide6
-
-            return (
-                event.position().toPoint(),
-                event.position().x(),
-                event.position().y(),
-            )
+        return (
+            event.position().toPoint(),
+            event.position().x(),
+            event.position().y(),
+        )
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent):
         super(GaoCustomListView, self).keyPressEvent(event)

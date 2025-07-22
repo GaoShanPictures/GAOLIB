@@ -17,10 +17,7 @@
 
 __author__ = "Anne Beurard"
 
-try:
-    from PySide2 import QtCore
-except ModuleNotFoundError:
-    from PySide6 import QtCore
+from PySide6 import QtCore
 
 
 class TreeItemFilterProxyModel(QtCore.QSortFilterProxyModel):

@@ -70,17 +70,15 @@ Dependency = namedtuple("Dependency", ["module", "package", "name"])
 # set to None, if they are equal to the module name. See import_module and ensure_and_import_module for the explanation
 # of the arguments. DO NOT use this to import other parts of your Python add-on, import them as usual with an
 # "import" statement.
-dependencies = (
-    Dependency(module="PySide2", package=None, name=None),
-    Dependency(module="imageio", package=None, name=None),
-)
+
+
 dependenciesPySide6 = (
     Dependency(module="PySide6", package=None, name=None),
     Dependency(module="imageio", package=None, name=None),
 )
 
 dependencies_installed = False
-dependenciesSet = [dependenciesPySide6, dependencies]
+dependenciesSet = [dependenciesPySide6]
 
 
 def import_module(module_name, global_name=None, reload=True):
@@ -314,110 +312,6 @@ preference_classes = (
 # ---------------------------------- GAOLIB APP -----------------------------------------
 
 
-# class BlenderGaoLibAppTimed(bpy.types.Operator):
-#     """Run a Qt app inside of Blender, without blocking Blender."""
-
-#     bl_idname = "wm.run_gaolib_app_timed"
-#     bl_label = "Run Gaolib app"
-
-#     _app = None
-#     _window = None
-#     _timer = None
-#     _counter = 0
-
-#     def __init__(self, *args, **kwargs):
-#         super().__init__(*args, **kwargs)
-#         try:
-#             from PySide2 import QtWidgets
-#         except ModuleNotFoundError:
-#             from PySide6 import QtWidgets
-
-#         if QtWidgets.QApplication.instance():
-#             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
-#         self._app = QtWidgets.QApplication(sys.argv)
-
-#     def modal(self, context, event):
-#         """Run modal."""
-#         if event.type == "TIMER":
-#             try:
-#                 if self._window and not self._window.isVisible():
-#                     self.cancel(context)
-#                     return {"FINISHED"}
-#             except RuntimeError as e:
-#                 # Gaolib already closed
-#                 return {"FINISHED"}
-#             # self._app.processEvents()
-#             self._counter += 1
-#         return {"PASS_THROUGH"}
-
-#     def execute(self, context):
-#         """Process the event loop of the Qt app."""
-#         from .gaolib.gaolibsub import GaoLib
-
-#         self._window = GaoLib()
-
-#         self._window.show()
-#         wm = context.window_manager
-#         # Run every 0.01 seconds
-#         self._timer = wm.event_timer_add(0.01, window=context.window)
-#         wm.modal_handler_add(self)
-
-#         return {"RUNNING_MODAL"}
-
-#     def cancel(self, context):
-#         """Remove event timer when stopping the operator."""
-#         try:
-#             from PySide2 import QtWidgets
-#         except ModuleNotFoundError:
-#             from PySide6 import QtWidgets
-
-#         self._window.close()
-#         wm = context.window_manager
-#         wm.event_timer_remove(self._timer)
-#         # self._app.shutdown()
-#         QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
-
-#     @classmethod
-#     def poll(cls, context):
-#         return context.space_data is not None
-
-
-# def run_timed_modal_gaolib_operator():
-#     """Run the app with help of a timed modal operator."""
-#     try:
-#         bpy.utils.register_class(BlenderGaoLibAppTimed)
-#     except ValueError:
-#         print("BlenderGaoLibAppTimed class already registered")
-#     # Launch immediately. You can also launch it manually by running this
-#     # command the Blender Python console.
-#     bpy.ops.wm.run_gaolib_app_timed()
-
-
-# class OT_gaolibBACKUP(bpy.types.Operator):
-#     """GAOLIB TOOL"""
-
-#     bl_idname = "development.gaolib_operator"
-#     bl_label = "GaoLib"
-
-#     def execute(self, context):
-#         try:
-#             from PySide2 import QtWidgets
-#         except ModuleNotFoundError:
-#             from PySide6 import QtWidgets
-
-#         if QtWidgets.QApplication.instance():
-#             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
-#         else:
-#             run_timed_modal_gaolib_operator()
-
-#         bpy.ops.development.get_blender_context()
-#         return {"FINISHED"}
-
-#     @classmethod
-#     def poll(cls, context):
-#         return context.space_data is not None
-
-
 class OT_gaolib(bpy.types.Operator):
     """GAOLIB TOOL"""
 
@@ -430,10 +324,7 @@ class OT_gaolib(bpy.types.Operator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
+        from PySide6 import QtWidgets
 
         if QtWidgets.QApplication.instance():
             QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
@@ -455,10 +346,8 @@ class OT_gaolib(bpy.types.Operator):
         return {"PASS_THROUGH"}
 
     def execute(self, context):
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
+        from PySide6 import QtWidgets
+
         from .gaolib.gaolibsub import GaoLib
 
         # Show QT Widget
@@ -474,10 +363,7 @@ class OT_gaolib(bpy.types.Operator):
 
     def cancel(self, context):
         """Remove event timer when stopping the operator."""
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
+        from PySide6 import QtWidgets
 
         self._widget.close()
         wm = context.window_manager
@@ -516,10 +402,7 @@ class OT_GetBlenderContext(bpy.types.Operator):
     bl_label = "Get Blender Context"
 
     def execute(self, context):
-        try:
-            from PySide2 import QtWidgets
-        except ModuleNotFoundError:
-            from PySide6 import QtWidgets
+        from PySide6 import QtWidgets
 
         app = None
         gaolib = None

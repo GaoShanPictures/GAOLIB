@@ -26,17 +26,8 @@ import sys
 from datetime import datetime
 
 from PIL import Image
-
-try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-    from PySide2.QtWidgets import QFileDialog
-
-    USE_PYSIDE6 = False
-except ModuleNotFoundError:
-    from PySide6 import QtCore, QtGui, QtWidgets
-    from PySide6.QtWidgets import QFileDialog
-
-    USE_PYSIDE6 = True
+from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import QFileDialog
 
 from gaolib.createposewidget import CreatePoseWidget
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
@@ -98,13 +89,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.listView.setViewMode(QtWidgets.QListView.IconMode)
         self.verticalLayout_2.addWidget(self.listView)
         self.initUi()
-        if USE_PYSIDE6:
-            self.settingsPushButton.setStyleSheet(
-                "QPushButton::menu-indicator { width:0px; }"
-            )
-            self.newPushButton.setStyleSheet(
-                "QPushButton::menu-indicator { width:0px; }"
-            )
+        self.settingsPushButton.setStyleSheet(
+            "QPushButton::menu-indicator { width:0px; }"
+        )
+        self.newPushButton.setStyleSheet("QPushButton::menu-indicator { width:0px; }")
         self._connectUi()
 
     def _connectUi(self):
@@ -304,11 +292,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     def openFileNameDialog(self, dialog, openDirectory=None):
         """File browser to change the ROOT location"""
         fileDialog = QFileDialog(self)
-        if USE_PYSIDE6:
-            fileDialog.setFileMode(QFileDialog.Directory)
-        else:
-            fileDialog.setFileMode(QFileDialog.DirectoryOnly)
-            options = fileDialog.Options()
+        fileDialog.setFileMode(QFileDialog.Directory)
         if openDirectory:
             openDirectory = os.path.realpath(openDirectory)
             fileDialog.setDirectory(os.path.dirname(openDirectory))
@@ -1464,16 +1448,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def setListView(self):
         """Set list model and connect it to UI"""
-        if USE_PYSIDE6:
-            if self.listView.isSignalConnected(
-                QtCore.QMetaMethod.fromSignal(self.listView.doubleClicked)
-            ):
-                self.listView.doubleClicked.disconnect()
-        else:
-            try:
-                self.listView.doubleClicked.disconnect()
-            except:
-                pass
+        if self.listView.isSignalConnected(
+            QtCore.QMetaMethod.fromSignal(self.listView.doubleClicked)
+        ):
+            self.listView.doubleClicked.disconnect()
+
         # Manage ListView (central widget)
         # Create Qt Model
         model = GaoLibListModel(self.items)
@@ -1551,37 +1530,21 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.hierarchyTreeView.expandToDepth(-1)
         else:
             self.hierarchyTreeView.collapseAll()
-
-        if USE_PYSIDE6:
-            regExp = QtCore.QRegularExpression(
-                str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
-            )
-            self.treeItemProxyModel.text = filterText
-            self.treeItemProxyModel.setFilterRegularExpression(regExp)
-            self.hierarchyTreeView.expandAll()
-        else:
-            regExp = QtCore.QRegExp(str(filterText))
-            # Set case sensitivity to insensitive
-            regExp.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-            self.treeItemProxyModel.text = filterText
-            self.treeItemProxyModel.setFilterRegExp(regExp)
-            self.treeItemProxyModel.setFilterKeyColumn(1)
+        regExp = QtCore.QRegularExpression(
+            str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
+        )
+        self.treeItemProxyModel.text = filterText
+        self.treeItemProxyModel.setFilterRegularExpression(regExp)
+        self.hierarchyTreeView.expandAll()
 
     @QtCore.Slot()
     def filterList(self):
         """Manage text filter research for ListView"""
         filterText = self.searchEdit.text()
-        if USE_PYSIDE6:
-            regExp = QtCore.QRegularExpression(
-                str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
-            )
-            self.proxyModel.setFilterRegularExpression(regExp)
-        else:
-            regExp = QtCore.QRegExp(str(filterText))
-            # Set case sensitivity to insensitive
-            regExp.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
-            self.proxyModel.setFilterRegExp(regExp)
-            self.proxyModel.setFilterKeyColumn(1)
+        regExp = QtCore.QRegularExpression(
+            str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
+        )
+        self.proxyModel.setFilterRegularExpression(regExp)
 
 
 if __name__ == "__main__":

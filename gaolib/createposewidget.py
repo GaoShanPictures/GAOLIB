@@ -17,10 +17,7 @@
 
 __author__ = "Anne Beurard"
 
-try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-except ModuleNotFoundError:
-    from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidget
 

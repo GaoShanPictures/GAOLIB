@@ -26,14 +26,7 @@ try:
 except Exception as e:
     print("IMPORT EXCEPTION : " + str(e))
 
-try:
-    from PySide2 import QtCore, QtGui, QtWidgets
-
-    USE_PYSIDE6 = False
-except ModuleNotFoundError:
-    from PySide6 import QtCore, QtGui, QtWidgets
-
-    USE_PYSIDE6 = True
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import gaolib.model.blenderutils as utils
 from gaolib.ui.constraintinfopairingwidgetui import Ui_ConstraintForm as Constraint_Form
@@ -191,10 +184,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.refreshPairingListPushButton.released.connect(
             self.updateConstraintPairingList
         )
-        if USE_PYSIDE6:
-            self.flippedCheckBox.checkStateChanged.connect(self.flippedChange)
-        else:
-            self.flippedCheckBox.stateChanged.connect(self.flippedChange)
+        self.flippedCheckBox.checkStateChanged.connect(self.flippedChange)
 
     def flippedChange(self):
         self.blendPoseSlider.setValue(0)
