@@ -8,7 +8,9 @@ The design of the user interface of this project, and its main purpose are inspi
 
 
 ## Latest Updates
-- GAOLIB Now Available for blender 4.4 ! 
+- GAOLIB Now Available for blender 4.5 ! 
+
+- New Feature : Option to Paste or Blend mirrored pose (not available on items created with the previous versions of Gaolib)
 
 - The four steps of creating an item is now just 2 : click the camera button + click Save, and your new item is created !
 
