@@ -9,6 +9,9 @@ The design of the user interface of this project, and its main purpose are inspi
 
 ## Latest Updates
 - GAOLIB Now Available for blender 4.5 ! 
+<!--
+Warning : In Preferences > System > Display Graphics the choosing Vulkan for Backend seems a bit less instable than OpenGL (less crashes)
+-->
 
 - New Feature : Option to Paste or Blend mirrored pose (not available on items created with the previous versions of Gaolib)
 

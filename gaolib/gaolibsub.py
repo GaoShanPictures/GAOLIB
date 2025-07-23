@@ -717,8 +717,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget.currentPose = None
         self.infoWidget.bonesToBlend = None
         self.infoWidget.blendPoseSlider.setValue(0)
-        print("UNDO PUSH")
-        bpy.ops.ed.undo_push()
+        # print("UNDO PUSH")
+        # bpy.ops.ed.undo_push()
 
     def writejson(self, name, directory, itemType="POSE"):
         """Create json file corresponding to pose/animation item"""
