@@ -30,7 +30,7 @@ Download the zip of the add-on and install it in the 'Add-ons' section of the Bl
 Edit > Preferences > Add-ons > Install... > Select the zip file in your files > Install Add-on.
 
 Then enable the add-on.
-This add-on uses PySide2 or Pyside6 and imageio as external dependencies. They can be installed directly from the add-on preferences by clicking on the 'Install dependencies' button. 
+This add-on uses Pyside6 and imageio as external dependencies. They can be installed directly from the add-on preferences by clicking on the 'Install dependencies' button. 
 
 In case there is any problem with the installed dependencies, an 'Uninstall dependencies' button is also available. To complete the uninstallation, the user is asked for confirmation in the system console for each dependency used. REMEMBER TO OPEN THE CONSOLE BEFORE TRYING TO UNINSTALL THE DEPENDENCIES.
 
@@ -115,15 +115,14 @@ This project is a work in progress. We are aware that some things can be improve
 ## ABOUT THE DEPENDENCIES MANAGEMENT : 
 ![image](https://user-images.githubusercontent.com/103406493/180926775-3db48c11-2030-420c-bb69-1530f9ca2a7f.png)
 
-GAOLIB requires the following packages to be installed : PySide2 (or PySide6 more recently) and imageio. It should be possible to install them from the Blender Preferences, in the Add-ons section, selecting the GAOLIB Add-on. However, if the installation doesn't work (cf image above), the users has to install the dependencies on their own, that is to say in Blender's python console, the commands 'import PySide2' and 'import imageio' should not raise any error.
+GAOLIB requires the following packages to be installed : PySide6 and imageio. It should be possible to install them from the Blender Preferences, in the Add-ons section, selecting the GAOLIB Add-on. However, if the installation doesn't work (cf image above), the users has to install the dependencies on their own, that is to say in Blender's python console, the commands 'import PySide6' and 'import imageio' should not raise any error.
 There are several ways to acheive that. 
 
 - One of them uses pip, for me the command to run in a terminal looks like this (make sure you give the right path to blender's python.exe, for each version of blender h e path will change, see one example below): 
 
-"C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install PySide2
-(for newer versions of blender use PySide6 : "C:/Program Files/Blender Foundation/Blender #.#/#.#/python/bin/python.exe" -m pip install PySide6)
+"C:/Program Files/Blender Foundation/Blender #.#/#.#/python/bin/python.exe" -m pip install PySide6
 
-"C:/Program Files/Blender Foundation/Blender 3.1/3.1/python/bin/python.exe" -m pip install imageio
+"C:/Program Files/Blender Foundation/Blender #.#/#.#/python/bin/python.exe" -m pip install imageio
 
 - Another way, if you already have the dependency package installed somewhere for a python using the same version than the python in blender, in Blender's python console you can use : 
 
