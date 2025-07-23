@@ -28,12 +28,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-try:
-    from PySide2 import QtUiTools
-except Exception as e:
-    from PySide6 import QtUiTools
-
-from PySide2 import QtCore
+from PySide6 import QtCore, QtUiTools
 
 
 class UiLoader(QtUiTools.QUiLoader):
