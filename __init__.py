@@ -322,12 +322,16 @@ class OT_gaolib(bpy.types.Operator):
     _widget = None
     _timer: bpy.types.Timer = None
 
-    # def __init__(self, *args, **kwargs):
-    #     super().__init__(*args, **kwargs)
-    #     from PySide6 import QtWidgets
-    #     if QtWidgets.QApplication.instance():
-    #         QtWidgets.QApplication.shutdown(QtWidgets.QApplication.instance())
-    #     self._app = QtWidgets.QApplication(sys.argv)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from PySide6 import QtWidgets
+
+        if not QtWidgets.QApplication.instance():
+            self._app = QtWidgets.QApplication(sys.argv)
+        else:
+            self._app = QtWidgets.QApplication.instance()
+        for tlw in self._app.topLevelWindows():
+            tlw.close()
 
     def modal(self, context, event):
         # Finish running operator if window is closed
@@ -349,12 +353,6 @@ class OT_gaolib(bpy.types.Operator):
 
         from .gaolib.gaolibsub import GaoLib
 
-        if not QtWidgets.QApplication.instance():
-            self._app = QtWidgets.QApplication(sys.argv)
-        else:
-            self._app = QtWidgets.QApplication.instance()
-        for tlw in self._app.topLevelWindows():
-            tlw.close()
         # Show QT Widget
         self._widget = GaoLib()
         self._widget.show()
@@ -408,12 +406,14 @@ class OT_GetBlenderContext(bpy.types.Operator):
     def execute(self, context):
         from PySide6 import QtWidgets
 
+        gaolib = None
         app = None
         if QtWidgets.QApplication.instance():
             app = QtWidgets.QApplication.instance()
             for widget in app.topLevelWidgets():
                 if widget.__class__.__name__ == "GaoLib":
                     widget.context = context.copy()
+                    gaolib = widget
         else:
             return {"CANCELLED"}
         if not gaolib:
