@@ -155,6 +155,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.toggleAdditive = False
         utils.removeOrphans()
 
+        # allow frame range in negative
+        self.fromRangeSpinBox.setMinimum(-1000000)
+        self.toRangeSpinBox.setMinimum(-1000000)
+
         # recast blendPoseSlider
         self.blendPoseSlider.__class__ = CustomSliderWidget
         self.blendPoseSlider.parentInfoWidget = self
@@ -176,8 +180,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.additiveModeCheckBox.stateChanged.connect(self.additiveModeToggle)
         self.blendPoseSlider.valueChanged.connect(
             lambda: self.blendSliderChanged(
-                self.item.path,
-                blend=self.blendPoseSlider.value() / 100,
+                self.item.path, blend=self.blendPoseSlider.value() / 100
             )
         )
         self.modifyPushButton.released.connect(self.modifyFolder)
@@ -1130,10 +1133,19 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             # Set spin box options
             self.fromRangeSpinBox.valueChanged.connect(self.fromSpinBoxChanged)
             self.toRangeSpinBox.valueChanged.connect(self.toSpinBoxChanged)
-            self.fromRangeSpinBox.setValue(int(self.item.frameRange.split("-")[0]))
-            self.toRangeSpinBox.setValue(int(self.item.frameRange.split("-")[-1]))
-            self.fromRangeSpinBox.setMinimum(int(self.item.frameRange.split("-")[0]))
-            self.toRangeSpinBox.setMaximum(int(self.item.frameRange.split("-")[-1]))
+            frameRangeStr = self.item.frameRange
+            fromValue = (
+                int(frameRangeStr.split("-")[0])
+                if not frameRangeStr.startswith("-")
+                else -int(frameRangeStr.split("-")[1])
+            )
+            toValue = int(frameRangeStr.split(str(fromValue) + "-")[-1])
+            self.fromRangeSpinBox.setValue(fromValue)
+            self.toRangeSpinBox.setValue(toValue)
+            self.fromRangeSpinBox.setMinimum(fromValue)
+            self.toRangeSpinBox.setMinimum(fromValue)
+            self.toRangeSpinBox.setMaximum(toValue)
+            self.fromRangeSpinBox.setMaximum(toValue)
             # Display animated thumbnail
             self.thumbnailLabel.installEventFilter(self)
             self.movie = QtGui.QMovie(self.thumbpath, QtCore.QByteArray(), self)
@@ -1146,19 +1158,23 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
     def fromSpinBoxChanged(self):
         """Keep consistancy between spinboxes"""
+        value = self.fromRangeSpinBox.value()
         if self.fromRangeSpinBox.value() > self.toRangeSpinBox.value():
-            self.toRangeSpinBox.setValue(self.fromRangeSpinBox.value())
+            self.toRangeSpinBox.setValue(value)
         if self.fromRangeSpinBox.value() < self.fromRangeSpinBox.minimum():
             self.fromRangeSpinBox.setValue(self.fromRangeSpinBox.minimum())
-        elif self.fromRangeSpinBox.value() > self.toRangeSpinBox.maximum():
-            self.fromRangeSpinBox.setValue(self.toRangeSpinBox.maximum())
+        if self.fromRangeSpinBox.value() > self.fromRangeSpinBox.maximum():
+            self.fromRangeSpinBox.setValue(self.fromRangeSpinBox.maximum())
 
     def toSpinBoxChanged(self):
         """Keep consistancy between spinboxes"""
+        value = self.toRangeSpinBox.value()
         if self.fromRangeSpinBox.value() > self.toRangeSpinBox.value():
-            self.fromRangeSpinBox.setValue(self.toRangeSpinBox.value())
+            self.fromRangeSpinBox.setValue(value)
         if self.toRangeSpinBox.value() > self.toRangeSpinBox.maximum():
             self.toRangeSpinBox.setValue(self.toRangeSpinBox.maximum())
+        if self.toRangeSpinBox.value() < self.toRangeSpinBox.minimum():
+            self.toRangeSpinBox.setValue(self.toRangeSpinBox.minimum())
 
     def eventFilter(self, obj, event):
         """Event filter to play movie when hovered"""
