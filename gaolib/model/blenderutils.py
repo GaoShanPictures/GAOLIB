@@ -25,6 +25,7 @@ import traceback
 
 try:
     import bpy
+    import bpy_extras.anim_utils as anim_utils
 except:
     print("Blenderutils : import error bpy")
 
@@ -150,7 +151,7 @@ def selectConstraintBones(jsonPath, pairingDict):
                 )
                 continue
             # select bone
-            bone.bone.select = True
+            bone.select = True
     if len(pbList):
         ShowDialog(
             "Some problems occured while selecting bones : \n" + "\n".join(pbList),
@@ -192,7 +193,7 @@ def selectBones(jsonPath):
                 for collection in obj.data.bones.get(bone).collections:
                     collection.is_visible = True
                     break
-                obj.data.bones.get(bone).select = True
+                obj.pose.bones.get(bone).select = True
             else:
                 print("Not found : " + bone)
         # check selected bones
@@ -250,9 +251,8 @@ def getSelectedBones():
         ShowDialog("Please, select an ARMATURE object.", title="Abort action")
         return None
     for obj in objects:
-        for bone in obj.data.bones:
-            if bone.select:
-                posebone = obj.pose.bones[bone.name]
+        for posebone in obj.pose.bones:
+            if posebone.select:
                 if not posebone.bone.hide and (
                     (
                         len(posebone.bone.collections)
@@ -294,14 +294,6 @@ def getConstraintsForSelection():
         objConstraints["bone_constraints"] = {}
         for bone in boneDict[obj]:
             for cons in bone.constraints:
-                print(
-                    "\n"
-                    + objName
-                    + " BONE CONSTRAINT on  "
-                    + bone.name
-                    + " : "
-                    + cons.name
-                )
                 # ignore constraints with target set to self
                 try:
                     target = cons.target
@@ -328,9 +320,12 @@ def getConstraintsForSelection():
                     objConstraints["bone_constraints"][bone.name][cons.name][
                         prop
                     ] = propValue
-        constraintDict[objName] = objConstraints
+        if len([key for key in objConstraints["bone_constraints"].keys()]):
+            constraintDict[objName] = objConstraints
     # reset selection
     toggleObjectSelection(objects, select=True)
+    if not len([key for key in constraintDict.keys()]):
+        return
     return constraintDict
 
 
@@ -387,7 +382,6 @@ def pasteConstraints(constraintDir, pairingDict):
         return
     # Get objects from which to get constraint datas
     objects = getSelectedObjects()
-
     pbList = []
     # apply constraints
     for objName in constraintData.keys():
@@ -483,6 +477,16 @@ def pasteConstraints(constraintDir, pairingDict):
             "Some problems occured : \n" + "\n".join(pbList),
             title="WARNING",
         )
+
+
+def getActionFcurves(action):
+    # blender 5.0 new way to retrieve fcurves
+    fcurves = []
+    for slot in action.slots:
+        channelbag = anim_utils.action_get_channelbag_for_slot(action, slot)
+        for fc in channelbag.fcurves:
+            fcurves.append(fc)
+    return fcurves
 
 
 def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
@@ -584,9 +588,10 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             selectedObject.animation_data.action = gaolibAction
 
         count_op = 0
+        # get list of all action fcurves
+        fcurves = getActionFcurves(action)
         # Retrieve source action keyframe points and copy them into target action
-        for i in range(len(action.fcurves)):
-            fc = action.fcurves[i]
+        for fc in fcurves:
             for kp in fc.keyframe_points:
                 sourceFrame = kp.co.x
                 if sourceFrameIn <= sourceFrame <= sourceFrameOut:
@@ -674,27 +679,26 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
                         selectedObject.keyframe_insert(
                             data_path=data_path, index=index, frame=frame
                         )
-            # if onePurcent != 0 and i % onePurcent == 0:
-            #     # Print progress in console
-            #     print(str(int(i * progressStep) + 5) + ' %')
         print("operations : " + str(count_op))
-        # Group channels by bones
-        bones = {}
-        for fc in selectedObject.animation_data.action.fcurves:
-            try:
-                bone = fc.data_path.split('["')[1].split('"]')[0]
-                if bone not in bones.keys():
-                    bones[bone] = []
-                bones[bone].append(fc)
-            except:
-                pass
-        for key in bones.keys():
-            group = selectedObject.animation_data.action.groups.get(key)
-            if not group:
-                group = selectedObject.animation_data.action.groups.new(key)
-            for fc in bones[key]:
-                if fc.group == None:
-                    fc.group = group
+        # # Group channels by bones
+        # bones = {}
+        # selectedObjFcurves = getActionFcurves(selectedObject.animation_data.action)
+        # # for fc in selectedObject.animation_data.action.fcurves:
+        # for fc in selectedObjFcurves:
+        #     try:
+        #         bone = fc.data_path.split('["')[1].split('"]')[0]
+        #         if bone not in bones.keys():
+        #             bones[bone] = []
+        #         bones[bone].append(fc)
+        #     except:
+        #         pass
+        # for key in bones.keys():
+        #     group = selectedObject.animation_data.action.groups.get(key)
+        #     if not group:
+        #         group = selectedObject.animation_data.action.groups.new(key)
+        #     for fc in bones[key]:
+        #         if fc.group == None:
+        #             fc.group = group
         # clean action
         bpy.data.actions.remove(action)
         infoWidget.parent.statusBar().showMessage("Paste animation done !", 1500)
@@ -777,7 +781,7 @@ def getRefPoseFromLib(poseDir, selection, flipped=False):
     refBones = []
     for posebone in pose.bones:
         if posebone.name in selectionNames:
-            posebone.bone.select = True
+            posebone.select = True
             refBones.append(posebone)
     return refPose
 
@@ -1036,23 +1040,25 @@ def pastePose(
                 selectedObject.animation_data.action = bpy.data.actions.new(
                     "anim_" + selectedObject.name + "Action"
                 )
-            # group channels by bones
-            bones = {}
-            for fc in selectedObject.animation_data.action.fcurves:
-                try:
-                    bone = fc.data_path.split('["')[1].split('"]')[0]
-                    if bone not in bones.keys():
-                        bones[bone] = []
-                    bones[bone].append(fc)
-                except:
-                    pass
-            for key in bones.keys():
-                group = selectedObject.animation_data.action.groups.get(key)
-                if not group:
-                    group = selectedObject.animation_data.action.groups.new(key)
-                for fc in bones[key]:
-                    if fc.group == None:
-                        fc.group = group
+            # # group channels by bones
+            # bones = {}
+            # selectedObjFcurves = getActionFcurves(selectedObject.animation_data.action)
+            # # for fc in selectedObject.animation_data.action.fcurves:
+            # for fc in selectedObjFcurves:
+            #     try:
+            #         bone = fc.data_path.split('["')[1].split('"]')[0]
+            #         if bone not in bones.keys():
+            #             bones[bone] = []
+            #         bones[bone].append(fc)
+            #     except:
+            #         pass
+            # for key in bones.keys():
+            #     group = selectedObject.animation_data.action.groups.get(key)
+            #     if not group:
+            #         group = selectedObject.animation_data.action.groups.new(key)
+            #     for fc in bones[key]:
+            #         if fc.group == None:
+            #             fc.group = group
     except Exception as e:
         print("Blend Pose Exception : " + str(e) + "\n" + str(traceback.format_exc()))
         exceptionMessage = "Blend Pose Exception : " + str(e)
@@ -1065,9 +1071,10 @@ def pastePose(
 
 def clearBoneSelection():
     """Unselect all bones"""
-    for armature in bpy.data.armatures:
-        for bone in armature.bones:
-            bone.select = False
+    for obj in bpy.data.objects:
+        if obj.type == "ARMATURE":
+            for bone in obj.pose.bones:
+                bone.select = False
 
 
 def removeOrphans():

@@ -853,6 +853,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         space.overlay.show_overlays = False
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return True
 
     def animCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -945,6 +946,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Delete temp action
         currentObject.animation_data.action = currentAction
         bpy.data.actions.remove(newAction)
+        return True
 
     def constraintCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -973,7 +975,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         }
         constraintData = utils.getConstraintsForSelection()
         if not constraintData:
-            utils.ShowDialog("Found no constraint data.", title="ABORT")
+            utils.ShowDialog("Found no BONE CONSTRAINT data.", title="ABORT")
             return
         data["constraintData"] = constraintData
         # Write Json file
@@ -984,6 +986,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             json.dump(data, file, indent=4, sort_keys=True)
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return True
 
     def selectionCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -1013,6 +1016,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 overlayHidden.append(toHide)
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return True
 
     def createThumbnail(self, itemType="POSE"):
         """Create item thumbnail and prepare to save as new item"""
@@ -1069,6 +1073,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 self.createPosewidget.fromRangeSpinBox.value()
             )
             bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
+        success = False
         # set context with self.context before calling blender operations
         with bpy.context.temp_override(
             area=self.context["area"],
@@ -1079,17 +1084,19 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             window=self.context["window"],
         ):
             if itemType == "POSE":
-                self.poseCreateThumbnail()
+                success = self.poseCreateThumbnail()
             elif itemType == "ANIMATION":
-                self.animCreateThumbnail()
+                success = self.animCreateThumbnail()
             elif itemType == "CONSTRAINT SET":
-                self.constraintCreateThumbnail()
+                success = self.constraintCreateThumbnail()
             elif itemType == "SELECTION SET":
-                self.selectionCreateThumbnail()
-        # Wait for end of render to call createThumbnailEnd
-        bpy.app.timers.register(
-            lambda: self.createThumbnailEnd(itemType=itemType), first_interval=0.1
-        )
+                success = self.selectionCreateThumbnail()
+
+        if success:
+            # Wait for end of render to call createThumbnailEnd
+            bpy.app.timers.register(
+                lambda: self.createThumbnailEnd(itemType=itemType), first_interval=0.1
+            )
 
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
