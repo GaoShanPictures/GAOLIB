@@ -8,7 +8,7 @@ The design of the user interface of this project, and its main purpose are inspi
 
 
 ## Latest Updates
-- GAOLIB Now Available for blender 4.5 ! 
+- GAOLIB Now Available for blender 5.0 ! 
 <!--
 Warning : In Preferences > System > Display Graphics the choosing Vulkan for Backend seems a bit less instable than OpenGL (less crashes)
 -->
