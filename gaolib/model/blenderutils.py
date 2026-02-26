@@ -484,6 +484,9 @@ def getActionFcurves(action):
     fcurves = []
     for slot in action.slots:
         channelbag = anim_utils.action_get_channelbag_for_slot(action, slot)
+        if not channelbag:
+            print("Not channel bag !!!! ")
+            continue
         for fc in channelbag.fcurves:
             fcurves.append(fc)
     return fcurves
@@ -536,10 +539,26 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     if action is None:
         ShowDialog("APPEND ACTION WENT WRONG.", title="Abort action")
         return
+    # # get json data
+    # jsonPath = os.path.join(animDir, "animation.json")
+    # itemdata = {}
+    # with open(jsonPath) as file:
+    #     itemdata = json.load(file)
+    # # clean useless slots from imported action
+    # toCleanSlots = []
+    # try:
+    #     for slot in action.slots:
+    #         if slot.name_display not in itemdata["animationData"]["actionSlots"]:
+    #             toCleanSlots.append(slot)
+    # except Exception as e:
+    #     print("CLEAN SLOT EXCEPTION : " + str(e))
+    # for slot in toCleanSlots:
+    #     action.slots.remove(slot)
+
     # PASTE action
     actionName = os.path.basename(animDir).split(".")[0]  # + "_ACTION"
-    if "action" not in actionName.lower():
-        actionName = actionName + "Action"
+    if "gaolibaction" not in actionName.lower():
+        actionName = actionName + "GaolibAction"
     if quickPaste:
         # Paste entire action in new action
         action.name = actionName
@@ -549,7 +568,11 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
 
         if hasattr(action, "slots"):  # manage slots or blender 4.4
             suitable_slots = selectedObject.animation_data.action_suitable_slots
+            # print("SUITABLE SLOTS")
+            # for ss in suitable_slots:
+            #     print(ss)
             if suitable_slots:
+                print("selected slot : " + str(suitable_slots[0]))
                 selectedObject.animation_data.action_slot = suitable_slots[0]
             else:
                 slot = action.slots.new(id_type="OBJECT", name=selectedObject.name)

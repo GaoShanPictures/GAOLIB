@@ -751,7 +751,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 "frameRange": str(self.createPosewidget.fromRangeSpinBox.value())
                 + "-"
                 + str(self.createPosewidget.toRangeSpinBox.value()),
-            }
+            },
+            # "animationData": {
+            #     "actionSlots": itemdata["actionSlots"],
+            # },
         }
         for key in itemdata.keys():
             if key == "constraintData":
@@ -864,11 +867,23 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         selectedObjects = []
         for o in bpy.context.selected_objects:
             selectedObjects.append(o.name)
+        currentObject = bpy.context.selected_objects[0]
+        try:
+            currentAction = currentObject.animation_data.action
+        except:
+            utils.ShowDialog("FOUND NO ACTION ON SELECTED OBJECT.", title="ABORT")
+            return
         # Write Json file
+        # actionSlots = []
+        # for slot in currentAction:
+        #     if currentObject in slot.users():
+        #         actionSlots.append(slot.name_display)
+
         data = {
             "bones": len(bpy.context.selected_pose_bones),
             "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
             "objects": selectedObjects,
+            # "actionSlots": actionSlots,
         }
         jsonFile = os.path.join(
             os.path.dirname(os.path.dirname(bpy.context.scene.render.filepath)),
@@ -877,16 +892,19 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         with open(jsonFile, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
         # Copy Animation
-        currentObject = bpy.context.selected_objects[0]
-        try:
-            currentAction = currentObject.animation_data.action
-        except:
-            utils.ShowDialog("FOUND NO ACTION ON SELECTED OBJECT.", title="ABORT")
-            return
         newAction = currentAction.copy()
         newAction.name = "Animation"
         currentObject.animation_data.action = None
         currentObject.animation_data.action = newAction
+        # clean slots of new action
+        toCleanSlots = []
+        for slot in newAction.slots:
+            if currentObject not in slot.users():
+                toCleanSlots.append(slot)
+        for slot in toCleanSlots:
+            newAction.slots.remove(slot)
+        for slot in newAction.slots:
+            print("Keep slot " + slot.name_display)
         # key first frame
         bpy.context.scene.frame_set(frameIn)
         for bone in bpy.context.selected_pose_bones:
@@ -1049,6 +1067,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             renderpath = self.thumbTempPath
         # Remember current render settings
         self.renderPath = bpy.context.scene.render.filepath
+        self.mediaType = bpy.context.scene.render.image_settings.media_type
         self.renderFormat = bpy.context.scene.render.image_settings.file_format
         self.frameStep = bpy.context.scene.frame_step
         self.frameStart = bpy.context.scene.frame_start
@@ -1060,6 +1079,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.color_mode = bpy.context.scene.render.image_settings.color_mode
         # Modify render settings
         bpy.context.scene.render.filepath = renderpath
+        bpy.context.scene.render.image_settings.media_type = "IMAGE"
         bpy.context.scene.render.image_settings.file_format = "PNG"
         bpy.context.scene.render.use_stamp = False
         bpy.context.scene.render.image_settings.color_mode = "RGB"
@@ -1206,6 +1226,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
         # put back previous render settings
         bpy.context.scene.render.filepath = self.renderPath
+        bpy.context.scene.render.image_settings.media_type = self.mediaType
         bpy.context.scene.render.image_settings.file_format = self.renderFormat
         bpy.context.scene.render.resolution_x = self.xres
         bpy.context.scene.render.resolution_y = self.yres
