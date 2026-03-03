@@ -340,7 +340,7 @@ class OT_gaolib(bpy.types.Operator):
                 context.window_manager.event_timer_remove(self._timer)
                 return {"FINISHED"}
             # Procecess any events
-            self._app.processEvents()
+            # self._app.processEvents() # test reduce crashes
         except Exception as e:
             print("Caught Exception : " + str(e))
             # widget already deleted
