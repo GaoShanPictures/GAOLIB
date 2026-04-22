@@ -873,7 +873,8 @@ def pastePose(
                         # Clean orphans
                         removeOrphans()
                         raise Exception(
-                            "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
+                            "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler.\nCheck bone named "
+                            + posebone.name
                         )
                     elif (
                         rotationMode == "QUATERNION"
@@ -895,7 +896,8 @@ def pastePose(
                         # Clean orphans
                         removeOrphans()
                         raise Exception(
-                            "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
+                            "Conversion between Rotation modes other than QUATERNION and Euler are not supported !\nCheck bone named "
+                            + posebone.name
                         )
 
                     selectedbone.rotation_mode = rotationMode
