@@ -54,6 +54,12 @@ class GaoLibItem(object):
         elif self.name.endswith(".constraint"):
             jsonPath = os.path.join(self.path, "constraint_set.json")
             self.itemType = "CONSTRAINT SET"
+        elif self.name.endswith(".multi_pose"):
+            jsonPath = os.path.join(self.path, "multi_pose.json")
+            self.itemType = "MULTI POSE"
+        elif self.name.endswith(".multi_anim"):
+            jsonPath = os.path.join(self.path, "multi_animation.json")
+            self.itemType = "MULTI ANIMATION"
         else:
             jsonPath = None
             self.itemType = "FOLDER"
@@ -88,3 +94,7 @@ class GaoLibItem(object):
                         self.bonesSelection = True
                     if "objects" in itemdata["metadata"].keys():
                         self.objects = itemdata["metadata"]["objects"]
+            else:
+                print("Not found : " + str(jsonPath))
+        else:
+            print("Did not find json path : " + str(jsonPath))

@@ -70,6 +70,7 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
         objectName,
         comboList,
         constraintDict,
+        itemType="CONSTRAINT SET",
         parent=None,
     ):
         super(PairingWidget, self).__init__(parent=parent)
@@ -82,6 +83,8 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
             self.armatureComboBox.setCurrentIndex(index)
 
         self.constraintInfoWidgets = []
+        if itemType != "CONSTRAINT SET":
+            return
 
         if objectName in constraintDict.keys():
             if "bone_constraints" in constraintDict[objectName].keys():
@@ -165,7 +168,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
         # For animation item use gif thumbnail
         self.movie = None
-        if self.item.itemType == "ANIMATION":
+        if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
             self.thumbpath = self.item.thumbpath.replace("png", "gif")
         self.showInfos()
         # Connect functions
@@ -254,6 +257,12 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     suffix = ".anim"
                     name = name.split(".")[0] + suffix
                     wrongName = True
+                if self.item.itemType == "MULTI ANIMATION" and not name.endswith(
+                    ".multi_anim"
+                ):
+                    suffix = ".multi_anim"
+                    name = name.split(".")[0] + suffix
+                    wrongName = True
                 elif self.item.itemType == "SELECTION SET" and not name.endswith(
                     ".selection"
                 ):
@@ -262,13 +271,19 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     wrongName = True
                 elif self.item.itemType == "POSE" and not name.endswith(".pose"):
                     suffix = ".pose"
-                    name = name.split(".")[0] + ".pose"
+                    name = name.split(".")[0] + suffix
+                    wrongName = True
+                elif self.item.itemType == "MULTI POSE" and not name.endswith(
+                    ".multi_pose"
+                ):
+                    suffix = ".multi_pose"
+                    name = name.split(".")[0] + suffix
                     wrongName = True
                 elif self.item.itemType == "CONSTRAINT SET" and not name.endswith(
                     ".constraint"
                 ):
                     suffix = ".constraint"
-                    name = name.split(".")[0] + ".constraint"
+                    name = name.split(".")[0] + suffix
                     wrongName = True
                 if wrongName:
                     utils.ShowDialog(
@@ -415,6 +430,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         bonesToBlend = {}
         # get pose selection set
         itemdata = {}
+        # if poseDir.endswith('.multi_pose'):
+        #     jsonPath = os.path.join(poseDir, "multi_pose.json")
+        # else:
         jsonPath = os.path.join(poseDir, "pose.json")
         with open(jsonPath) as file:
             itemdata = json.load(file)
@@ -521,359 +539,164 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if not self.bonesToBlend:
             self.bonesToBlend = self.getBonesToBlend(poseDir, additiveMode=additiveMode)
 
-        refPose = self.refPose
-        pose = refPose.pose
+        # refPose = self.refPose
+        # pose = refPose.pose
         try:
             # Copy properties from ref bones current object
             for posebone, selectedbone in self.bonesToBlend.items():
-                # Manage if different rotation modes used (WARNING : axis angle not supported !)
-                rotationMode = posebone.rotation_mode
-                if (
-                    rotationMode == "AXIS_ANGLE"
-                    or selectedbone.rotation_mode == "AXIS_ANGLE"
-                ):
-                    raise Exception(
-                        "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
-                    )
-                elif (
-                    rotationMode == "QUATERNION"
-                    and self.currentPose[selectedbone]["rotationMode"] != "QUATERNION"
-                ):
-                    currentPoseRotation = self.currentPose[selectedbone][
-                        "rotation"
-                    ].to_quaternion()
-                elif (
-                    rotationMode != "QUATERNION"
-                    and self.currentPose[selectedbone]["rotationMode"] == "QUATERNION"
-                ):
-                    currentPoseRotation = self.currentPose[selectedbone][
-                        "rotation"
-                    ].to_euler()
-                elif rotationMode == self.currentPose[selectedbone]["rotationMode"]:
-                    currentPoseRotation = self.currentPose[selectedbone]["rotation"]
-                else:
-                    raise Exception(
-                        "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
-                    )
+                utils.copyBoneProperties(
+                    posebone,
+                    selectedbone,
+                    self.currentPose,
+                    blend,
+                    False,
+                    additiveMode=additiveMode,
+                    cleanOnError=False,
+                )
+                # # Manage if different rotation modes used (WARNING : axis angle not supported !)
+                # rotationMode = posebone.rotation_mode
+                # if (
+                #     rotationMode == "AXIS_ANGLE"
+                #     or selectedbone.rotation_mode == "AXIS_ANGLE"
+                # ):
+                #     raise Exception(
+                #         "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
+                #     )
+                # elif (
+                #     rotationMode == "QUATERNION"
+                #     and self.currentPose[selectedbone]["rotationMode"] != "QUATERNION"
+                # ):
+                #     currentPoseRotation = self.currentPose[selectedbone][
+                #         "rotation"
+                #     ].to_quaternion()
+                # elif (
+                #     rotationMode != "QUATERNION"
+                #     and self.currentPose[selectedbone]["rotationMode"] == "QUATERNION"
+                # ):
+                #     currentPoseRotation = self.currentPose[selectedbone][
+                #         "rotation"
+                #     ].to_euler()
+                # elif rotationMode == self.currentPose[selectedbone]["rotationMode"]:
+                #     currentPoseRotation = self.currentPose[selectedbone]["rotation"]
+                # else:
+                #     raise Exception(
+                #         "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
+                #     )
 
-                selectedbone.rotation_mode = rotationMode
+                # selectedbone.rotation_mode = rotationMode
 
-                for axis in range(3):
-                    if not selectedbone.lock_location[axis]:
-                        if additiveMode:
-                            selectedbone.location[axis] = (
-                                blend * posebone.location[axis]
-                                + self.currentPose[selectedbone]["location"][axis]
-                            )
-                        else:
-                            selectedbone.location[axis] = (
-                                blend * posebone.location[axis]
-                                + (1 - blend)
-                                * self.currentPose[selectedbone]["location"][axis]
-                            )
-                    if rotationMode != "QUATERNION":
-                        if not selectedbone.lock_rotation[axis]:
-                            if additiveMode:
-                                selectedbone.rotation_euler[axis] = (
-                                    blend * posebone.rotation_euler[axis]
-                                    + currentPoseRotation[axis]
-                                )
-                            else:
-                                selectedbone.rotation_euler[axis] = (
-                                    blend * posebone.rotation_euler[axis]
-                                    + (1 - blend) * currentPoseRotation[axis]
-                                )
-                    if not selectedbone.lock_scale[axis]:
-                        if additiveMode:
-                            selectedbone.scale[axis] = (
-                                blend * posebone.scale[axis]
-                                + self.currentPose[selectedbone]["scale"][axis]
-                                - blend
-                            )
-                        else:
-                            selectedbone.scale[axis] = (
-                                blend * posebone.scale[axis]
-                                + (1 - blend)
-                                * self.currentPose[selectedbone]["scale"][axis]
-                            )
-                if rotationMode == "QUATERNION":
-                    if not selectedbone.lock_rotation[0]:
-                        if additiveMode:
-                            selectedbone.rotation_quaternion[0] = (
-                                blend * posebone.rotation_quaternion[0]
-                                + currentPoseRotation[0]
-                                - blend
-                            )
-                        else:
-                            selectedbone.rotation_quaternion[0] = (
-                                blend * posebone.rotation_quaternion[0]
-                                + (1 - blend) * currentPoseRotation[0]
-                            )
-                    for axis in range(3):
-                        if not selectedbone.lock_rotation[axis]:
-                            if additiveMode:
-                                selectedbone.rotation_quaternion[axis + 1] = (
-                                    blend * posebone.rotation_quaternion[axis + 1]
-                                    + currentPoseRotation[axis + 1]
-                                )
-                            else:
-                                selectedbone.rotation_quaternion[axis + 1] = (
-                                    blend * posebone.rotation_quaternion[axis + 1]
-                                    + (1 - blend) * currentPoseRotation[axis + 1]
-                                )
-                # handle properties
-                for key in posebone.keys():
-                    try:
-                        propertyType = eval("selectedbone." + key).__class__.__name__
-                        if propertyType == "float":
-                            exec(
-                                "selectedbone."
-                                + key
-                                + " = blend * posebone."
-                                + key
-                                + " + (1-blend) * self.currentPose[selectedbone]."
-                                + key
-                            )
-                        else:
-                            exec("selectedbone." + key + " = posebone." + key)
-                    except:
-                        try:
-                            propertyType = eval(
-                                'selectedbone["' + key + '"]'
-                            ).__class__.__name__
-                            if propertyType == "float":
-                                command = (
-                                    'selectedbone["'
-                                    + key
-                                    + '"] = blend * posebone["'
-                                    + key
-                                    + '"]'
-                                    + '+ (1-blend) * self.currentPose[selectedbone]["properties"]["'
-                                    + key
-                                    + '"]'
-                                )
-                                exec(command)
-                            else:
-                                exec(
-                                    'selectedbone["'
-                                    + key
-                                    + '"] = posebone["'
-                                    + key
-                                    + '"]'
-                                )
-                        except:
-                            print(
-                                "IMPOSSIBLE TO HANDLE PROPERTY "
-                                + key
-                                + " FOR "
-                                + selectedbone.name
-                            )
+                # for axis in range(3):
+                #     if not selectedbone.lock_location[axis]:
+                #         if additiveMode:
+                #             selectedbone.location[axis] = (
+                #                 blend * posebone.location[axis]
+                #                 + self.currentPose[selectedbone]["location"][axis]
+                #             )
+                #         else:
+                #             selectedbone.location[axis] = (
+                #                 blend * posebone.location[axis]
+                #                 + (1 - blend)
+                #                 * self.currentPose[selectedbone]["location"][axis]
+                #             )
+                #     if rotationMode != "QUATERNION":
+                #         if not selectedbone.lock_rotation[axis]:
+                #             if additiveMode:
+                #                 selectedbone.rotation_euler[axis] = (
+                #                     blend * posebone.rotation_euler[axis]
+                #                     + currentPoseRotation[axis]
+                #                 )
+                #             else:
+                #                 selectedbone.rotation_euler[axis] = (
+                #                     blend * posebone.rotation_euler[axis]
+                #                     + (1 - blend) * currentPoseRotation[axis]
+                #                 )
+                #     if not selectedbone.lock_scale[axis]:
+                #         if additiveMode:
+                #             selectedbone.scale[axis] = (
+                #                 blend * posebone.scale[axis]
+                #                 + self.currentPose[selectedbone]["scale"][axis]
+                #                 - blend
+                #             )
+                #         else:
+                #             selectedbone.scale[axis] = (
+                #                 blend * posebone.scale[axis]
+                #                 + (1 - blend)
+                #                 * self.currentPose[selectedbone]["scale"][axis]
+                #             )
+                # if rotationMode == "QUATERNION":
+                #     if not selectedbone.lock_rotation[0]:
+                #         if additiveMode:
+                #             selectedbone.rotation_quaternion[0] = (
+                #                 blend * posebone.rotation_quaternion[0]
+                #                 + currentPoseRotation[0]
+                #                 - blend
+                #             )
+                #         else:
+                #             selectedbone.rotation_quaternion[0] = (
+                #                 blend * posebone.rotation_quaternion[0]
+                #                 + (1 - blend) * currentPoseRotation[0]
+                #             )
+                #     for axis in range(3):
+                #         if not selectedbone.lock_rotation[axis]:
+                #             if additiveMode:
+                #                 selectedbone.rotation_quaternion[axis + 1] = (
+                #                     blend * posebone.rotation_quaternion[axis + 1]
+                #                     + currentPoseRotation[axis + 1]
+                #                 )
+                #             else:
+                #                 selectedbone.rotation_quaternion[axis + 1] = (
+                #                     blend * posebone.rotation_quaternion[axis + 1]
+                #                     + (1 - blend) * currentPoseRotation[axis + 1]
+                #                 )
+                # # handle properties
+                # for key in posebone.keys():
+                #     try:
+                #         propertyType = eval("selectedbone." + key).__class__.__name__
+                #         if propertyType == "float":
+                #             exec(
+                #                 "selectedbone."
+                #                 + key
+                #                 + " = blend * posebone."
+                #                 + key
+                #                 + " + (1-blend) * self.currentPose[selectedbone]."
+                #                 + key
+                #             )
+                #         else:
+                #             exec("selectedbone." + key + " = posebone." + key)
+                #     except:
+                #         try:
+                #             propertyType = eval(
+                #                 'selectedbone["' + key + '"]'
+                #             ).__class__.__name__
+                #             if propertyType == "float":
+                #                 command = (
+                #                     'selectedbone["'
+                #                     + key
+                #                     + '"] = blend * posebone["'
+                #                     + key
+                #                     + '"]'
+                #                     + '+ (1-blend) * self.currentPose[selectedbone]["properties"]["'
+                #                     + key
+                #                     + '"]'
+                #                 )
+                #                 exec(command)
+                #             else:
+                #                 exec(
+                #                     'selectedbone["'
+                #                     + key
+                #                     + '"] = posebone["'
+                #                     + key
+                #                     + '"]'
+                #                 )
+                #         except:
+                #             print(
+                #                 "IMPOSSIBLE TO HANDLE PROPERTY "
+                #                 + key
+                #                 + " FOR "
+                #                 + selectedbone.name
+                #             )
         except Exception as e:
             print("Blend Pose Exception : " + str(e))
-
-    # def blendSliderChanged(self, poseDir, blend=1):
-    #     """Update pose from current scene according to the blend slider parameter value"""
-    #     # Refresh display
-    #     additiveMode = self.additiveModeCheckBox.isChecked()
-    #     value = self.blendPoseSlider.value()
-    #     if additiveMode:
-    #         self.blendPoseLabel.setText("Add to Pose " + str(value) + "%")
-    #     else:
-    #         self.blendPoseLabel.setText("Blend Pose " + str(value) + "%")
-    #     if value:
-    #         self.applyPushButton.setText("APPLY " + str(value) + "%")
-    #     else:
-    #         self.applyPushButton.setText("APPLY 100 %")
-    #     # If additive mode checkbox has just been toggled, do not update pose
-    #     if self.toggleAdditive:
-    #         self.toggleAdditive = False
-    #         return
-    #     # get pose selection set
-    #     itemdata = {}
-    #     jsonPath = os.path.join(poseDir, "pose.json")
-    #     with open(jsonPath) as file:
-    #         itemdata = json.load(file)
-    #     selectionSetBones = []
-    #     for key in itemdata["metadata"].keys():
-    #         if key == "boneNames":
-    #             selectionSetBones = itemdata["metadata"]["boneNames"]
-    #     # Remember current pose
-    #     selection = utils.getSelectedBones()
-    #     if not self.currentPose:
-    #         self.currentPose = utils.getCurrentPose()
-    #     # Append pose object
-    #     if not self.refPose:
-    #         self.refPose = utils.getRefPoseFromLib(poseDir, selection)
-    #     refPose = self.refPose
-    #     pose = refPose.pose
-    #     try:
-    #         # Copy properties from ref bones current object
-    #         for posebone in pose.bones:
-    #             for selectedbone in selection:
-    #                 if not selectedbone.name in selectionSetBones:
-    #                     # ignore bones outside original pose selection set
-    #                     continue
-    #                 if posebone.name == selectedbone.name:
-    #                     # Manage if different rotation modes used (WARNING : axis angle not supported !)
-    #                     rotationMode = posebone.rotation_mode
-    #                     if (
-    #                         rotationMode == "AXIS_ANGLE"
-    #                         or selectedbone.rotation_mode == "AXIS_ANGLE"
-    #                     ):
-    #                         raise Exception(
-    #                             "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
-    #                         )
-    #                     elif (
-    #                         rotationMode == "QUATERNION"
-    #                         and self.currentPose[selectedbone]["rotationMode"]
-    #                         != "QUATERNION"
-    #                     ):
-    #                         currentPoseRotation = self.currentPose[selectedbone][
-    #                             "rotation"
-    #                         ].to_quaternion()
-    #                     elif (
-    #                         rotationMode != "QUATERNION"
-    #                         and self.currentPose[selectedbone]["rotationMode"]
-    #                         == "QUATERNION"
-    #                     ):
-    #                         currentPoseRotation = self.currentPose[selectedbone][
-    #                             "rotation"
-    #                         ].to_euler()
-    #                     elif (
-    #                         rotationMode
-    #                         == self.currentPose[selectedbone]["rotationMode"]
-    #                     ):
-    #                         currentPoseRotation = self.currentPose[selectedbone][
-    #                             "rotation"
-    #                         ]
-    #                     else:
-    #                         raise Exception(
-    #                             "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
-    #                         )
-
-    #                     selectedbone.rotation_mode = rotationMode
-
-    #                     for axis in range(3):
-    #                         if not selectedbone.lock_location[axis]:
-    #                             if additiveMode:
-    #                                 selectedbone.location[axis] = (
-    #                                     blend * posebone.location[axis]
-    #                                     + self.currentPose[selectedbone]["location"][
-    #                                         axis
-    #                                     ]
-    #                                 )
-    #                             else:
-    #                                 selectedbone.location[axis] = (
-    #                                     blend * posebone.location[axis]
-    #                                     + (1 - blend)
-    #                                     * self.currentPose[selectedbone]["location"][
-    #                                         axis
-    #                                     ]
-    #                                 )
-    #                         if rotationMode != "QUATERNION":
-    #                             if not selectedbone.lock_rotation[axis]:
-    #                                 if additiveMode:
-    #                                     selectedbone.rotation_euler[axis] = (
-    #                                         blend * posebone.rotation_euler[axis]
-    #                                         + currentPoseRotation[axis]
-    #                                     )
-    #                                 else:
-    #                                     selectedbone.rotation_euler[axis] = (
-    #                                         blend * posebone.rotation_euler[axis]
-    #                                         + (1 - blend) * currentPoseRotation[axis]
-    #                                     )
-    #                         if not selectedbone.lock_scale[axis]:
-    #                             if additiveMode:
-    #                                 selectedbone.scale[axis] = (
-    #                                     blend * posebone.scale[axis]
-    #                                     + self.currentPose[selectedbone]["scale"][axis]
-    #                                     - blend
-    #                                 )
-    #                             else:
-    #                                 selectedbone.scale[axis] = (
-    #                                     blend * posebone.scale[axis]
-    #                                     + (1 - blend)
-    #                                     * self.currentPose[selectedbone]["scale"][axis]
-    #                                 )
-    #                     if rotationMode == "QUATERNION":
-    #                         if not selectedbone.lock_rotation[0]:
-    #                             if additiveMode:
-    #                                 selectedbone.rotation_quaternion[0] = (
-    #                                     blend * posebone.rotation_quaternion[0]
-    #                                     + currentPoseRotation[0]
-    #                                     - blend
-    #                                 )
-    #                             else:
-    #                                 selectedbone.rotation_quaternion[0] = (
-    #                                     blend * posebone.rotation_quaternion[0]
-    #                                     + (1 - blend) * currentPoseRotation[0]
-    #                                 )
-    #                         for axis in range(3):
-    #                             if not selectedbone.lock_rotation[axis]:
-    #                                 if additiveMode:
-    #                                     selectedbone.rotation_quaternion[axis + 1] = (
-    #                                         blend
-    #                                         * posebone.rotation_quaternion[axis + 1]
-    #                                         + currentPoseRotation[axis + 1]
-    #                                     )
-    #                                 else:
-    #                                     selectedbone.rotation_quaternion[axis + 1] = (
-    #                                         blend
-    #                                         * posebone.rotation_quaternion[axis + 1]
-    #                                         + (1 - blend)
-    #                                         * currentPoseRotation[axis + 1]
-    #                                     )
-    #                     # handle properties
-    #                     for key in posebone.keys():
-    #                         try:
-    #                             propertyType = eval(
-    #                                 "selectedbone." + key
-    #                             ).__class__.__name__
-    #                             if propertyType == "float":
-    #                                 exec(
-    #                                     "selectedbone."
-    #                                     + key
-    #                                     + " = blend * posebone."
-    #                                     + key
-    #                                     + " + (1-blend) * self.currentPose[selectedbone]."
-    #                                     + key
-    #                                 )
-    #                             else:
-    #                                 exec("selectedbone." + key + " = posebone." + key)
-    #                         except:
-    #                             try:
-    #                                 propertyType = eval(
-    #                                     'selectedbone["' + key + '"]'
-    #                                 ).__class__.__name__
-    #                                 if propertyType == "float":
-    #                                     command = (
-    #                                         'selectedbone["'
-    #                                         + key
-    #                                         + '"] = blend * posebone["'
-    #                                         + key
-    #                                         + '"]'
-    #                                         + '+ (1-blend) * self.currentPose[selectedbone]["properties"]["'
-    #                                         + key
-    #                                         + '"]'
-    #                                     )
-    #                                     exec(command)
-    #                                 else:
-    #                                     exec(
-    #                                         'selectedbone["'
-    #                                         + key
-    #                                         + '"] = posebone["'
-    #                                         + key
-    #                                         + '"]'
-    #                                     )
-    #                             except:
-    #                                 print(
-    #                                     "IMPOSSIBLE TO HANDLE PROPERTY "
-    #                                     + key
-    #                                     + " FOR "
-    #                                     + selectedbone.name
-    #                                 )
-    #     except Exception as e:
-    #         print("Blend Pose Exception : " + str(e))
 
     def delete(self):
         """Delete selected item"""
@@ -946,12 +769,12 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     else:
                         raise
             try:
-                if self.item.itemType == "ANIMATION":
+                if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
                     os.remove(os.path.join(path, "thumbnail.gif"))
                 else:
                     os.remove(os.path.join(path, "thumbnail.png"))
             except Exception as e:
-                if self.item.itemType == "ANIMATION":
+                if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
                     QtWidgets.QMessageBox.about(
                         self,
                         "Abort action",
@@ -986,7 +809,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
     def updateConstraintPairingList(self):
         """Update pairing list combobox"""
-        comboList = [obj.name for obj in utils.getSelectedObjects()]
+        if self.item.itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+            comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
+        else:
+            comboList = [obj.name for obj in utils.getSelectedObjects()]
         for widget in self.pairWidgets:
             widget.armatureComboBox.clear()
             widget.armatureComboBox.addItems(comboList)
@@ -1008,11 +834,14 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         for file in os.listdir(self.item.path):
             if file.endswith(".json"):
                 jsonPath = os.path.join(self.item.path, file)
-        if self.item.itemType != "CONSTRAINT SET":
-            utils.selectBones(jsonPath)
-        else:
+        if self.item.itemType == "CONSTRAINT SET":
             pairingDict = self.getConstraintPairing()
             utils.selectConstraintBones(jsonPath, pairingDict)
+        elif self.item.itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+            pairingDict = self.getConstraintPairing()
+            utils.selectMultiPoseBones(jsonPath, pairingDict)
+        else:
+            utils.selectBones(jsonPath)
 
     def getConstraintPairing(self):
         """Return dict of json object name and selected objet to which we want to apply the constraint(s)"""
@@ -1052,7 +881,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.contentLabel.setText(self.item.content)
         self.thumbnailLabel.setPixmap((QtGui.QPixmap(self.thumbpath).scaled(200, 200)))
         self.frameRangeLabel.setText(self.item.frameRange)
-
+        print("\n\n Show infos " + str(self.item.itemType))
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
         # Set visibility of widgets
@@ -1063,10 +892,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.animOptionsWidget.setVisible(False)
             self.constraintOptionsGroupBox.setVisible(False)
             self.applyPushButton.setText("APPLY 100 %")
-            # self.optionsGroupBox.setVisible(True)
-            # self.poseOptionsWidget.setVisible(True)
-            # self.flippedCheckBox.setVisible(False)
-            # self.flippedCheckBox.setEnabled(False)
         elif self.item.itemType == "SELECTION SET":
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
@@ -1075,7 +900,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(False)
             self.applyPushButton.setVisible(False)
-            # self.selectionSetOptionsWidget.setVisible(True)
         elif self.item.itemType == "CONSTRAINT SET":
             self.selectionSetOptionsWidget.setVisible(False)
             self.label_5.setVisible(False)
@@ -1083,7 +907,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.animOptionsWidget.setVisible(False)
             self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(False)
-            # self.constraintOptionsGroupBox.setVisible(True)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/constraint.png"),
@@ -1096,35 +919,43 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             comboList = [obj.name for obj in utils.getSelectedObjects()]
             for objName in self.item.objects:
                 constraintDict = self.getItemDict()["constraintData"]
-
                 item = PairingWidget(objName, comboList, constraintDict, parent=self)
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
-
-        elif self.item.itemType == "FOLDER":
+        if self.item.itemType == "MULTI POSE":
             self.selectionSetOptionsWidget.setVisible(False)
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
             self.animOptionsWidget.setVisible(False)
-            self.constraintOptionsGroupBox.setVisible(False)
-            self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(False)
-            self.applyPushButton.setVisible(False)
-            self.ownerLabel.setVisible(False)
-            self.dateLabel.setVisible(False)
-            self.contentLabel.setVisible(False)
-            self.label_2.setVisible(False)
-            self.label_3.setVisible(False)
-            self.label_4.setVisible(False)
-            self.selectBonesPushButton.setVisible(False)
-        elif self.item.itemType == "ANIMATION":
+            # self.constraintOptionsGroupBox.setVisible(False)
+            self.applyPushButton.setText("APPLY 100 %")
+            # set objects pairing widgets
+            self.pairWidgets = []
+            comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
+            for objName in self.item.objects:
+                constraintDict = self.getItemDict()["metadata"]["objects"]
+                item = PairingWidget(
+                    objName, comboList, {}, itemType="MULTI POSE", parent=self
+                )
+                self.verticalLayout_3.addWidget(item)
+                self.pairWidgets.append(item)
+        elif self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
             self.selectionSetOptionsWidget.setVisible(False)
             self.poseOptionsWidget.setVisible(False)
-            # self.optionsGroupBox.setVisible(True)
-            self.constraintOptionsGroupBox.setVisible(False)
-            # self.label_5.setVisible(True)
-            # self.frameRangeLabel.setVisible(True)
-            # self.animOptionsWidget.setVisible(True)
+            if self.item.itemType == "MULTI ANIMATION":
+                # set objects pairing widgets
+                self.pairWidgets = []
+                comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
+                for objName in self.item.objects:
+                    constraintDict = self.getItemDict()["metadata"]["objects"]
+                    item = PairingWidget(
+                        objName, comboList, {}, itemType="MULTI ANIMATION", parent=self
+                    )
+                    self.verticalLayout_3.addWidget(item)
+                    self.pairWidgets.append(item)
+            else:
+                self.constraintOptionsGroupBox.setVisible(False)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/anim2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
@@ -1155,6 +986,22 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.thumbnailLabel.setMovie(self.movie)
             self.movie.start()
             self.movie.stop()
+        elif self.item.itemType == "FOLDER":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
+            self.applyPushButton.setVisible(False)
+            self.ownerLabel.setVisible(False)
+            self.dateLabel.setVisible(False)
+            self.contentLabel.setVisible(False)
+            self.label_2.setVisible(False)
+            self.label_3.setVisible(False)
+            self.label_4.setVisible(False)
+            self.selectBonesPushButton.setVisible(False)
 
     def fromSpinBoxChanged(self):
         """Keep consistancy between spinboxes"""

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>260</width>
-    <height>53</height>
+    <height>39</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -257,6 +257,12 @@ QPlainTextEdit {
 }</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="topMargin">
+    <number>2</number>
+   </property>
+   <property name="bottomMargin">
+    <number>2</number>
+   </property>
    <item>
     <widget class="QWidget" name="pairingWidget" native="true">
      <layout class="QVBoxLayout" name="widgetVerticalLayout">

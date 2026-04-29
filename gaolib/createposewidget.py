@@ -31,9 +31,8 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         self.setupUi(self)
         self.type = itemType
         self.movie = None
-
         self.parent.infoGroupBox.setTitle(self.type)
-        if self.type == "POSE":
+        if self.type in ["POSE", "MULTI POSE"]:
             self.frameRangeWidget.setVisible(False)
         elif self.type == "SELECTION SET":
             self.frameRangeWidget.setVisible(False)
@@ -41,7 +40,7 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         elif self.type == "CONSTRAINT SET":
             self.frameRangeWidget.setVisible(False)
             self.applyPushButton.setText("SAVE CONSTRAINT SET")
-        elif self.type == "ANIMATION":
+        elif self.type in ["ANIMATION", "MULTI ANIMATION"]:
             self.applyPushButton.setText("SAVE ANIMATION")
             self.pushButton.installEventFilter(self)
 
