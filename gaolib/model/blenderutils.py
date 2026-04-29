@@ -930,19 +930,6 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     quickPaste, frameIn, frameOut = getAnimInfos(
         infoWidget, sourceFrameIn, sourceFrameOut
     )
-    # quickPaste = infoWidget.quickPasteCheckBox.isChecked()
-    # nbFrames = sourceFrameOut - sourceFrameIn
-    # startFrameOption = infoWidget.startFrameComboBox.currentText()
-    # if startFrameOption == "From start frame":
-    #     frameIn = bpy.context.scene.frame_start
-    #     frameOut = frameIn + nbFrames
-    # elif startFrameOption == "From source start":
-    #     frameIn = sourceFrameIn
-    #     frameOut = sourceFrameOut
-    # else:
-    #     frameIn = bpy.context.scene.frame_current
-    #     frameOut = bpy.context.scene.frame_current + nbFrames
-
     # Get selected object
     selectedObjects = getSelectedObjects()
     if len(selectedObjects) != 1:
@@ -976,17 +963,6 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     if quickPaste:
         # Paste entire action in new action
         action.name = actionName
-        # if selectedObject.animation_data is None:
-        #     selectedObject.animation_data_create()
-        # selectedObject.animation_data.action = action
-
-        # if hasattr(action, "slots"):  # manage slots or blender 4.4
-        #     suitable_slots = selectedObject.animation_data.action_suitable_slots
-        #     if suitable_slots:
-        #         selectedObject.animation_data.action_slot = suitable_slots[0]
-        #     else:
-        #         slot = action.slots.new(id_type="OBJECT", name=selectedObject.name)
-        #         selectedObject.animation_data.action_slot = slot
         assignActionToObject(selectedObject, action)
         infoWidget.parent.statusBar().showMessage("Quick Paste Action done !", 1500)
     else:
@@ -996,128 +972,10 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         cleanFrameRangeToPasteAnim(
             selectedObject, selection, frameIn, frameOut, actionName
         )
-        # for bone in selection:
-        #     for frame in range(frameIn, frameOut + 1):
-        #         if (
-        #             selectedObject.animation_data
-        #             and selectedObject.animation_data.action is not None
-        #         ):
-        #             bone.keyframe_delete(data_path="location", frame=frame)
-        #             bone.keyframe_delete(data_path="rotation_euler", frame=frame)
-        #             bone.keyframe_delete(data_path="scale", frame=frame)
-        #             for key in bone.keys():
-        #                 try:
-        #                     bone.keyframe_delete(
-        #                         data_path='["' + key + '"]', frame=frame
-        #                     )
-        #                 except:
-        #                     pass
-        #         else:
-        #             break
-        # if selectedObject.animation_data is None:
-        #     selectedObject.animation_data_create()
-        # # If no action on selected object, create one
-        # if selectedObject.animation_data.action is None:
-        #     gaolibAction = bpy.data.actions.new(actionName)
-        #     selectedObject.animation_data.action = gaolibAction
+        # copy keyframes
         copyKeyframes(
             action, selectedObject, selection, sourceFrameIn, sourceFrameOut, frameIn
         )
-        # count_op = 0
-        # # get list of all action fcurves
-        # fcurves = getActionFcurves(action)
-        # # Retrieve source action keyframe points and copy them into target action
-        # for fc in fcurves:
-        #     for kp in fc.keyframe_points:
-        #         sourceFrame = kp.co.x
-        #         if sourceFrameIn <= sourceFrame <= sourceFrameOut:
-        #             data_path = fc.data_path
-        #             bone = None
-        #             try:
-        #                 bone = eval(("selectedObject." + data_path).split("]")[0] + "]")
-        #             except Exception as e:
-        #                 print("WARNING : " + str(e))
-        #             if bone in selection:
-        #                 index = fc.array_index
-        #                 value = kp.co.y
-        #                 try:
-        #                     data = eval("selectedObject." + data_path)
-        #                     convertedValue = eval(
-        #                         data.__class__.__name__ + "(" + str(value) + ")"
-        #                     )
-        #                     value = convertedValue
-        #                 except:
-        #                     pass
-        #                 frame = frameIn + sourceFrame - sourceFrameIn
-
-        #                 bpy.context.scene.frame_current = int(frame)
-        #                 try:
-        #                     index = fc.array_index
-        #                     cmd = (
-        #                         "selectedObject."
-        #                         + data_path
-        #                         + "["
-        #                         + str(index)
-        #                         + "] = "
-        #                         + str(value)
-        #                     )
-        #                     exec(cmd)
-        #                     count_op += 1
-        #                 except TypeError:
-        #                     index = -1
-        #                     valueType = eval(
-        #                         f"selectedObject.{data_path}.__class__.__name__"
-        #                     )
-        #                     typedValue = eval(f"{valueType}({value})")
-        #                     cmd = f"selectedObject.{data_path} = {typedValue}"
-        #                     if not "rotation_mode" in data_path:
-        #                         exec(cmd)
-        #                         count_op += 1
-        #                     else:
-        #                         try:
-        #                             rot = int(value)
-        #                         except:
-        #                             rot = int(float(value))
-        #                         rotmodeDict = {
-        #                             0: "QUATERNION",
-        #                             1: "XYZ",
-        #                             2: "XZY",
-        #                             3: "YXZ",
-        #                             4: "YZX",
-        #                             5: "ZXY",
-        #                             6: "ZYX",
-        #                             7: "AXIS_ANGLE",
-        #                         }
-        #                         cmd = (
-        #                             "selectedObject."
-        #                             + data_path
-        #                             + " = '"
-        #                             + rotmodeDict[rot]
-        #                             + "'"
-        #                         )
-        #                         exec(cmd)
-        #                         count_op += 1
-
-        #                 except KeyError as e:
-        #                     print(
-        #                         "WARNING : KeyError for command : "
-        #                         + cmd
-        #                         + "\n"
-        #                         + str(e)
-        #                     )
-        #                     continue
-        #                 except Exception as e:
-        #                     ShowDialog(
-        #                         "Paste anim exception : " + str(e), title="Abort action"
-        #                     )
-        #                     raise
-        #                 count_op += 1
-        #                 selectedObject.keyframe_insert(
-        #                     data_path=data_path, index=index, frame=frame
-        #                 )
-        # print("operations : " + str(count_op))
-        # # Group channels by bones
-        # groupChannelsByBones(selectedObject)
         # clean action
         bpy.data.actions.remove(action)
         infoWidget.parent.statusBar().showMessage("Paste animation done !", 1500)
@@ -1158,12 +1016,6 @@ def copyPose(poseDir):
             )
             destination = os.path.join(poseDir, fileName)
             shutil.copyfile(source, destination)
-    # tempPose = os.path.join(tempDir, "copybuffer_pose_original.blend")
-    # flipped = os.path.join(tempDir, "copybuffer_pose_flipped.blend")
-    # tempCopy = os.path.join(poseDir, "pose.blend")
-    # flippedCopy = os.path.join(poseDir, "pose_flipped.blend")
-    # shutil.copyfile(tempPose, tempCopy)
-    # shutil.copyfile(flipped, flippedCopy)
 
 
 def getCurrentPose():
@@ -1583,197 +1435,6 @@ def pastePose(
                         insertKeyframes,
                         additiveMode=additiveMode,
                     )
-                    # # Manage if different rotation modes used (WARNING : axis angle not supported !)
-                    # rotationMode = posebone.rotation_mode
-
-                    # # AXIS_ANGLE rotation mode not supported !
-                    # if (
-                    #     rotationMode == "AXIS_ANGLE"
-                    #     or selectedbone.rotation_mode == "AXIS_ANGLE"
-                    # ):
-                    #     # Clean orphans
-                    #     removeOrphans()
-                    #     raise Exception(
-                    #         "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler.\nCheck bone named "
-                    #         + posebone.name
-                    #     )
-                    # elif (
-                    #     rotationMode == "QUATERNION"
-                    #     and currentPose[selectedbone]["rotationMode"] != "QUATERNION"
-                    # ):
-                    #     currentPoseRotation = currentPose[selectedbone][
-                    #         "rotation"
-                    #     ].to_quaternion()
-                    # elif (
-                    #     rotationMode != "QUATERNION"
-                    #     and currentPose[selectedbone]["rotationMode"] == "QUATERNION"
-                    # ):
-                    #     currentPoseRotation = currentPose[selectedbone][
-                    #         "rotation"
-                    #     ].to_euler()
-                    # elif rotationMode == currentPose[selectedbone]["rotationMode"]:
-                    #     currentPoseRotation = currentPose[selectedbone]["rotation"]
-                    # else:
-                    #     # Clean orphans
-                    #     removeOrphans()
-                    #     raise Exception(
-                    #         "Conversion between Rotation modes other than QUATERNION and Euler are not supported !\nCheck bone named "
-                    #         + posebone.name
-                    #     )
-
-                    # selectedbone.rotation_mode = rotationMode
-                    # # Set pose for selected bones
-                    # for axis in range(3):
-                    #     if not selectedbone.lock_location[axis]:
-                    #         if additiveMode:
-                    #             (
-                    #                 blend * posebone.location[axis]
-                    #                 + currentPose[selectedbone]["location"][axis]
-                    #             )
-                    #         else:
-                    #             selectedbone.location[axis] = (
-                    #                 blend * posebone.location[axis]
-                    #                 + (1 - blend)
-                    #                 * currentPose[selectedbone]["location"][axis]
-                    #             )
-                    #     if rotationMode != "QUATERNION":
-                    #         if not selectedbone.lock_rotation[axis]:
-                    #             if additiveMode:
-                    #                 selectedbone.rotation_euler[axis] = (
-                    #                     blend * posebone.rotation_euler[axis]
-                    #                     + currentPoseRotation[axis]
-                    #                 )
-                    #             else:
-                    #                 selectedbone.rotation_euler[axis] = (
-                    #                     blend * posebone.rotation_euler[axis]
-                    #                     + (1 - blend) * currentPoseRotation[axis]
-                    #                 )
-                    #     if not selectedbone.lock_scale[axis]:
-                    #         if additiveMode:
-                    #             selectedbone.scale[axis] = (
-                    #                 blend * posebone.scale[axis]
-                    #                 + currentPose[selectedbone]["scale"][axis]
-                    #                 - blend
-                    #             )
-                    #         else:
-                    #             selectedbone.scale[axis] = (
-                    #                 blend * posebone.scale[axis]
-                    #                 + (1 - blend)
-                    #                 * currentPose[selectedbone]["scale"][axis]
-                    #             )
-                    # if rotationMode == "QUATERNION":
-                    #     if not selectedbone.lock_rotation_w:
-                    #         if additiveMode:
-                    #             selectedbone.rotation_quaternion[0] = (
-                    #                 blend * posebone.rotation_quaternion[0]
-                    #                 + currentPoseRotation[0]
-                    #                 - blend
-                    #             )
-                    #         else:
-                    #             selectedbone.rotation_quaternion[0] = (
-                    #                 blend * posebone.rotation_quaternion[0]
-                    #                 + (1 - blend) * currentPoseRotation[0]
-                    #             )
-                    #     for axis in range(3):
-                    #         if not selectedbone.lock_rotation[axis]:
-                    #             if additiveMode:
-                    #                 selectedbone.rotation_quaternion[axis + 1] = (
-                    #                     blend * posebone.rotation_quaternion[axis + 1]
-                    #                     + currentPoseRotation[axis + 1]
-                    #                 )
-                    #             else:
-                    #                 selectedbone.rotation_quaternion[axis + 1] = (
-                    #                     blend * posebone.rotation_quaternion[axis + 1]
-                    #                     + (1 - blend) * currentPoseRotation[axis + 1]
-                    #                 )
-
-                    # # handle properties
-                    # for key in posebone.keys():
-                    #     try:
-                    #         propertyType = eval(
-                    #             "selectedbone." + key
-                    #         ).__class__.__name__
-                    #         if propertyType == "float":
-                    #             exec(
-                    #                 "selectedbone."
-                    #                 + key
-                    #                 + " = blend * posebone."
-                    #                 + key
-                    #                 + " + (1-blend) * currentPose[selectedbone]."
-                    #                 + key
-                    #             )
-                    #         else:
-                    #             exec("selectedbone." + key + " = posebone." + key)
-                    #     except:
-                    #         try:
-                    #             propertyType = eval(
-                    #                 'selectedbone["' + key + '"]'
-                    #             ).__class__.__name__
-                    #             if propertyType == "float":
-                    #                 command = (
-                    #                     'selectedbone["'
-                    #                     + key
-                    #                     + '"] = blend * posebone["'
-                    #                     + key
-                    #                     + '"]'
-                    #                     + '+ (1-blend) * currentPose[selectedbone]["properties"]["'
-                    #                     + key
-                    #                     + '"]'
-                    #                 )
-                    #                 exec(command)
-                    #             else:
-                    #                 exec(
-                    #                     'selectedbone["'
-                    #                     + key
-                    #                     + '"] = posebone["'
-                    #                     + key
-                    #                     + '"]'
-                    #                 )
-                    #         except:
-                    #             print(
-                    #                 "IMPOSSIBLE TO HANDLE PROPERTY "
-                    #                 + key
-                    #                 + " FOR "
-                    #                 + selectedbone.name
-                    #             )
-                    # # Key the pasted pose
-                    # if insertKeyframes:
-                    #     selectedbone.keyframe_insert(data_path="rotation_mode")
-                    #     for axis in range(3):
-                    #         if not selectedbone.lock_location[axis]:
-                    #             selectedbone.keyframe_insert(
-                    #                 data_path="location", index=axis
-                    #             )
-                    #         if rotationMode != "QUATERNION":
-                    #             if not selectedbone.lock_rotation[axis]:
-                    #                 selectedbone.keyframe_insert(
-                    #                     data_path="rotation_euler", index=axis
-                    #                 )
-                    #         if not selectedbone.lock_scale[axis]:
-                    #             selectedbone.keyframe_insert(
-                    #                 data_path="scale", index=axis
-                    #             )
-                    #     if rotationMode == "QUATERNION":
-                    #         for axis in range(3):
-                    #             if not selectedbone.lock_rotation[axis]:
-                    #                 selectedbone.keyframe_insert(
-                    #                     data_path="rotation_quaternion", index=axis + 1
-                    #                 )
-                    #                 selectedbone.keyframe_insert(
-                    #                     data_path="rotation_quaternion", index=0
-                    #                 )
-                    #     for key in posebone.keys():
-                    #         try:
-                    #             selectedbone.keyframe_insert(
-                    #                 data_path='["' + key + '"]'
-                    #             )
-                    #         except Exception as e:
-                    #             print(
-                    #                 "IMPOSSIBLE TO ADD KEYFRAME FOR PROP "
-                    #                 + key
-                    #                 + " FOR "
-                    #                 + selectedbone.name
-                    #             )
                     break
         # Group channels by bones
         if insertKeyframes:

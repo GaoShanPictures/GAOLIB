@@ -104,14 +104,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.createMenuNew()
         self.createMenuSettings()
 
-    # def is_visible(self):
-    #     return self.isVisible()
-
-    # def raise_window(self):
-    #     self.show()
-    #     self.raise_()
-    #     self.activateWindow()
-
     def createMenuNew(self):
         """Create items functionnalities"""
         iconFolder = os.path.join(os.path.dirname(os.path.realpath(__file__)), "icons")
@@ -962,17 +954,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         except:
             utils.ShowDialog("FOUND NO ACTION ON SELECTED OBJECT.", title="ABORT")
             return
-        # Write Json file
-        # actionSlots = []
-        # for slot in currentAction:
-        #     if currentObject in slot.users():
-        #         actionSlots.append(slot.name_display)
-
         data = {
             "bones": len(bpy.context.selected_pose_bones),
             "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
             "objects": selectedObjects,
-            # "actionSlots": actionSlots,
         }
         jsonFile = os.path.join(
             os.path.dirname(os.path.dirname(bpy.context.scene.render.filepath)),
@@ -995,51 +980,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
         # key first frame
         utils.keySelectedBonesForFrame(frameIn)
-        # bpy.context.scene.frame_set(frameIn)
-        # for bone in bpy.context.selected_pose_bones:
-        #     bone.keyframe_insert(data_path="rotation_mode", frame=frameIn)
-        #     for axis in range(3):
-        #         if not bone.lock_location[axis]:
-        #             bone.keyframe_insert(
-        #                 data_path="location", index=axis, frame=frameIn
-        #             )
-        #         if not bone.lock_rotation[axis]:
-        #             bone.keyframe_insert(
-        #                 data_path="rotation_euler", index=axis, frame=frameIn
-        #             )
-        #         if not bone.lock_scale[axis]:
-        #             bone.keyframe_insert(data_path="scale", index=axis, frame=frameIn)
-        #     for key in bone.keys():
-        #         try:
-        #             bone.keyframe_insert(data_path='["' + key + '"]', frame=frameIn)
-        #         except Exception as e:
-        #             pass
         keyLastFrame = self.createPosewidget.keyLastCheckBox.isChecked()
         if keyLastFrame:
             utils.keySelectedBonesForFrame(frameOut)
-            # bpy.context.scene.frame_set(frameOut)
-            # for bone in bpy.context.selected_pose_bones:
-            #     bone.keyframe_insert(data_path="rotation_mode", frame=frameOut)
-            #     for axis in range(3):
-            #         if not bone.lock_location[axis]:
-            #             bone.keyframe_insert(
-            #                 data_path="location", index=axis, frame=frameOut
-            #             )
-            #         if not bone.lock_rotation[axis]:
-            #             bone.keyframe_insert(
-            #                 data_path="rotation_euler", index=axis, frame=frameOut
-            #             )
-            #         if not bone.lock_scale[axis]:
-            #             bone.keyframe_insert(
-            #                 data_path="scale", index=axis, frame=frameOut
-            #             )
-            #     for key in bone.keys():
-            #         try:
-            #             bone.keyframe_insert(
-            #                 data_path='["' + key + '"]', frame=frameOut
-            #             )
-            #         except Exception as e:
-            #             pass
         # Create animation.blend file
         animDir = bpy.context.preferences.filepaths.temporary_directory
         filename = "animation.blend"
