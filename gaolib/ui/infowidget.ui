@@ -451,7 +451,7 @@ QPlainTextEdit {
    <item>
     <widget class="QGroupBox" name="constraintOptionsGroupBox">
      <property name="title">
-      <string>Constraints Options</string>
+      <string>Pairing Options</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_3">
       <property name="spacing">

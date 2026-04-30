@@ -15,7 +15,7 @@ from PySide6.QtGui import QAction
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(260, 39)
+        Form.resize(260, 45)
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
         )
@@ -260,10 +260,10 @@ class Ui_Form(object):
         self.verticalLayout.setObjectName("verticalLayout")
         self.pairingWidget = QtWidgets.QWidget(Form)
         self.pairingWidget.setObjectName("pairingWidget")
-        self.widgetVerticalLayout = QtWidgets.QVBoxLayout(self.pairingWidget)
-        self.widgetVerticalLayout.setContentsMargins(0, 0, 0, 0)
-        self.widgetVerticalLayout.setSpacing(2)
-        self.widgetVerticalLayout.setObjectName("widgetVerticalLayout")
+        self.gridLayout = QtWidgets.QGridLayout(self.pairingWidget)
+        self.gridLayout.setContentsMargins(-1, 2, -1, 2)
+        self.gridLayout.setVerticalSpacing(4)
+        self.gridLayout.setObjectName("gridLayout")
         self.objectNameLabel = QtWidgets.QLabel(self.pairingWidget)
         font = QtGui.QFont()
         font.setBold(True)
@@ -271,12 +271,21 @@ class Ui_Form(object):
             font.setWeight(75)
         except:
             font.setWeight(QtGui.QFont.Weight(75))
+
         self.objectNameLabel.setFont(font)
         self.objectNameLabel.setObjectName("objectNameLabel")
-        self.widgetVerticalLayout.addWidget(self.objectNameLabel)
+        self.gridLayout.addWidget(self.objectNameLabel, 1, 1, 1, 1)
         self.armatureComboBox = QtWidgets.QComboBox(self.pairingWidget)
         self.armatureComboBox.setObjectName("armatureComboBox")
-        self.widgetVerticalLayout.addWidget(self.armatureComboBox)
+        self.gridLayout.addWidget(self.armatureComboBox, 2, 1, 1, 1)
+        self.label = QtWidgets.QLabel(self.pairingWidget)
+        self.label.setMaximumSize(QtCore.QSize(35, 16777215))
+        self.label.setObjectName("label")
+        self.gridLayout.addWidget(self.label, 1, 0, 1, 1)
+        self.label_2 = QtWidgets.QLabel(self.pairingWidget)
+        self.label_2.setMaximumSize(QtCore.QSize(35, 16777215))
+        self.label_2.setObjectName("label_2")
+        self.gridLayout.addWidget(self.label_2, 2, 0, 1, 1)
         self.verticalLayout.addWidget(self.pairingWidget)
 
         self.retranslateUi(Form)
@@ -286,3 +295,5 @@ class Ui_Form(object):
         _translate = QtCore.QCoreApplication.translate
         Form.setWindowTitle(_translate("Form", "Form"))
         self.objectNameLabel.setText(_translate("Form", "ObjectName"))
+        self.label.setText(_translate("Form", "From"))
+        self.label_2.setText(_translate("Form", "To"))
