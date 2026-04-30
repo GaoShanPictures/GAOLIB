@@ -169,7 +169,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         # For animation item use gif thumbnail
         self.movie = None
         if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
-            self.thumbpath = self.item.thumbpath.replace("png", "gif")
+            self.thumbpath = self.item.thumbpath.replace("png", "gif").replace(
+                "_stamped", ""
+            )
         self.showInfos()
         # Connect functions
         self.trashPushButton.released.connect(self.delete)
@@ -430,9 +432,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         bonesToBlend = {}
         # get pose selection set
         itemdata = {}
-        # if poseDir.endswith('.multi_pose'):
-        #     jsonPath = os.path.join(poseDir, "multi_pose.json")
-        # else:
         jsonPath = os.path.join(poseDir, "pose.json")
         with open(jsonPath) as file:
             itemdata = json.load(file)
@@ -737,7 +736,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.contentLabel.setText(self.item.content)
         self.thumbnailLabel.setPixmap((QtGui.QPixmap(self.thumbpath).scaled(200, 200)))
         self.frameRangeLabel.setText(self.item.frameRange)
-        print("\n\n Show infos " + str(self.item.itemType))
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
         # Set visibility of widgets

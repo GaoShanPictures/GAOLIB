@@ -62,7 +62,13 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
-
+        # profiling
+        # import cProfile
+        # import io
+        # import pstats
+        # pr = cProfile.Profile()
+        # pr.enable()
+        #
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.setupUi(self)
 
@@ -94,6 +100,13 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         )
         self.newPushButton.setStyleSheet("QPushButton::menu-indicator { width:0px; }")
         self._connectUi()
+        # profiling
+        # pr.disable()
+        # s = io.StringIO()
+        # sortby = "cumulative"
+        # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
 
     def _connectUi(self):
         # Connect Actions
@@ -457,15 +470,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         return expandedIndexes
 
     def cleanTempFolder(self):
-        # if os.path.exists(self.jsonTempPath):
-        #     os.remove(self.jsonTempPath)
-        # if os.path.exists(self.thumbTempPath):
-        #     os.remove(self.thumbTempPath)
-        # sequencePath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
-        # if os.path.exists(sequencePath):
-        #     shutil.rmtree(sequencePath)
-        # os.makedirs(sequencePath)
-
         sequencePath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
         tempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory, "gaolib_temp"
@@ -502,7 +506,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         if len(selectedObjs) > 1:
             itemType = "MULTI ANIMATION"
         self.createGenericItemSetUI()
-        print("CREATE ANIM SET UI " + itemType)
         # Create widget for create anim
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
         self.verticalLayout_5.addWidget(self.createPosewidget)
@@ -715,7 +718,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def applyPose(self, itemType="POSE", flipped=False, blendPose=1, currentPose=None):
         """Paste animation/pose from the library to the selected object of the scene"""
-        print("Apply pose !")
         try:
             if itemType == "ANIMATION":
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
@@ -820,8 +822,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             #     "actionSlots": itemdata["actionSlots"],
             # },
         }
-        print("\n dict data : ")
-        print(data)
         for key in itemdata.keys():
             if key == "constraintData":
                 data[key] = itemdata[key]
@@ -855,7 +855,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # set context with self.context
         try:
             selectedObjects = utils.getSelectedObjects()
-            print("SELCTED BJETCS " + str(selectedObjects))
             with bpy.context.temp_override(
                 area=self.context["area"],
                 region=self.context["region"],
@@ -864,10 +863,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 space_data=self.context["space_data"],
                 window=self.context["window"],
             ):
-                # # Check number of selected objects
-                # selectedObjects = []
-                # for o in bpy.context.selected_objects:
-                #     selectedObjects.append(o.name)
                 if itemType in ["CONSTRAINT SET", "MULTI POSE", "MULTI ANIMATION"]:
                     # # constraint set need at least one object selected
                     if len(selectedObjects) == 0:
@@ -876,8 +871,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     if itemType in ["MULTI POSE", "MULTI ANIMATION"]:
                         foundNonArmature = []
                         for o in selectedObjects:
-                            print(o)
-                            print(o.type)
                             if o.type != "ARMATURE":
                                 foundNonArmature.append(o)
                         if len(foundNonArmature):
@@ -995,7 +988,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 toCleanSlots.append(slot)
         for slot in toCleanSlots:
             newAction.slots.remove(slot)
-
         # key first frame
         utils.keySelectedBonesForFrame(frameIn)
         keyLastFrame = self.createPosewidget.keyLastCheckBox.isChecked()
@@ -1553,41 +1545,47 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         recursiveSearch = self.recursiveDisplayMode
         folderPath = self.currentTreeElement.path
         items = {}
+        QtGui.QPixmapCache.setCacheLimit(102400)
         # Parse folder
         if recursiveSearch:
             i = 0
             for root, dirs, files in os.walk(folderPath):
                 for it in dirs:
                     itPath = os.path.join(root, it)
-                    if os.path.isdir(itPath):
-                        if (
-                            it.endswith(".anim")
-                            or it.endswith(".pose")
-                            or it.endswith(".selection")
-                            or it.endswith(".constraint")
-                            or it.endswith(".multi_pose")
-                            or it.endswith(".multi_anim")
-                        ):
-                            thumbnailPath = os.path.join(itPath, "thumbnail.png")
-                            if os.path.isfile(thumbnailPath):
-                                thumbpath = thumbnailPath
-                            else:
-                                thumbpath = None
+                    # if os.path.isdir(itPath):
+                    if (
+                        it.endswith(".anim")
+                        or it.endswith(".pose")
+                        or it.endswith(".selection")
+                        or it.endswith(".constraint")
+                        or it.endswith(".multi_pose")
+                        or it.endswith(".multi_anim")
+                    ):
+                        stamped = os.path.join(itPath, "thumbnail_stamped.png")
+                        # if os.path.isfile(thumbnailPath):
+                        pm = QtGui.QPixmap()
+                        if not os.path.isfile(stamped):
+                            stamped = "Q:/tools/packages/gaolib/icons/nopreview2.png"
+                        stamped = stamped.replace("\\", "/")
+                        # use QPixmapCache to store icon
+                        if not QtGui.QPixmapCache.find(stamped, pm):
+                            pm.load(stamped)
+                            QtGui.QPixmapCache.insert(stamped, pm)
+                        # else:
+                        #    thumbpath = None
 
-                            # Create Item
-                            gaoLibItem = GaoLibItem(
-                                name=it, thumbpath=thumbpath, path=itPath
-                            )
-                            items[i] = gaoLibItem
-                            i += 1
+                        # Create Item
+                        gaoLibItem = GaoLibItem(name=it, thumbpath=stamped, path=itPath)
+                        items[i] = gaoLibItem
+                        i += 1
         else:
             i = 0
             for it in os.listdir(folderPath):
                 itPath = os.path.join(folderPath, it)
                 if os.path.isdir(itPath):
-                    thumbnailPath = os.path.join(itPath, "thumbnail.png")
+                    thumbnailPath = os.path.join(itPath, "thumbnail_stamped.png")
                     if os.path.isfile(thumbnailPath):
-                        thumbpath = thumbnailPath
+                        thumbpath = thumbnailPath.replace("\\", "/")
                     elif (
                         os.path.isdir(itPath)
                         and not it.endswith(".anim")
@@ -1603,7 +1601,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         )
                     else:
                         thumbpath = None
-
+                    pm = QtGui.QPixmap()
+                    # use QPixmapCache to store icon
+                    if not QtGui.QPixmapCache.find(thumbpath, pm):
+                        pm.load(thumbpath)
+                        QtGui.QPixmapCache.insert(thumbpath, pm)
                     # Create Item
                     gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
                     items[i] = gaoLibItem

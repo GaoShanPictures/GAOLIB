@@ -707,9 +707,6 @@ def copyKeyframes(
     frameIn,
     slot=None,
 ):
-    print("Copy keyframes of " + sourceAction.name + " on slot " + str(slot))
-    print("Obj : " + targetObject.name)
-    print(" for bones : " + "\n".join([bone.name for bone in selectedBones]))
     count_op = 0
     # get list of all action fcurves
     fcurves = getActionFcurves(sourceAction, slot=slot)
