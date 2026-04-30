@@ -1213,17 +1213,22 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         """Create item thumbnail and prepare to save as new item"""
         # if thumbnail to clean...
         if self.createPosewidget.movie:
-            print(self.createPosewidget.movie)
-            self.createPosewidget.movie.frameChanged.disconnect()
-            self.createPosewidget.movie.setCacheMode(QtGui.QMovie.CacheNone)
-            self.createPosewidget.movie.stop()
-            del self.createPosewidget.movie
-            self.createPosewidget.movie = None
-            icon = QtGui.QIcon()
-            icon.addPixmap(
-                QtGui.QPixmap("icons/photo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+
+            # print(self.createPosewidget.movie)
+            # self.createPosewidget.movie.frameChanged.disconnect()
+            # self.createPosewidget.movie.setCacheMode(QtGui.QMovie.CacheNone)
+            # self.createPosewidget.movie.stop()
+            # del self.createPosewidget.movie
+            # self.createPosewidget.movie = None
+            # icon = QtGui.QIcon()
+            # icon.addPixmap(
+            #     QtGui.QPixmap("icons/photo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+            # )
+            # self.createPosewidget.pushButton.setIcon(icon)
+            utils.ShowDialog(
+                "Impossible to re render on an existing animation. Please SAVE this item and recreate another if needed."
             )
-            self.createPosewidget.pushButton.setIcon(icon)
+            return
         # Clean any existing temp files
         self.cleanTempFolder()
         # check context and selection
