@@ -95,7 +95,3 @@ class GaoLibItem(object):
                         self.bonesSelection = True
                     if "objects" in itemdata["metadata"].keys():
                         self.objects = itemdata["metadata"]["objects"]
-            else:
-                print("Not found : " + str(jsonPath))
-        else:
-            print("Did not find json path : " + str(jsonPath))
