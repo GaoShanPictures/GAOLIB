@@ -18,6 +18,7 @@
 __author__ = "Anne Beurard"
 
 
+import gc
 import getpass
 import json
 import os
@@ -1210,6 +1211,19 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createThumbnail(self, itemType="POSE"):
         """Create item thumbnail and prepare to save as new item"""
+        # if thumbnail to clean...
+        if self.createPosewidget.movie:
+            print(self.createPosewidget.movie)
+            self.createPosewidget.movie.frameChanged.disconnect()
+            self.createPosewidget.movie.setCacheMode(QtGui.QMovie.CacheNone)
+            self.createPosewidget.movie.stop()
+            del self.createPosewidget.movie
+            self.createPosewidget.movie = None
+            icon = QtGui.QIcon()
+            icon.addPixmap(
+                QtGui.QPixmap("icons/photo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
+            )
+            self.createPosewidget.pushButton.setIcon(icon)
         # Clean any existing temp files
         self.cleanTempFolder()
         # check context and selection
