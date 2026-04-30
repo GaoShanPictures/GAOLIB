@@ -169,9 +169,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         # For animation item use gif thumbnail
         self.movie = None
         if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
-            self.thumbpath = self.item.thumbpath.replace("png", "gif").replace(
-                "_stamped", ""
-            )
+            self.thumbpath = self.item.thumbpath.replace("png", "gif")
         self.showInfos()
         # Connect functions
         self.trashPushButton.released.connect(self.delete)

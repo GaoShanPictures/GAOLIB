@@ -1545,45 +1545,39 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         recursiveSearch = self.recursiveDisplayMode
         folderPath = self.currentTreeElement.path
         items = {}
-        QtGui.QPixmapCache.setCacheLimit(102400)
         # Parse folder
         if recursiveSearch:
             i = 0
             for root, dirs, files in os.walk(folderPath):
                 for it in dirs:
                     itPath = os.path.join(root, it)
-                    # if os.path.isdir(itPath):
-                    if (
-                        it.endswith(".anim")
-                        or it.endswith(".pose")
-                        or it.endswith(".selection")
-                        or it.endswith(".constraint")
-                        or it.endswith(".multi_pose")
-                        or it.endswith(".multi_anim")
-                    ):
-                        stamped = os.path.join(itPath, "thumbnail_stamped.png")
-                        # if os.path.isfile(thumbnailPath):
-                        pm = QtGui.QPixmap()
-                        if not os.path.isfile(stamped):
-                            stamped = "Q:/tools/packages/gaolib/icons/nopreview2.png"
-                        stamped = stamped.replace("\\", "/")
-                        # use QPixmapCache to store icon
-                        if not QtGui.QPixmapCache.find(stamped, pm):
-                            pm.load(stamped)
-                            QtGui.QPixmapCache.insert(stamped, pm)
-                        # else:
-                        #    thumbpath = None
+                    if os.path.isdir(itPath):
+                        if (
+                            it.endswith(".anim")
+                            or it.endswith(".pose")
+                            or it.endswith(".selection")
+                            or it.endswith(".constraint")
+                            or it.endswith(".multi_pose")
+                            or it.endswith(".multi_anim")
+                        ):
+                            thumbnailPath = os.path.join(itPath, "thumbnail.png")
+                            if os.path.isfile(thumbnailPath):
+                                thumbpath = thumbnailPath
+                            else:
+                                thumbpath = None
 
-                        # Create Item
-                        gaoLibItem = GaoLibItem(name=it, thumbpath=stamped, path=itPath)
-                        items[i] = gaoLibItem
-                        i += 1
+                            # Create Item
+                            gaoLibItem = GaoLibItem(
+                                name=it, thumbpath=thumbpath, path=itPath
+                            )
+                            items[i] = gaoLibItem
+                            i += 1
         else:
             i = 0
             for it in os.listdir(folderPath):
                 itPath = os.path.join(folderPath, it)
                 if os.path.isdir(itPath):
-                    thumbnailPath = os.path.join(itPath, "thumbnail_stamped.png")
+                    thumbnailPath = os.path.join(itPath, "thumbnail.png")
                     if os.path.isfile(thumbnailPath):
                         thumbpath = thumbnailPath.replace("\\", "/")
                     elif (
@@ -1601,11 +1595,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         )
                     else:
                         thumbpath = None
-                    pm = QtGui.QPixmap()
-                    # use QPixmapCache to store icon
-                    if not QtGui.QPixmapCache.find(thumbpath, pm):
-                        pm.load(thumbpath)
-                        QtGui.QPixmapCache.insert(thumbpath, pm)
+
                     # Create Item
                     gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
                     items[i] = gaoLibItem
