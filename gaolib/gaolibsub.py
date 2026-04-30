@@ -115,11 +115,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         )
         animIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "anim2.png")))
         createMenu.addAction(animIcon, "New Animation", self.createAnimSetUI)
-        createMenu.addAction(
-            animIcon,
-            "New Multi Animation",
-            lambda: self.createAnimSetUI(itemType="MULTI ANIMATION"),
-        )
+        # createMenu.addAction(
+        #     animIcon,
+        #     "New Multi Animation",
+        #     lambda: self.createAnimSetUI(itemType="MULTI ANIMATION"),
+        # )
         constraintIcon = QtGui.QIcon(
             QtGui.QPixmap(os.path.join(iconFolder, "constraint.png"))
         )
@@ -495,6 +495,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createAnimSetUI(self, itemType="ANIMATION"):
         """Prepare UI to Create new animation item"""
+
+        # choose between animation or Multi animation
+        # Get selectd object
+        selectedObjs = utils.getSelectedObjects()
+        if len(selectedObjs) > 1:
+            itemType = "MULTI ANIMATION"
         self.createGenericItemSetUI()
         print("CREATE ANIM SET UI " + itemType)
         # Create widget for create anim
@@ -848,6 +854,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             return False
         # set context with self.context
         try:
+            selectedObjects = utils.getSelectedObjects()
+            print("SELCTED BJETCS " + str(selectedObjects))
             with bpy.context.temp_override(
                 area=self.context["area"],
                 region=self.context["region"],
@@ -856,15 +864,25 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 space_data=self.context["space_data"],
                 window=self.context["window"],
             ):
-                # Check number of selected objects
-                selectedObjects = []
-                for o in bpy.context.selected_objects:
-                    selectedObjects.append(o.name)
+                # # Check number of selected objects
+                # selectedObjects = []
+                # for o in bpy.context.selected_objects:
+                #     selectedObjects.append(o.name)
                 if itemType in ["CONSTRAINT SET", "MULTI POSE", "MULTI ANIMATION"]:
                     # # constraint set need at least one object selected
                     if len(selectedObjects) == 0:
                         utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
                         return False
+                    if itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+                        foundNonArmature = []
+                        for o in selectedObjects:
+                            print(o)
+                            print(o.type)
+                            if o.type != "ARMATURE":
+                                foundNonArmature.append(o)
+                        if len(foundNonArmature):
+                            utils.ShowDialog("PLEASE, ONLY SELECT ARMATURE OBJECTS")
+                            return False
                 else:
                     # # animation, pose and selection set need nly one objet selected
                     if len(selectedObjects) != 1:
@@ -1080,9 +1098,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         boneNamesDict = {}
         objectActions = []
         for o in bpy.context.selected_objects:
-            selectedObjects.append(o.name)
-            selection.append(o)
             if o.type == "ARMATURE":
+                # ignore non armature objects  =>
+                selectedObjects.append(o.name)
+                selection.append(o)
+                # <=
                 boneNamesDict[o.name] = []
                 for bone in o.pose.bones:
                     if bone in bpy.context.selected_pose_bones:
@@ -1103,7 +1123,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             libAction = newActionDict[action.name].name
             slotAnimDict[obj.name] = {
                 "original_action": action.name,
-                "slot": slot.name,
+                "slot": slot.identifier,
                 "lib_action": libAction,
             }
 
