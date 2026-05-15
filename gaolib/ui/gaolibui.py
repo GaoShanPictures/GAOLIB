@@ -30,7 +30,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(805, 462)
+        MainWindow.resize(1235, 850)
         icon = QtGui.QIcon()
         icon.addPixmap(
             QtGui.QPixmap("icons/gaolib.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off

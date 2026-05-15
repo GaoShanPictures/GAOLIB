@@ -109,37 +109,22 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                                 comboList,
                                 parent=None,
                             )
-                            self.widgetVerticalLayout.addWidget(constraintItem)
+                            # self.widgetVerticalLayout.addWidget(constraintItem)
                             self.constraintInfoWidgets.append(constraintItem)
 
 
-class CustomSliderWidget(QtWidgets.QSlider):
-    def __init__(self, parent=None):
-        super(CustomSliderWidget, self).__init__(parent=parent)
+class SliderEventFilter(QtCore.QObject):
+    def __init__(self, parent=...):
+        super().__init__(parent)
+        self.parentInfoWidget = parent
 
-    def mousePressEvent(self, event: QtGui.QMouseEvent):
-        # manage cancel blending at right click
-        if event.button() == QtCore.Qt.RightButton:
-            self.setValue(0)
-            self.valueChanged.disconnect()
-            self.valueChanged.connect(lambda: self.setValue(0))
-            self.parentInfoWidget.mainWindow.statusBar().showMessage(
-                "Cancel Blending",
-                timeout=5000,
-            )
-        super(CustomSliderWidget, self).mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
-        if event.button() == QtCore.Qt.LeftButton:
-            self.valueChanged.disconnect()
-            self.valueChanged.connect(
-                lambda: self.parentInfoWidget.blendSliderChanged(
-                    self.parentInfoWidget.item.path,
-                    blend=self.parentInfoWidget.blendPoseSlider.value() / 100,
-                )
-            )
-
-        super(CustomSliderWidget, self).mouseReleaseEvent(event)
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            if event.button() == QtCore.Qt.RightButton:
+                self.parentInfoWidget.onSliderPressed()
+        elif event.type() == QtCore.QEvent.MouseButtonRelease:
+            if event.button() == QtCore.Qt.LeftButton:
+                self.parentInfoWidget.onSliderReleased()
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
@@ -156,20 +141,22 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.refPose = None
         self.bonesToBlend = None
         self.toggleAdditive = False
-        utils.removeOrphans()
+        # utils.removeOrphans()
 
         # allow frame range in negative
         self.fromRangeSpinBox.setMinimum(-1000000)
         self.toRangeSpinBox.setMinimum(-1000000)
 
-        # recast blendPoseSlider
-        self.blendPoseSlider.__class__ = CustomSliderWidget
-        self.blendPoseSlider.parentInfoWidget = self
+        # event filter on slider
+        self.filter = SliderEventFilter(self)
+        self.blendPoseSlider.installEventFilter(self.filter)
 
         # For animation item use gif thumbnail
         self.movie = None
         if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
-            self.thumbpath = self.item.thumbpath.replace("png", "gif")
+            self.thumbpath = self.item.thumbpath.replace("png", "gif").replace(
+                "_stamped", ""
+            )
         self.showInfos()
         # Connect functions
         self.trashPushButton.released.connect(self.delete)
@@ -191,6 +178,26 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.updateConstraintPairingList
         )
         self.flippedCheckBox.checkStateChanged.connect(self.flippedChange)
+
+    def onSliderPressed(self):
+        self.blendPoseSlider.setValue(0)
+        self.blendPoseSlider.valueChanged.disconnect()
+        self.blendPoseSlider.valueChanged.connect(
+            lambda: self.blendPoseSlider.setValue(0)
+        )
+        self.mainWindow.statusBar().showMessage(
+            "Cancel Blending",
+            timeout=5000,
+        )
+
+    def onSliderReleased(self):
+        self.blendPoseSlider.valueChanged.disconnect()
+        self.blendPoseSlider.valueChanged.connect(
+            lambda: self.blendSliderChanged(
+                self.item.path,
+                blend=self.blendPoseSlider.value() / 100,
+            )
+        )
 
     def flippedChange(self):
         self.blendPoseSlider.setValue(0)
@@ -774,6 +781,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 item = PairingWidget(objName, comboList, constraintDict, parent=self)
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
+            for pair in self.pairWidgets:
+                for constraintWidget in pair.constraintInfoWidgets:
+                    self.verticalLayout_3.addWidget(constraintWidget)
         if self.item.itemType == "MULTI POSE":
             self.selectionSetOptionsWidget.setVisible(False)
             self.label_5.setVisible(False)

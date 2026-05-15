@@ -19,10 +19,10 @@ __author__ = "Anne Beurard"
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidget
+from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidgetUi
 
 
-class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
+class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidgetUi):
     """Manage pose/animation item creation"""
 
     def __init__(self, itemType="POSE", parent=None):

@@ -284,10 +284,12 @@ def selectBones(jsonPath):
             )
 
 
-def keySelectedBonesForFrame(frame):
+def keySelectedBonesForFrame(frame, selectedBones=None):
     # key first frame
     bpy.context.scene.frame_set(frame)
-    for bone in bpy.context.selected_pose_bones:
+    if not selectedBones:
+        selectedBones = [b for b in bpy.context.selected_pose_bones]
+    for bone in selectedBones:
         bone.keyframe_insert(data_path="rotation_mode", frame=frame)
         for axis in range(3):
             if not bone.lock_location[axis]:
@@ -336,10 +338,11 @@ def createActionsForLib(objects, frameIn, frameOut, keyLastFrame):
                 toCleanSlots.append(slot)
         for slot in toCleanSlots:
             newAction.slots.remove(slot)
+    selectedBones = getSelectedBones(allowMulti=True)
     # key first frame
-    keySelectedBonesForFrame(frameIn)
+    keySelectedBonesForFrame(frameIn, selectedBones=selectedBones)
     if keyLastFrame:
-        keySelectedBonesForFrame(frameOut)
+        keySelectedBonesForFrame(frameOut, selctedBones=selectedBones)
 
     return actionCopies
 
@@ -661,7 +664,7 @@ def assignActionToObject(object, action, slot=None):
             object.animation_data.action_slot = slot
 
 
-def cleanFrameRangeToPasteAnim(
+def cleanFrameRangeToPasteAnim_old(
     selectedObject, selectedBones, frameIn, frameOut, actionName
 ):
     """
@@ -698,7 +701,143 @@ def cleanFrameRangeToPasteAnim(
         selectedObject.animation_data.action = gaolibAction
 
 
+def cleanFrameRangeToPasteAnim(
+    selectedObject, selectedBones, frameIn, frameOut, actionName, slot=None
+):
+    animation_data = selectedObject.animation_data
+    if not animation_data:
+        return
+    action = animation_data.action
+    if not action:
+        return
+    fcurves = getActionFcurves(action, slot)
+    bone_names = {bone.name for bone in selectedBones}
+    # remove anim curves
+    for fcurve in fcurves:
+        data_path = fcurve.data_path
+        if not data_path.startswith('pose.bones["'):
+            continue
+        try:
+            bone_name = data_path.split('"')[1]
+        except Exception:
+            continue
+        if bone_name not in bone_names:
+            continue
+        keyframe_points = fcurve.keyframe_points
+        # Collect once
+        to_remove = [kp for kp in keyframe_points if frameIn <= kp.co.x <= frameOut]
+        # Remove backwards
+        for kp in reversed(to_remove):
+            keyframe_points.remove(kp)
+        fcurve.update()
+    bpy.context.view_layer.update()
+    if selectedObject.animation_data is None:
+        selectedObject.animation_data_create()
+    # If no action on selected object, create one
+    if selectedObject.animation_data.action is None:
+        gaolibAction = bpy.data.actions.new(actionName)
+        selectedObject.animation_data.action = gaolibAction
+
+
+def get_or_create_fcurve(action, data_path, array_index=-1, slot=None):
+    # -------------------------------------------------------------------------
+    # Legacy actions
+    # -------------------------------------------------------------------------
+    if hasattr(action, "fcurves"):
+        fcurves = action.fcurves
+    # -------------------------------------------------------------------------
+    # Blender 5 layered/slotted actions
+    # -------------------------------------------------------------------------
+    else:
+        layer = action.layers[0]
+        strip = layer.strips[0]
+        channelbag = strip.channelbag(slot)
+        fcurves = channelbag.fcurves
+    # -------------------------------------------------------------------------
+    # Find/create curve
+    # -------------------------------------------------------------------------
+    fc = fcurves.find(data_path, index=array_index)
+    if fc is None:
+        fc = fcurves.new(data_path, index=array_index)
+    return fc
+
+
 def copyKeyframes(
+    source_action,
+    target_object,
+    selected_bones,
+    source_frame_in,
+    source_frame_out,
+    frame_in,
+    slot=None,
+):
+    animation_data = target_object.animation_data
+    if not animation_data:
+        target_object.animation_data_create()
+        animation_data = target_object.animation_data
+    if not animation_data.action:
+        animation_data.action = bpy.data.actions.new(
+            name=f"{target_object.name}_Action"
+        )
+    target_action = animation_data.action
+    bone_names = {bone.name for bone in selected_bones}
+    source_fcurves = getActionFcurves(source_action, slot=slot)
+    for source_fc in source_fcurves:
+        data_path = source_fc.data_path
+        # ---------------------------------------------------------------------
+        # Filter pose bone curves
+        # ---------------------------------------------------------------------
+        if data_path.startswith('pose.bones["'):
+            try:
+                bone_name = data_path.split('"')[1]
+            except Exception:
+                continue
+            if bone_name not in bone_names:
+                continue
+        array_index = source_fc.array_index
+        # ---------------------------------------------------------------------
+        # Get/create target fcurve ONCE
+        # ---------------------------------------------------------------------
+        target_fc = get_or_create_fcurve(target_action, data_path, array_index, slot)
+        source_points = source_fc.keyframe_points
+        # ---------------------------------------------------------------------
+        # Collect points first
+        # ---------------------------------------------------------------------
+        new_keys = []
+        for kp in source_points:
+            source_frame = kp.co.x
+            if not (source_frame_in <= source_frame <= source_frame_out):
+                continue
+            target_frame = frame_in + source_frame - source_frame_in
+            new_keys.append(
+                (
+                    target_frame,
+                    kp.co.y,
+                    kp.interpolation,
+                )
+            )
+        if not new_keys:
+            continue
+        # ---------------------------------------------------------------------
+        # Bulk-add keyframes
+        # ---------------------------------------------------------------------
+        start_index = len(target_fc.keyframe_points)
+        target_fc.keyframe_points.add(len(new_keys))
+        for i, (frame, value, interpolation) in enumerate(new_keys):
+            kp = target_fc.keyframe_points[start_index + i]
+            kp.co = (frame, value)
+            kp.interpolation = interpolation
+        # ---------------------------------------------------------------------
+        # One update only
+        # ---------------------------------------------------------------------
+        target_fc.update()
+    # -------------------------------------------------------------------------
+    # Single scene refresh
+    # -------------------------------------------------------------------------
+    bpy.context.view_layer.update()
+
+
+def copyKeyframes_old(
     sourceAction,
     targetObject,
     selectedBones,
@@ -935,7 +1074,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         )
         return
     selectedObject = selectedObjects[0]
-
+    slot = selectedObject.animation_data.action_slot
     # Append action
     animPath = os.path.join(animDir, "animation.blend")
     # # ensure ther is only one action in animPath blender file
@@ -967,11 +1106,17 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
         action.name = "TEMP_ACTION"
         # Delete frame range anim
         cleanFrameRangeToPasteAnim(
-            selectedObject, selection, frameIn, frameOut, actionName
+            selectedObject, selection, frameIn, frameOut, actionName, slot
         )
         # copy keyframes
         copyKeyframes(
-            action, selectedObject, selection, sourceFrameIn, sourceFrameOut, frameIn
+            action,
+            selectedObject,
+            selection,
+            sourceFrameIn,
+            sourceFrameOut,
+            frameIn,
+            slot,
         )
         # clean action
         bpy.data.actions.remove(action)

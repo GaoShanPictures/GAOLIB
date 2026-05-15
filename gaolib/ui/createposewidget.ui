@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>256</width>
-    <height>445</height>
+    <width>313</width>
+    <height>448</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -311,7 +311,6 @@ QPlainTextEdit {
        <widget class="QLabel" name="label_3">
         <property name="font">
          <font>
-          <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
@@ -334,7 +333,6 @@ QPlainTextEdit {
        <widget class="QLabel" name="label_7">
         <property name="font">
          <font>
-          <weight>75</weight>
           <bold>true</bold>
          </font>
         </property>
@@ -342,7 +340,7 @@ QPlainTextEdit {
          <string>to</string>
         </property>
         <property name="alignment">
-         <set>Qt::AlignCenter</set>
+         <set>Qt::AlignmentFlag::AlignCenter</set>
         </property>
        </widget>
       </item>
@@ -408,9 +406,16 @@ QPlainTextEdit {
     </widget>
    </item>
    <item>
+    <widget class="QPushButton" name="cancelPushButton">
+     <property name="text">
+      <string>CANCEL</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <spacer name="verticalSpacer">
      <property name="orientation">
-      <enum>Qt::Vertical</enum>
+      <enum>Qt::Orientation::Vertical</enum>
      </property>
      <property name="sizeHint" stdset="0">
       <size>

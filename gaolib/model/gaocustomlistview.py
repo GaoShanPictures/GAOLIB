@@ -23,6 +23,8 @@ from PySide6.QtWidgets import QListView
 
 
 class GaoCustomListView(QListView):
+    hoverChanged = QtCore.Signal(object)
+
     def __init__(self, parent=None):
         super(GaoCustomListView, self).__init__(parent)
         self.middle_button_pressed = False
@@ -31,6 +33,7 @@ class GaoCustomListView(QListView):
         self.mainWin = parent
         self.currentItemType = None
         self.blendValue = 0
+        self._last_index = QtCore.QModelIndex()
 
     def getEventPosition(self, event):
         return (
@@ -131,7 +134,19 @@ class GaoCustomListView(QListView):
                     self.mainWin.statusBar().showMessage(
                         "Blend pose to " + str(newBlendValue) + "%", timeout=5000
                     )
+        index = self.indexAt(event.pos())
+        if index != self._last_index:
+            self._last_index = index
+            if index.isValid():
+                self.hoverChanged.emit(index)
+            else:
+                self.hoverChanged.emit(None)
         super(GaoCustomListView, self).mouseMoveEvent(event)
+
+    def leaveEvent(self, event):
+        self._last_index = QtCore.QModelIndex()
+        self.hoverChanged.emit(None)
+        return super().leaveEvent(event)
 
     def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
         if self.mainWin.useWheelToBlendPose:
