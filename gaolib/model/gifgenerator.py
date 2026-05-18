@@ -30,10 +30,10 @@ def generateGif(sequence, fps=25):
     inputF = os.path.join(sequence, "thumbnail.mp4")
 
     # Q:/tools/ffmpeg/bin/ffmpeg.exe -i "C:\Users\arnaudc\blenderTemp\gaolib_temp\sequence\thumbnail.mp4" -vf "fps=25,scale=200:-1:flags=lanczos,palettegen=stats_mode=single" -frames:v 1 "C:\Users\arnaudc\blenderTemp\gaolib_temp\sequence\palette.png"
-    ffmpegCmd = f'Q:/tools/ffmpeg/bin/ffmpeg.exe -i {inputF} -vf "fps=25,scale=200:-1:flags=lanczos,palettegen=stats_mode=single" -frames:v 1 -y {paletteFile}'
+    ffmpegCmd = f'{os.environ["FFMPEG_PATH"]} -i {inputF} -vf "fps=25,scale=200:-1:flags=lanczos,palettegen=stats_mode=single" -frames:v 1 -y {paletteFile}'
     p = subprocess.Popen(ffmpegCmd)
     p.communicate()
-    ffmpegCmd2 = f'Q:/tools/ffmpeg/bin/ffmpeg.exe -i {inputF} -i {paletteFile} -filter_complex "fps=25,scale=200:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" {gifFile} -y'
+    ffmpegCmd2 = f'{os.environ["FFMPEG_PATH"]} -i {inputF} -i {paletteFile} -filter_complex "fps=25,scale=200:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" {gifFile} -y'
     p2 = subprocess.Popen(ffmpegCmd2)
     p2.communicate()
     # images = []

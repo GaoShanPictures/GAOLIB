@@ -46,6 +46,7 @@ from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.settingsdialogui import Ui_Dialog as SettingsDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 import gaolib.model.thumbnailcache as thc
+
 # import sentry_sdk
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
@@ -71,6 +72,13 @@ except Exception as e:
 # )
 
 import time
+
+if "FFMPEG_PATH" not in os.environ.keys():
+    ffmpegPath = "C:/Users/anneb/Documents/ffmpeg/bin/ffmpeg.exe"
+    if os.path.isfile(ffmpegPath):
+        os.environ["FFMPEG_PATH"] = ffmpegPath
+    else:
+        os.environ["FFMPEG_PATH"] = "Q:/tools/ffmpeg/bin/ffmpeg.exe"
 
 
 class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
@@ -523,9 +531,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.createPosewidget.applyPushButton.released.connect(
             lambda: self.savePose(itemType=itemType)
         )
-        self.createPosewidget.cancelPushButton.released.connect(
-            self.cancelSavePose
-        )
+        self.createPosewidget.cancelPushButton.released.connect(self.cancelSavePose)
         self.createPosewidget.fromRangeSpinBox.setProperty(
             "value", bpy.context.scene.frame_start
         )
@@ -690,7 +696,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             pngThumb = os.path.join(poseDir, "thumbnail.png")
             tempPngDir = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
             movFile = os.path.join(tempPngDir, "thumbnail.mp4")
-            ffmpegCmd = f'Q:/tools/ffmpeg/bin/ffmpeg.exe -i {movFile} -frames:v 1 -y {pngThumb}'
+            ffmpegCmd = (
+                f"{os.environ['FFMPEG_PATH']} -i {movFile} -frames:v 1 -y {pngThumb}"
+            )
             p = subprocess.Popen(ffmpegCmd)
             p.communicate()
             # tempPng = None
@@ -724,7 +732,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             # im1.paste(im2, (165, 170), im2)
             destination = os.path.join(poseDir, "thumbnail_stamped.png")
             # im1.save(destination, quality=100)
-            ffmpegCmd = f'Q:/tools/ffmpeg/bin/ffmpeg.exe -i {pngThumb} -i {stamp} -filter_complex "overlay=W-w-3:H-h-3" -y {destination}'
+            ffmpegCmd = f'{os.environ["FFMPEG_PATH"]} -i {pngThumb} -i {stamp} -filter_complex "overlay=W-w-3:H-h-3" -y {destination}'
             p = subprocess.Popen(ffmpegCmd)
             p.communicate()
 
@@ -844,7 +852,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             + "-"
             + str(self.createPosewidget.toRangeSpinBox.value())
         )
-        content = ''
+        content = ""
         if "objects" in itemdata.keys():
             content += str(len(itemdata["objects"])) + " object(s) \n"
         if "bones" in itemdata.keys():
@@ -980,7 +988,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
             shutil.copyfile(tempPose, tempCopy)
             bpy.ops.pose.paste(flipped=True)
-        
 
     def poseCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -1111,7 +1118,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         }
         with open(self.jsonTempPath, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
-        
 
     def selectionCreateThumbnail(self):
         # hide some overlays before rendering
@@ -1191,7 +1197,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     # def multiAnimCreateThumbnail(self):
     #     """Save new item datas and thumbnail to temp directory"""
-        
+
     #     # hide some overlays before rendering
     #     space = bpy.context.space_data
     #     space.overlay.show_overlays = False
@@ -1253,9 +1259,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             shutil.copyfile(tempPose, tempCopy)
             bpy.ops.pose.paste(flipped=True)
 
-
     # def multiPoseCreateThumbnail(self):
-        
+
     #     # hide some overlays before rendering
     #     space = bpy.context.space_data
     #     space.overlay.show_overlays = False
@@ -1265,9 +1270,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createThumbnail(self, itemType="POSE"):
         """Create item thumbnail and prepare to save as new item"""
-
-        start = time.time()
-        print('Create thumbnail begin')
 
         # Clean any existing temp files
         #  self.cleanTempFolder()
@@ -1313,7 +1315,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Modify render settings
         bpy.context.scene.render.filepath = renderpath
         bpy.context.scene.render.use_stamp = False
-        if itemType in ['ANIMATION', 'MULTI ANIMATION']:
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
             bpy.context.scene.render.image_settings.media_type = "VIDEO"
             bpy.context.scene.render.ffmpeg.format = "MPEG4"
             bpy.context.scene.render.ffmpeg.codec = "H264"
@@ -1341,8 +1343,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
         success = False
         # set context with self.context before calling blender operations
-        print('ready to create thumbnail ')
-        print("--- %s seconds ---" % (time.time() - start))
         with bpy.context.temp_override(
             area=self.context["area"],
             region=self.context["region"],
@@ -1351,7 +1351,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             space_data=self.context["space_data"],
             window=self.context["window"],
         ):
-            if itemType in ["POSE", 'MULTI POSE']:
+            if itemType in ["POSE", "MULTI POSE"]:
                 success = self.poseCreateThumbnail()
             elif itemType in ["ANIMATION", "MULTI ANIMATION"]:
                 success = self.animCreateThumbnail()
@@ -1363,9 +1363,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             #     success = self.multiAnimCreateThumbnail()
             # elif itemType == "MULTI POSE":
             #     success = self.multiPoseCreateThumbnail()
-        print('end rendering ')
-        print("--- %s seconds ---" % (time.time() - start))
-        print(start)
+
         if success:
             # Wait for end of render to call createThumbnailEnd
             bpy.app.timers.register(
@@ -1374,7 +1372,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
-        
+
         # Check if render is done before ending
         # lastFrame = bpy.context.scene.render.filepath.replace(
         #     ".####.", "." + format(bpy.context.scene.frame_end, "04d") + "."
@@ -1396,12 +1394,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         #     print("Wait for " + lastFrame)
         #     return 0.5
         if bpy.app.is_job_running("RENDER"):
-            #print("still rendering")
+            # print("still rendering")
             return 0.1
-        print('create thumbnail end __')
-        start = time.time()
-        print(start)
-        
         # Reset overlays
         try:
             with bpy.context.temp_override(
@@ -1467,8 +1461,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 print("An error occured during GIF generation : " + str(e))
         else:
             thumbpath = self.thumbTempPath
-        print('ready to use movie')
-        print("--- %s seconds ---" % (time.time() - start))
         if os.path.isfile(thumbpath):
             if itemType in ["ANIMATION", "MULTI ANIMATION"]:
                 movie = QtGui.QMovie(thumbpath, QtCore.QByteArray(), self)
@@ -1486,10 +1478,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 )
                 self.createPosewidget.pushButton.setIcon(icon)
         else:
-            iconPath =  "icons/photo.png"
-            icon.addPixmap(
-                QtGui.QPixmap(iconPath), QtGui.QIcon.Normal, QtGui.QIcon.Off
-            )
+            iconPath = "icons/photo.png"
+            icon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self.createPosewidget.pushButton.setIcon(icon)
 
         # put back previous render settings
@@ -1506,8 +1496,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
-        print('ready to close render window')
-        print("--- %s seconds ---" % (time.time() - start))
         # Close render window
         try:
             override = None
@@ -1532,8 +1520,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     bpy.ops.render.view_cancel()
         except Exception as e:
             print("Couldn't close render window : " + str(e))
-        print('end thumbnail ')
-        print("--- %s seconds ---" % (time.time() - start))
 
     def folderSelected(self):
         """Update treeView to display selected folder content"""
@@ -1662,9 +1648,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         stamped = stamped.replace("\\", "/")
 
                         # Create Item
-                        gaoLibItem = GaoLibItem(
-                            name=it, thumbpath=stamped, path=itPath
-                        )
+                        gaoLibItem = GaoLibItem(name=it, thumbpath=stamped, path=itPath)
                         items[i] = gaoLibItem
                         i += 1
         else:
@@ -1676,7 +1660,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     if os.path.isfile(thumbnailPath):
                         thumbpath = thumbnailPath.replace("\\", "/")
                     elif os.path.isfile(thumbnailPath.replace("_stamped", "")):
-                        thumbpath = thumbnailPath.replace("_stamped", "").replace("\\", "/")
+                        thumbpath = thumbnailPath.replace("_stamped", "").replace(
+                            "\\", "/"
+                        )
                     elif (
                         os.path.isdir(itPath)
                         and not it.endswith(".anim")
@@ -1776,12 +1762,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.listView.setResizeMode(QtWidgets.QListView.Adjust)
         # necessary to detect hover
         self.listView.setMouseTracking(True)
+
         # call to gif player when hovering
         def on_hover_changed(index):
             if index:
                 delegate.set_hover_index(index)
             else:
                 delegate.clear_hover_index()
+
         self.listView.hoverChanged.connect(on_hover_changed)
         #
         self.listView.selectionModel().selectionChanged.connect(self.listItemSelected)

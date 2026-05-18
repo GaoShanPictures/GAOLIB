@@ -1,4 +1,4 @@
-from PySide6 import QtWidgets, QtGui, QtCore 
+from PySide6 import QtWidgets, QtGui, QtCore
 import gaolib.model.thumbnailcache as thc
 
 
@@ -29,52 +29,62 @@ class HoverDelegate(QtWidgets.QStyledItemDelegate):
         margin = 1
         spacing = 1
         textHeight = 22
-        imageRect = QtCore.QRect(rect.left() + margin, rect.top() + margin + 2, rect.width() - margin, rect.height() - textHeight - spacing - margin)
-        textRect = QtCore.QRect(rect.left() + margin, imageRect.bottom() + spacing, rect.width() - margin, textHeight)
+        imageRect = QtCore.QRect(
+            rect.left() + margin,
+            rect.top() + margin + 2,
+            rect.width() - margin,
+            rect.height() - textHeight - spacing - margin,
+        )
+        textRect = QtCore.QRect(
+            rect.left() + margin,
+            imageRect.bottom() + spacing,
+            rect.width() - margin,
+            textHeight,
+        )
 
         # if animation, play the gif
-        if index == self.hover_index and self.movie and item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
+        if (
+            index == self.hover_index
+            and self.movie
+            and item.itemType in ["ANIMATION", "MULTI ANIMATION"]
+        ):
             pixmap = self.movie.currentPixmap()
         else:
             # Get the thumbnail cache instance
             cache = thc.ThumbnailCache.instance()
             # lazy loading of the thumbnail
             pixmap = cache.request(item.thumbpath)
-        
         if not pixmap:
             pixmap = QtGui.QPixmap()
-        scaled = pixmap.scaled(
+        else:
+            scaled = pixmap.scaled(
                 imageRect.size(),
                 QtCore.Qt.KeepAspectRatio,
-                QtCore.Qt.SmoothTransformation
+                QtCore.Qt.SmoothTransformation,
             )
-        # center image
-        x = imageRect.x() + (imageRect.width() - scaled.width()) // 2
-        y = imageRect.y() + (imageRect.height() - scaled.height()) // 2
+            # center image
+            x = imageRect.x() + (imageRect.width() - scaled.width()) // 2
+            y = imageRect.y() + (imageRect.height() - scaled.height()) // 2
 
-        painter.drawPixmap(x, y, scaled)
+            painter.drawPixmap(x, y, scaled)
         text = index.data(QtCore.Qt.DisplayRole)
 
         if index == self.hover_index:
             painter.setPen(QtGui.QColor("white"))
         else:
             painter.setPen(QtGui.QColor("black"))
-        painter.drawText(
-            textRect,
-            QtCore.Qt.AlignCenter,
-            text
-        )
+        painter.drawText(textRect, QtCore.Qt.AlignCenter, text)
         painter.restore()
 
     def updateIndex(self, index):
         if index.isValid():
             rect = self.view.visualRect(index)
             QtCore.QTimer.singleShot(0, lambda: self.view.viewport().update(rect))
-    
+
     def set_hover_index(self, index):
         if self.hover_index == index:
             return
-        
+
         self.stopMovie()
         self.hover_index = QtCore.QPersistentModelIndex(index)
         item = index.data(QtCore.Qt.UserRole)
@@ -91,13 +101,13 @@ class HoverDelegate(QtWidgets.QStyledItemDelegate):
         self.hover_index = QtCore.QPersistentModelIndex()
         if oldIdx.isValid():
             self.updateIndex(oldIdx)
-    
+
     def stopMovie(self):
         if self.movie:
             self.movie.stop()
             self.movie.deleteLater()
             self.movie = None
-    
+
     def on_frame_changed(self):
         if self.hover_index.isValid():
             self.updateIndex(self.hover_index)
