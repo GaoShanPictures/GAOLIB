@@ -1,2 +1,5 @@
 *.pyc
 *gaolib_old.ui
+config/
+*_backup.py
+*_backup.ui

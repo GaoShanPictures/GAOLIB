@@ -17,10 +17,10 @@
 bl_info = {
     "name": "GAOLIB",
     "author": "Anne Beurard",
-    "version": (4, 1, 0),
+    "version": (5, 0, 0),
     "blender": (5, 0, 0),
     "location": "View 3D",
-    "warning": "Requires installation of dependencies",
+    "warning": "Requires installation of dependencies (install dependencies button). Also requires the user to MANUALLY install FFMPEG.",
     "description": "Animation and Pose library tool for Blender.",
     "category": "3D View",
 }

@@ -88,7 +88,10 @@ class HoverDelegate(QtWidgets.QStyledItemDelegate):
         self.stopMovie()
         self.hover_index = QtCore.QPersistentModelIndex(index)
         item = index.data(QtCore.Qt.UserRole)
-        gif_path = item.stamped.replace("png", "gif").replace("_stamped", "")
+        stamped = item.stamped
+        if stamped:
+            stamped = item.stamped.replace("png", "gif").replace("_stamped", "")
+        gif_path = stamped
         self.movie = QtGui.QMovie(gif_path)
         self.movie.setCacheMode(QtGui.QMovie.CacheAll)
         self.movie.frameChanged.connect(self.on_frame_changed)

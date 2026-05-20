@@ -39,29 +39,37 @@ from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
     def __init__(
         self,
+        objectName,
         constraintName,
         bone,
         targetBone,
         targetObject,
-        comboList,
+        actualTargetObject,
+        # comboList,
         parent=None,
     ):
         super(ConstrainInfoWidget, self).__init__(parent=parent)
         self.setupUi(self)
         self.groupBox.setTitle(constraintName)
+        self.sourceObject = objectName
         self.constraintName = constraintName
         self.targetObject = targetObject
         self.targetBone = bone
+        self.sourceObjectLabel.setText(objectName)
+        self.sourceObjectLabel.setToolTip(objectName)
         self.boneLabel.setText(bone)
         self.boneLabel.setToolTip(bone)
         self.sourceTargetLabel.setText(targetObject)
         self.sourceTargetLabel.setToolTip(targetObject)
         self.targetBoneLabel.setText(targetBone)
         self.targetBoneLabel.setToolTip(targetBone)
-        self.comboBox.addItems(comboList)
-        index = self.comboBox.findText(self.targetObject)
-        if index >= 0:
-            self.comboBox.setCurrentIndex(index)
+        self.targetLabel.setText(actualTargetObject)
+        self.targetLabel.setToolTip(actualTargetObject)
+        self.applyConstraintCheckBox.setChecked(True)
+        # self.comboBox.addItems(comboList)
+        # index = self.comboBox.findText(self.targetObject)
+        # if index >= 0:
+        #     self.comboBox.setCurrentIndex(index)
 
 
 class PairingWidget(QtWidgets.QWidget, Pairing_Form):
@@ -74,6 +82,7 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
         parent=None,
     ):
         super(PairingWidget, self).__init__(parent=parent)
+        self.parentInfoWidget = parent
         self.setupUi(self)
         self.objectName = objectName
         self.objectNameLabel.setText(objectName)
@@ -83,8 +92,8 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
             self.armatureComboBox.setCurrentIndex(index)
 
         self.constraintInfoWidgets = []
-        if itemType != "CONSTRAINT SET":
-            return
+        # if itemType != "CONSTRAINT SET":
+        #     return
 
         if objectName in constraintDict.keys():
             if "bone_constraints" in constraintDict[objectName].keys():
@@ -102,15 +111,20 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                                 targetBone = None
                             targetObject = consDict["target"]["name"]
                             constraintItem = ConstrainInfoWidget(
+                                objectName,
                                 constraintName,
                                 bone,
                                 targetBone,
                                 targetObject,
-                                comboList,
+                                # comboList,
+                                "",
                                 parent=None,
                             )
                             # self.widgetVerticalLayout.addWidget(constraintItem)
                             self.constraintInfoWidgets.append(constraintItem)
+        self.armatureComboBox.currentTextChanged.connect(
+            lambda: self.parentInfoWidget.updateConstraintsTarget()
+        )
 
 
 class SliderEventFilter(QtCore.QObject):
@@ -141,6 +155,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.refPose = None
         self.bonesToBlend = None
         self.toggleAdditive = False
+        self.pairWidgets = []
         # utils.removeOrphans()
 
         # allow frame range in negative
@@ -680,14 +695,15 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             index = widget.armatureComboBox.findText(widget.objectName)
             if index >= 0:
                 widget.armatureComboBox.setCurrentIndex(index)
-            for constraintWidget in widget.constraintInfoWidgets:
-                constraintWidget.comboBox.clear()
-                constraintWidget.comboBox.addItems(comboList)
-                index = constraintWidget.comboBox.findText(
-                    constraintWidget.targetObject
-                )
-                if index >= 0:
-                    constraintWidget.comboBox.setCurrentIndex(index)
+            # for constraintWidget in widget.constraintInfoWidgets:
+            #     constraintWidget.comboBox.clear()
+            #     constraintWidget.comboBox.addItems(comboList)
+            #     index = constraintWidget.comboBox.findText(
+            #         constraintWidget.targetObject
+            #     )
+            #     if index >= 0:
+            #         constraintWidget.comboBox.setCurrentIndex(index)
+        self.updateConstraintsTarget()
 
     def selectBones(self):
         """Select bones listed in json file"""
@@ -712,15 +728,16 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             pairingDict[objName]["object"] = widget.armatureComboBox.currentText()
             pairingDict[objName]["constraints"] = {}
             for constraintWidget in widget.constraintInfoWidgets:
-                consInfo = {
-                    "sourceTarget": constraintWidget.targetObject,
-                    "sourceTargetBone": constraintWidget.targetBone,
-                    "destinationTarget": constraintWidget.comboBox.currentText(),
-                    "destinationTargetBone": constraintWidget.targetBone,
-                }
-                pairingDict[objName]["constraints"][
-                    constraintWidget.constraintName
-                ] = consInfo
+                if constraintWidget.applyConstraintCheckBox.isChecked():
+                    consInfo = {
+                        "sourceTarget": constraintWidget.targetObject,
+                        "sourceTargetBone": constraintWidget.targetBone,
+                        "destinationTarget": constraintWidget.targetLabel.text(),  # constraintWidget.comboBox.currentText(),
+                        "destinationTargetBone": constraintWidget.targetBone,
+                    }
+                    pairingDict[objName]["constraints"][
+                        constraintWidget.constraintName
+                    ] = consInfo
         return pairingDict
 
     def getItemDict(self):
@@ -739,7 +756,11 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.ownerLabel.setText(self.item.owner)
         self.dateLabel.setText(self.item.date)
         self.contentLabel.setText(self.item.content)
-        self.thumbnailLabel.setPixmap((QtGui.QPixmap(self.thumbpath).scaled(200, 200)))
+        if self.thumbpath and os.path.isfile(self.thumbpath):
+            pixmap = QtGui.QPixmap(self.thumbpath).scaled(200, 200)
+        else:
+            pixmap = QtGui.QPixmap()
+        self.thumbnailLabel.setPixmap(pixmap)
         self.frameRangeLabel.setText(self.item.frameRange)
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
@@ -774,7 +795,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             )
             self.applyPushButton.setIcon(icon1)
             # set objects pairing widgets
-            self.pairWidgets = []
             comboList = [obj.name for obj in utils.getSelectedObjects()]
             for objName in self.item.objects:
                 constraintDict = self.getItemDict()["constraintData"]
@@ -793,29 +813,49 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             # self.constraintOptionsGroupBox.setVisible(False)
             self.applyPushButton.setText("APPLY 100 %")
             # set objects pairing widgets
-            self.pairWidgets = []
             comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
             for objName in self.item.objects:
-                constraintDict = self.getItemDict()["metadata"]["objects"]
+                data = self.getItemDict()
+                if "constraintData" in data.keys():
+                    constraintDict = data["constraintData"]
+                else:
+                    constraintDict = {}
                 item = PairingWidget(
-                    objName, comboList, {}, itemType="MULTI POSE", parent=self
+                    objName,
+                    comboList,
+                    constraintDict,
+                    itemType="MULTI POSE",
+                    parent=self,
                 )
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
+            for pair in self.pairWidgets:
+                for constraintWidget in pair.constraintInfoWidgets:
+                    self.verticalLayout_3.addWidget(constraintWidget)
         elif self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
             self.selectionSetOptionsWidget.setVisible(False)
             self.poseOptionsWidget.setVisible(False)
             if self.item.itemType == "MULTI ANIMATION":
                 # set objects pairing widgets
-                self.pairWidgets = []
                 comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
                 for objName in self.item.objects:
-                    constraintDict = self.getItemDict()["metadata"]["objects"]
+                    data = self.getItemDict()
+                    if "constraintData" in data.keys():
+                        constraintDict = data["constraintData"]
+                    else:
+                        constraintDict = {}
                     item = PairingWidget(
-                        objName, comboList, {}, itemType="MULTI ANIMATION", parent=self
+                        objName,
+                        comboList,
+                        constraintDict,
+                        itemType="MULTI ANIMATION",
+                        parent=self,
                     )
                     self.verticalLayout_3.addWidget(item)
                     self.pairWidgets.append(item)
+                for pair in self.pairWidgets:
+                    for constraintWidget in pair.constraintInfoWidgets:
+                        self.verticalLayout_3.addWidget(constraintWidget)
             else:
                 self.constraintOptionsGroupBox.setVisible(False)
             icon1 = QtGui.QIcon()
@@ -864,6 +904,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.label_3.setVisible(False)
             self.label_4.setVisible(False)
             self.selectBonesPushButton.setVisible(False)
+        self.updateConstraintsTarget()
 
     def fromSpinBoxChanged(self):
         """Keep consistancy between spinboxes"""
@@ -884,6 +925,35 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.toRangeSpinBox.setValue(self.toRangeSpinBox.maximum())
         if self.toRangeSpinBox.value() < self.toRangeSpinBox.minimum():
             self.toRangeSpinBox.setValue(self.toRangeSpinBox.minimum())
+
+    def getConstraintWidgets(self):
+        """make list of all constraints widgets"""
+        allConstraintWidgets = []
+        for widget in self.pairWidgets:
+            for constraintWidget in widget.constraintInfoWidgets:
+                allConstraintWidgets.append(constraintWidget)
+        return allConstraintWidgets
+
+    def updateConstraintsTarget(self):
+        """In constraint info widgets, update the name of the target object according to the pairing options"""
+        allConstraintWidgets = self.getConstraintWidgets()
+
+        # check all constraint widgets to know if refresh is needed
+        for widget in self.pairWidgets:
+            for constraintWidget in allConstraintWidgets:
+                if constraintWidget.targetObject == widget.objectName:
+                    constraintWidget.targetLabel.setText(
+                        widget.armatureComboBox.currentText()
+                    )
+        # update check (apply constraint)
+        for widget in self.pairWidgets:
+            for constraintWidget in widget.constraintInfoWidgets:
+                if widget.armatureComboBox.currentText() != "":
+                    constraintWidget.applyConstraintCheckBox.setChecked(True)
+                    constraintWidget.setVisible(True)
+                else:
+                    constraintWidget.applyConstraintCheckBox.setChecked(False)
+                    constraintWidget.setVisible(False)
 
     def eventFilter(self, obj, event):
         """Event filter to play movie when hovered"""

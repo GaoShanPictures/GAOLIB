@@ -47,8 +47,6 @@ from gaolib.ui.settingsdialogui import Ui_Dialog as SettingsDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 import gaolib.model.thumbnailcache as thc
 
-# import sentry_sdk
-
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
 try:
@@ -59,26 +57,8 @@ try:
 except Exception as e:
     print("IMPORT EXCEPTION : " + str(e))
 
-# sentry_sdk.set_tag("project", "IT-DEV")
-# sentry_sdk.set_tag("software", "gaolib")
-# sentry_sdk.set_user({"username": os.environ["USERNAME"]})
-# sentry_sdk.init(
-#     "https://e7ccbcc0658443ccab897cd8e07d97eb@bug.gaoshanpictures.intra/2",
-#     send_default_pii=True,
-#     max_request_body_size="always",
-#     traces_sample_rate=0,
-#     send_client_reports=False,
-#     auto_session_tracking=False
-# )
 
 import time
-
-if "FFMPEG_PATH" not in os.environ.keys():
-    ffmpegPath = "C:/Users/anneb/Documents/ffmpeg/bin/ffmpeg.exe"
-    if os.path.isfile(ffmpegPath):
-        os.environ["FFMPEG_PATH"] = ffmpegPath
-    else:
-        os.environ["FFMPEG_PATH"] = "Q:/tools/ffmpeg/bin/ffmpeg.exe"
 
 
 class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
@@ -101,6 +81,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.recursiveDisplayMode = False
         self.useDoubleClickToApplyPose = False
         self.useWheelToBlendPose = False
+        self.ffmpegPath = None
         self.listView = GaoCustomListView(parent=self)
         self.listView.setSpacing(10)
         self.listView.setMinimumSize(QtCore.QSize(50, 50))
@@ -121,6 +102,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         #
         cache = thc.ThumbnailCache.instance()
         cache.thumbnailLoaded.connect(self.onThumbLoaded)
+        # If temp folder is not empty, clean items
+        self.cleanTempFolder()
 
     def _connectUi(self):
         # Connect Actions
@@ -175,13 +158,15 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         refreshAction.setShortcut(QtGui.QKeySequence("Ctrl+R"))
         self.settingsPushButton.setMenu(createMenu)
 
-    def readConfig(self):
+    def readConfig(self, allowMessage=True):
         """Read Json config"""
         self.rootList = []
         self.rootPath = None
+        self.ffmpegPath = None
         if os.path.exists(self.configPath):
             with open(self.configPath) as file:
                 itemdata = json.load(file)
+                print("ITEM DATA : " + str(itemdata))
                 self.rootList = itemdata["rootpath"]
                 if "recursiveDisplayMode" in itemdata.keys():
                     self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
@@ -197,6 +182,26 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     ]
                 else:
                     self.useDoubleClickToApplyPose = False
+                if "ffmpegPath" in itemdata.keys():
+                    self.ffmpegPath = itemdata["ffmpegPath"]
+        # FFMPEG_PATH can be set as environment variable, if so, this value prevales on the settings
+        if "FFMPEG_PATH" not in os.environ.keys() or not os.path.isfile(
+            os.environ["FFMPEG_PATH"]
+        ):
+            print("Need to update env var FFMPEG_PATH")
+            if self.ffmpegPath in [None, ""] or not os.path.isfile(self.ffmpegPath):
+                print("Failed !")
+                if allowMessage:
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Warning",
+                        "No valid FFMPEG Path were found in environment variable FFMPEG_PATH, nor in GaoLib settings. You will not be able to create new items in the library. \nPlease, add FFMPEG path in the settings window.",
+                    )
+            else:
+                print("FFMPEG_PATH = " + self.ffmpegPath)
+                os.environ["FFMPEG_PATH"] = self.ffmpegPath
+        else:
+            print("Env var FFMPEG_PATH = " + os.environ["FFMPEG_PATH"])
 
     def settings(self):
         """Manage change of ROOT folder location"""
@@ -227,6 +232,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     dialog.ui.blendPoseOnWheelCheckBox.setChecked(itemdata[key])
                 if key == "useDoubleClickToApplyPose":
                     dialog.ui.doubleClickPoseShortcutCheckBox.setChecked(itemdata[key])
+                if key == "ffmpegPath":
+                    dialog.ui.ffmpegPathLlineEdit.setText(itemdata[key])
         # File browser
         dialog.ui.browsePushButton.released.connect(
             lambda: self.openFileNameDialog(dialog)
@@ -240,13 +247,15 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         useDoubleClickToApplyPose = (
             dialog.ui.doubleClickPoseShortcutCheckBox.isChecked()
         )
+        ffmpegPath = dialog.ui.ffmpegPathLlineEdit.text()
         # The user clicks OK
         if rsp == QtWidgets.QDialog.Accepted:
-            self.readConfig()
+            self.readConfig(allowMessage=False)
             paramsChanged = (
                 recursiveDisplayMode != self.recursiveDisplayMode
                 or useWheelToBlendPose != self.useWheelToBlendPose
                 or useDoubleClickToApplyPose != self.useDoubleClickToApplyPose
+                or ffmpegPath != self.ffmpegPath
             )
             if not len(path):
                 if paramsChanged:
@@ -258,6 +267,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                 "recursiveDisplayMode": recursiveDisplayMode,
                                 "useWheelToBlendPose": useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
+                                "ffmpegPath": ffmpegPath,
                             },
                             file,
                             indent=4,
@@ -290,6 +300,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                     "recursiveDisplayMode": recursiveDisplayMode,
                                     "useWheelToBlendPose": useWheelToBlendPose,
                                     "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
+                                    "ffmpegPath": ffmpegPath,
                                 },
                                 file,
                                 indent=4,
@@ -314,6 +325,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                 "recursiveDisplayMode": self.recursiveDisplayMode,
                                 "useWheelToBlendPose": self.useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": self.useDoubleClickToApplyPose,
+                                "ffmpegPath": self.ffmpegPath,
                             },
                             file,
                             indent=4,
@@ -482,14 +494,30 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 expandedIndexes.append(mappedIdx)
         return expandedIndexes
 
-    # def cleanTempFolder(self):
-    #     sequencePath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
-    #     tempPath = os.path.join(
-    #         bpy.context.preferences.filepaths.temporary_directory, "gaolib_temp"
-    #     )
-    #     if os.path.isdir(tempPath):
-    #         shutil.rmtree(tempPath)
-    #     os.makedirs(sequencePath)
+    def cleanTempFolder(self):
+        tempPath = os.path.join(
+            bpy.context.preferences.filepaths.temporary_directory, "gaolib_temp"
+        )
+        sequencePath = os.path.join(tempPath, "sequence")
+        toRemove = []
+        if os.path.isdir(tempPath):
+            for e in os.listdir(tempPath):
+                path = os.path.join(tempPath, e)
+                if os.path.isfile(path):
+                    toRemove.append(path)
+            # shutil.rmtree(tempPath)
+        if os.path.isdir(sequencePath):
+            for e in os.listdir(sequencePath):
+                path = os.path.join(sequencePath, e)
+                if os.path.isfile(path):
+                    toRemove.append(path)
+        for path in toRemove:
+            try:
+                os.remove(path)
+            except Exception as e:
+                print("Info : Could not remove " + path + " : " + str(e))
+        # if not os.path.isdir(sequencePath):
+        #     os.makedirs(sequencePath)
 
     def createGenericItemSetUI(self):
         """Prepare UI to create new animation/pose/selection/constraint set item"""
@@ -513,7 +541,17 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createAnimSetUI(self, itemType="ANIMATION"):
         """Prepare UI to Create new animation item"""
-
+        # check ffmpeg path
+        if "FFMPEG_PATH" not in os.environ.keys() or not os.path.isfile(
+            os.environ["FFMPEG_PATH"]
+        ):
+            # message
+            QtWidgets.QMessageBox.about(
+                self,
+                "Abort action",
+                "Cannot create animation item. Please, add a valid path for FFMPEG path in GaoLib settings.",
+            )
+            return
         # choose between animation or Multi animation
         # Get selectd object
         selectedObjs = utils.getSelectedObjects()
@@ -556,6 +594,17 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createItemSetUI(self, itemType):
         """Prepare UI to Create new pose item"""
+        # check ffmpeg path
+        if "FFMPEG_PATH" not in os.environ.keys() or not os.path.isfile(
+            os.environ["FFMPEG_PATH"]
+        ):
+            # message
+            QtWidgets.QMessageBox.about(
+                self,
+                "Abort action",
+                "Cannot create animation item. Please, add a valid path for FFMPEG path in GaoLib settings.",
+            )
+            return
         self.createGenericItemSetUI()
         # Create widget for create pose
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
@@ -774,6 +823,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pairingDict = self.infoWidget.getConstraintPairing()
+                utils.pasteConstraints(
+                    self.currentListItem.path, pairingDict, itemType="MULTI ANIMATION"
+                )
                 utils.pasteMultiAnim(
                     self.currentListItem.path,
                     pairingDict,
@@ -781,9 +833,22 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     frameOut,
                     self.infoWidget,
                 )
+
             elif itemType == "CONSTRAINT SET":
                 pairingDict = self.infoWidget.getConstraintPairing()
-                utils.pasteConstraints(self.currentListItem.path, pairingDict)
+                countConstraints = 0
+                for objName in pairingDict.keys():
+                    if "constraints" in pairingDict[objName].keys():
+                        for constName in pairingDict[objName]["constraints"].keys():
+                            countConstraints += 1
+                if not countConstraints:
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Info",
+                        "No constraint is currently selected to be applied.",
+                    )
+                else:
+                    utils.pasteConstraints(self.currentListItem.path, pairingDict)
             elif itemType == "POSE":
                 if not blendPose:
                     blendPose = 1
@@ -804,6 +869,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     refPose = self.infoWidget.refPose
                     utils.deleteRefPose(refPose, self.infoWidget)
                 pairingDict = self.infoWidget.getConstraintPairing()
+                utils.pasteConstraints(
+                    self.currentListItem.path, pairingDict, itemType="MULTI POSE"
+                )
                 utils.pasteMultiPose(
                     self.currentListItem.path,
                     pairingDict,
@@ -812,6 +880,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     currentPose=currentPose,
                     additiveMode=self.infoWidget.additiveModeCheckBox.isChecked(),
                 )
+
         except Exception as e:
             QtWidgets.QMessageBox.about(
                 self, "Abort action", "An error has occured, check Console : " + str(e)
@@ -1186,6 +1255,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             "objects": selectedObjects,
             "multiAnimData": slotAnimDict,
         }
+        constraintData = utils.getConstraintsForSelection()
+        if constraintData:
+            data["constraintData"] = constraintData
         with open(self.jsonTempPath, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
         # Delete temp action
@@ -1229,6 +1301,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             "boneNames": boneNamesDict,
             "objects": selectedObjects,
         }
+        constraintData = utils.getConstraintsForSelection()
+        if constraintData:
+            data["constraintData"] = constraintData
         with open(self.jsonTempPath, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
         for o in selection:
@@ -1791,6 +1866,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def setTreeView(self):
         """Set Tree model and connect it to UI"""
+        print("\n\nSET TREE VIEW READ CONFIG")
         self.readConfig()
 
         self.treeroot = GaoLibTreeItem("root")

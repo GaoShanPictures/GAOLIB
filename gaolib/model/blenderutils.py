@@ -432,8 +432,8 @@ def getConstraintsForSelection():
                     if target == obj:
                         continue
                 except:
-                    print(cons.name + " Constraint has no target ")
                     target = None
+                    continue
                 # write dict
                 if bone.name not in objConstraints["bone_constraints"].keys():
                     objConstraints["bone_constraints"][bone.name] = {}
@@ -500,11 +500,16 @@ def updateSelectionSet(infoWidget, add=True):
     selectBones(jsonPath)
 
 
-def pasteConstraints(constraintDir, pairingDict):
+def pasteConstraints(constraintDir, pairingDict, itemType="CONSTRAINT SET"):
     """Read constraint json and apply constraints on selected bones"""
     # read json
     itemdata = {}
-    jsonPath = os.path.join(constraintDir, "constraint_set.json")
+    if itemType == "MULTI POSE":
+        jsonPath = os.path.join(constraintDir, "multi_pose.json")
+    elif itemType == "MULTI ANIMATION":
+        jsonPath = os.path.join(constraintDir, "multi_animation.json")
+    else:
+        jsonPath = os.path.join(constraintDir, "constraint_set.json")
     with open(jsonPath) as file:
         itemdata = json.load(file)
     if "constraintData" in itemdata.keys():
@@ -519,11 +524,14 @@ def pasteConstraints(constraintDir, pairingDict):
     for objName in constraintData.keys():
         boneConstraints = constraintData[objName]["bone_constraints"]
         constraintToObject = None
-
         for selected in objects:
+
             if selected.name == pairingDict[objName]["object"]:
                 constraintToObject = selected
                 break
+        if not constraintToObject:
+            pbList.append("Info : Constraints for " + objName + " have been ignored.")
+            continue
         for boneName in boneConstraints.keys():
             bone = constraintToObject.pose.bones.get(boneName)
             if not bone:
@@ -532,6 +540,9 @@ def pasteConstraints(constraintDir, pairingDict):
                 )
                 continue
             for constName, constData in boneConstraints[boneName].items():
+                if not constData["name"] in pairingDict[objName]["constraints"].keys():
+                    print("Ignore apply " + constData["name"])
+                    continue
                 cons = bone.constraints.new(constData["type"])
                 cons.name = constData["name"] + "_GAOLIB"
                 try:
@@ -591,18 +602,18 @@ def pasteConstraints(constraintDir, pairingDict):
                                     'bpy.data.objects.get("' + propData["name"] + '")'
                                 )
                                 exec("cons." + propName + "= elem")
-                if constData["type"] == "CHILD_OF":
-                    # set inverse
-                    print("Set inverse not implemented yet")
-                    # bpy.context.active_object.data.bones.active = bone.bone
-                    # print(bpy.context)
-                    # bpy.ops.constraint.childof_set_inverse( constraint=cons.name, owner="BONE" )
+                # if constData["type"] == "CHILD_OF":
+                #     # set inverse
+                #     print("Set inverse not implemented yet")
+                #     # bpy.context.active_object.data.bones.active = bone.bone
+                #     # print(bpy.context)
+                #     # bpy.ops.constraint.childof_set_inverse( constraint=cons.name, owner="BONE" )
 
-                    # matrix_final = (
-                    #     cons.target.matrix_world
-                    #     * cons.target.pose.bones.get(cons.subtarget).matrix
-                    # )
-                    # cons.inverse_matrix = matrix_final.inverted()
+                #     # matrix_final = (
+                #     #     cons.target.matrix_world
+                #     #     * cons.target.pose.bones.get(cons.subtarget).matrix
+                #     # )
+                #     # cons.inverse_matrix = matrix_final.inverted()
 
     if len(pbList):
         ShowDialog(
@@ -710,7 +721,7 @@ def cleanFrameRangeToPasteAnim(
     action = animation_data.action
     if not action:
         return
-    fcurves = getActionFcurves(action, slot)
+    fcurves = getActionFcurves(action, slot=slot)
     bone_names = {bone.name for bone in selectedBones}
     # remove anim curves
     for fcurve in fcurves:
@@ -794,6 +805,19 @@ def copyKeyframes(
                 continue
             if bone_name not in bone_names:
                 continue
+        if '.constraints["' in data_path:
+            # For constraints, new created constraint is renamed with _GAOLIB suffix
+            # print("original data_path : " + str(data_path))
+            splitted = data_path.split('.constraints["')
+            constraintName = splitted[-1].split('"]')[0]
+            data_path = (
+                splitted[0]
+                + '.constraints["'
+                + constraintName
+                + "_GAOLIB"
+                + splitted[-1].replace(constraintName, "")
+            )
+            # print("new data_path : " + str(data_path))
         array_index = source_fc.array_index
         # ---------------------------------------------------------------------
         # Get/create target fcurve ONCE
@@ -835,6 +859,8 @@ def copyKeyframes(
     # Single scene refresh
     # -------------------------------------------------------------------------
     bpy.context.view_layer.update()
+    # Group channels by bones
+    groupChannelsByBones(target_object)
 
 
 def copyKeyframes_old(
@@ -1126,10 +1152,11 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
 def groupChannelsByBones(selectedObject):
     # Group channels by bone names
     bones = {}
-    selectedObjFcurves = getActionFcurves(selectedObject.animation_data.action)
+    # selectedObjFcurves = getActionFcurves(selectedObject.animation_data.action)
     act = selectedObject.animation_data.action
     sl = selectedObject.animation_data.action_slot
     channelbag = anim_utils.action_get_channelbag_for_slot(act, sl)
+    selectedObjFcurves = [fc for fc in channelbag.fcurves]
     for fc in selectedObjFcurves:
         try:
             bone = fc.data_path.split('["')[1].split('"]')[0]
