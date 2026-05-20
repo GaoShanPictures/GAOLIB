@@ -1720,7 +1720,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     ):
                         stamped = os.path.join(itPath, "thumbnail_stamped.png")
                         stamped = stamped.replace("\\", "/")
-
+                        if not os.path.isfile(stamped):
+                            stamped = "icons/nopreview2.png"
                         # Create Item
                         gaoLibItem = GaoLibItem(name=it, thumbpath=stamped, path=itPath)
                         items[i] = gaoLibItem
@@ -1751,7 +1752,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                             "icons/folder2.png",
                         )
                     else:
-                        thumbpath = None
+                        thumbpath = "icons/nopreview2.png"
 
                     # Create Item
                     gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)

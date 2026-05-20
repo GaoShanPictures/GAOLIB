@@ -56,8 +56,6 @@ class ThumbnailCache(QtCore.QObject):
         return None
 
     def _on_loaded(self, key, image):
-        if key.__class__.__name__ != "str":
-            print("\n\nthumbnailcache on load " + str(key))
         QtCore.QMetaObject.invokeMethod(
             self,
             "_store",
@@ -69,8 +67,6 @@ class ThumbnailCache(QtCore.QObject):
     @QtCore.Slot(str, QtGui.QImage)
     def _store(self, key, image):
         pixmap = QtGui.QPixmap.fromImage(image)
-
         self.insert(key, pixmap)
         self.loading.discard(key)
-
         self.thumbnailLoaded.emit(key)

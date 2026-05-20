@@ -11,12 +11,11 @@ class ThumbnailTask(QtCore.QRunnable):
     def run(self):
         # return the nopreview image if the thumbnail does not exist
         if not self.path or not os.path.isfile(self.path):
-            image = QtGui.QImage(
-                os.path.join(
-                    os.path.dirname(os.path.realpath(__file__)),
-                    "../icons/nopreview2.png",
-                )
+            noPreviewPath = os.path.join(
+                os.path.dirname(os.path.realpath(__file__)),
+                "../icons/nopreview2.png",
             )
+            image = QtGui.QImage(noPreviewPath)
         else:
             image = QtGui.QImage(self.path)
         # scale it for performance
