@@ -166,7 +166,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         if os.path.exists(self.configPath):
             with open(self.configPath) as file:
                 itemdata = json.load(file)
-                print("ITEM DATA : " + str(itemdata))
                 self.rootList = itemdata["rootpath"]
                 if "recursiveDisplayMode" in itemdata.keys():
                     self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
@@ -1866,7 +1865,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def setTreeView(self):
         """Set Tree model and connect it to UI"""
-        print("\n\nSET TREE VIEW READ CONFIG")
         self.readConfig()
 
         self.treeroot = GaoLibTreeItem("root")
