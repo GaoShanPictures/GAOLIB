@@ -17,9 +17,14 @@ class HoverDelegate(QtWidgets.QStyledItemDelegate):
         if option.state & QtWidgets.QStyle.State_Selected:
             painter.fillRect(rect, option.palette.highlight())
         else:
-            if item.itemType in ["POSE", "MULTI POSE"]:
+            if item.itemType == "MULTI POSE":
+                # painter.fillRect(rect, QtGui.QColor(204, 76, 24))
+                painter.fillRect(rect, QtGui.QColor(191, 70, 50))
+            elif item.itemType == "POSE":
                 painter.fillRect(rect, QtGui.QColor(200, 125, 42))
-            elif item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
+            elif item.itemType == "MULTI ANIMATION":
+                painter.fillRect(rect, QtGui.QColor(51, 123, 162))
+            elif item.itemType == "ANIMATION":
                 painter.fillRect(rect, QtGui.QColor(51, 160, 162))
             elif item.itemType == "SELECTION SET":
                 painter.fillRect(rect, QtGui.QColor(163, 46, 142))
