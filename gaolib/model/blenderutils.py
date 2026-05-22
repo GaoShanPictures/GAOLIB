@@ -429,11 +429,12 @@ def getConstraintsForSelection():
                 # ignore constraints with target set to self
                 try:
                     target = cons.target
-                    if target == obj:
+                    if not target or target == obj:
                         continue
                 except:
                     target = None
                     continue
+                print("\n\nIgnore targetless constraint : " + cons.name)
                 # write dict
                 if bone.name not in objConstraints["bone_constraints"].keys():
                     objConstraints["bone_constraints"][bone.name] = {}
@@ -534,14 +535,21 @@ def pasteConstraints(constraintDir, pairingDict, itemType="CONSTRAINT SET"):
             continue
         for boneName in boneConstraints.keys():
             bone = constraintToObject.pose.bones.get(boneName)
-            if not bone:
-                pbList.append(
-                    "Did not find bone " + boneName + " in " + constraintToObject.name
-                )
-                continue
+
             for constName, constData in boneConstraints[boneName].items():
                 if not constData["name"] in pairingDict[objName]["constraints"].keys():
                     print("Ignore apply " + constData["name"])
+                    continue
+                if not bone:
+                    pbList.append(
+                        "Did not find bone "
+                        + boneName
+                        + " in "
+                        + constraintToObject.name
+                        + " to apply "
+                        + constData["name"]
+                        + " constraint"
+                    )
                     continue
                 cons = bone.constraints.new(constData["type"])
                 cons.name = constData["name"] + "_GAOLIB"
@@ -615,11 +623,12 @@ def pasteConstraints(constraintDir, pairingDict, itemType="CONSTRAINT SET"):
                 #     # )
                 #     # cons.inverse_matrix = matrix_final.inverted()
 
-    if len(pbList):
-        ShowDialog(
-            "Some problems occured : \n" + "\n".join(pbList),
-            title="WARNING",
-        )
+    # if len(pbList):
+    #     ShowDialog(
+    #         "Some problems occured : \n" + "\n".join(pbList),
+    #         title="WARNING",
+    #     )
+    return pbList
 
 
 def getActionFcurves(action, slot=None):
@@ -790,7 +799,12 @@ def copyKeyframes(
         animation_data.action = bpy.data.actions.new(
             name=f"{target_object.name}_Action"
         )
+    if not animation_data.action_slot:
+        animation_data.action_slot = animation_data.action.slots.new(
+            id_type="OBJECT", name=target_object.name
+        )
     target_action = animation_data.action
+    target_slot = animation_data.action_slot
     bone_names = {bone.name for bone in selected_bones}
     source_fcurves = getActionFcurves(source_action, slot=slot)
     for source_fc in source_fcurves:
@@ -802,8 +816,9 @@ def copyKeyframes(
             try:
                 bone_name = data_path.split('"')[1]
             except Exception:
+                bone_name = None
                 continue
-            if bone_name not in bone_names:
+            if not bone_name or bone_name not in bone_names:
                 continue
         if '.constraints["' in data_path:
             # For constraints, new created constraint is renamed with _GAOLIB suffix
@@ -822,7 +837,9 @@ def copyKeyframes(
         # ---------------------------------------------------------------------
         # Get/create target fcurve ONCE
         # ---------------------------------------------------------------------
-        target_fc = get_or_create_fcurve(target_action, data_path, array_index, slot)
+        target_fc = get_or_create_fcurve(
+            target_action, data_path, array_index, target_slot
+        )
         source_points = source_fc.keyframe_points
         # ---------------------------------------------------------------------
         # Collect points first

@@ -109,7 +109,12 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                                 targetBone = consDict["subtarget"]
                             else:
                                 targetBone = None
-                            targetObject = consDict["target"]["name"]
+                            targetObject = ""
+                            if (
+                                consDict["target"] != "None"
+                                and "name" in consDict["target"].keys()
+                            ):
+                                targetObject = consDict["target"]["name"]
                             constraintItem = ConstrainInfoWidget(
                                 objectName,
                                 constraintName,

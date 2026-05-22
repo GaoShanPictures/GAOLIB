@@ -124,11 +124,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         )
         animIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "anim2.png")))
         createMenu.addAction(animIcon, "New Animation", self.createAnimSetUI)
-        # createMenu.addAction(
-        #     animIcon,
-        #     "New Multi Animation",
-        #     lambda: self.createAnimSetUI(itemType="MULTI ANIMATION"),
-        # )
+        createMenu.addAction(
+            animIcon,
+            "New Multi Animation",
+            lambda: self.createAnimSetUI(itemType="MULTI ANIMATION"),
+        )
         constraintIcon = QtGui.QIcon(
             QtGui.QPixmap(os.path.join(iconFolder, "constraint.png"))
         )
@@ -154,8 +154,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Settings functionnalities
         createMenu = QtWidgets.QMenu(self.settingsPushButton)
         createMenu.addAction("Settings", self.settings)
-        refreshAction = createMenu.addAction("Refresh central view", self.setListView)
-        refreshAction.setShortcut(QtGui.QKeySequence("Ctrl+R"))
+        # refreshAction = createMenu.addAction("Refresh central view", self.setListView)
+        # refreshAction.setShortcut(QtGui.QKeySequence("Ctrl+R"))
         self.settingsPushButton.setMenu(createMenu)
 
     def readConfig(self, allowMessage=True):
@@ -551,11 +551,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 "Cannot create animation item. Please, add a valid path for FFMPEG path in GaoLib settings.",
             )
             return
-        # choose between animation or Multi animation
-        # Get selectd object
-        selectedObjs = utils.getSelectedObjects()
-        if len(selectedObjs) > 1:
-            itemType = "MULTI ANIMATION"
+        # # choose between animation or Multi animation
+        # # Get selectd object
+        # selectedObjs = utils.getSelectedObjects()
+        # if len(selectedObjs) > 1:
+        #     itemType = "MULTI ANIMATION"
         self.createGenericItemSetUI()
         # Create widget for create anim
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
@@ -634,6 +634,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         isValid = self.contextCheck(itemType)
         if not isValid:
             return
+        currentFrame = bpy.context.scene.frame_current
         with bpy.context.temp_override(
             area=self.context["area"],
             region=self.context["region"],
@@ -808,9 +809,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         index = self.listView.model().index(newIndex, 0)
         self.listView.selectionModel().clear()
         self.listView.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
+        bpy.context.scene.frame_current = currentFrame
 
     def applyPose(self, itemType="POSE", flipped=False, blendPose=1, currentPose=None):
         """Paste animation/pose from the library to the selected object of the scene"""
+        pbList = []
         try:
             if itemType == "ANIMATION":
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
@@ -822,7 +825,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
                 frameOut = self.infoWidget.toRangeSpinBox.value()
                 pairingDict = self.infoWidget.getConstraintPairing()
-                utils.pasteConstraints(
+                pbList = pbList + utils.pasteConstraints(
                     self.currentListItem.path, pairingDict, itemType="MULTI ANIMATION"
                 )
                 utils.pasteMultiAnim(
@@ -847,7 +850,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         "No constraint is currently selected to be applied.",
                     )
                 else:
-                    utils.pasteConstraints(self.currentListItem.path, pairingDict)
+                    pbList += utils.pasteConstraints(
+                        self.currentListItem.path, pairingDict
+                    )
             elif itemType == "POSE":
                 if not blendPose:
                     blendPose = 1
@@ -868,7 +873,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     refPose = self.infoWidget.refPose
                     utils.deleteRefPose(refPose, self.infoWidget)
                 pairingDict = self.infoWidget.getConstraintPairing()
-                utils.pasteConstraints(
+                pbList += utils.pasteConstraints(
                     self.currentListItem.path, pairingDict, itemType="MULTI POSE"
                 )
                 utils.pasteMultiPose(
@@ -885,12 +890,17 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 self, "Abort action", "An error has occured, check Console : " + str(e)
             )
             raise
+        if len(pbList):
+            utils.ShowDialog(
+                "Infos : \n" + "\n".join(pbList),
+                title="WARNING",
+            )
         # Reset currentPose to applied one
         self.infoWidget.currentPose = None
         self.infoWidget.bonesToBlend = None
         self.infoWidget.blendPoseSlider.setValue(0)
-        # print("UNDO PUSH")
-        # bpy.ops.ed.undo_push()
+        # with bpy.context.temp_override(**self.context):
+        #     bpy.ops.ed.undo_push()
 
     def writejson(self, name, directory, itemType="POSE"):
         """Create json file corresponding to pose/animation item"""
