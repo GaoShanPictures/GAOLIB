@@ -769,9 +769,15 @@ def get_or_create_fcurve(action, data_path, array_index=-1, slot=None):
     # Blender 5 layered/slotted actions
     # -------------------------------------------------------------------------
     else:
+        if not len(action.layers):
+            action.layers.new("MainLayer")
         layer = action.layers[0]
+        if not len(layer.strips):
+            layer.strips.new(type="KEYFRAME")
         strip = layer.strips[0]
         channelbag = strip.channelbag(slot)
+        if not channelbag:
+            channelbag = strip.channelbags.new(slot)
         fcurves = channelbag.fcurves
     # -------------------------------------------------------------------------
     # Find/create curve

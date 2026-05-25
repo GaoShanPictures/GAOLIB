@@ -70,8 +70,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.setupUi(self)
 
-        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
-
+        # self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(QtCore.Qt.Window)
         # Set data variables
         self.currentTreeElement = None
         self.items = {}
@@ -899,6 +899,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget.currentPose = None
         self.infoWidget.bonesToBlend = None
         self.infoWidget.blendPoseSlider.setValue(0)
+        # # applying after using ctrl + z using the two lines below makes belnder crash
         # with bpy.context.temp_override(**self.context):
         #     bpy.ops.ed.undo_push()
 
