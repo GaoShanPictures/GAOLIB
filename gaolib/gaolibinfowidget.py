@@ -44,6 +44,7 @@ class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
         bone,
         targetBone,
         targetObject,
+        actualObject,
         actualTargetObject,
         # comboList,
         parent=None,
@@ -63,9 +64,15 @@ class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
         self.sourceTargetLabel.setToolTip(targetObject)
         self.targetBoneLabel.setText(targetBone)
         self.targetBoneLabel.setToolTip(targetBone)
-        self.targetLabel.setText(actualTargetObject)
-        self.targetLabel.setToolTip(actualTargetObject)
+        self.applyTargetLabel.setText(actualTargetObject)
+        self.applyTargetLabel.setToolTip(actualTargetObject)
+        self.applyObjectLabel.setText(actualObject)
+        self.applyObjectLabel.setToolTip(actualObject)
+        self.applyTargetBoneLabel.setText(targetBone)
+        self.applyBoneLabel.setText(bone)
         self.applyConstraintCheckBox.setChecked(True)
+        self.sourceWidget.setVisible(False)
+        self.line.setVisible(False)
         # self.comboBox.addItems(comboList)
         # index = self.comboBox.findText(self.targetObject)
         # if index >= 0:
@@ -122,6 +129,7 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                                 targetBone,
                                 targetObject,
                                 # comboList,
+                                "",
                                 "",
                                 parent=None,
                             )
@@ -737,7 +745,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     consInfo = {
                         "sourceTarget": constraintWidget.targetObject,
                         "sourceTargetBone": constraintWidget.targetBone,
-                        "destinationTarget": constraintWidget.targetLabel.text(),  # constraintWidget.comboBox.currentText(),
+                        "destinationTarget": constraintWidget.applyTargetLabel.text(),  # constraintWidget.comboBox.currentText(),
                         "destinationTargetBone": constraintWidget.targetBone,
                     }
                     pairingDict[objName]["constraints"][
@@ -945,11 +953,17 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
         # check all constraint widgets to know if refresh is needed
         for widget in self.pairWidgets:
-            for constraintWidget in allConstraintWidgets:
-                if constraintWidget.targetObject == widget.objectName:
-                    constraintWidget.targetLabel.setText(
+            for constraintWidget in widget.constraintInfoWidgets:
+                if constraintWidget.sourceObject == widget.objectName:
+                    constraintWidget.applyObjectLabel.setText(
                         widget.armatureComboBox.currentText()
                     )
+            for constraintWidget in allConstraintWidgets:
+                if constraintWidget.targetObject == widget.objectName:
+                    constraintWidget.applyTargetLabel.setText(
+                        widget.armatureComboBox.currentText()
+                    )
+
         # update check (apply constraint)
         for widget in self.pairWidgets:
             for constraintWidget in widget.constraintInfoWidgets:
