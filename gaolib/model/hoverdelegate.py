@@ -73,6 +73,9 @@ class HoverDelegate(QtWidgets.QStyledItemDelegate):
 
             painter.drawPixmap(x, y, scaled)
         text = index.data(QtCore.Qt.DisplayRole)
+        # truncate long names
+        if len(text) > 22:
+            text = text[:19] + "..."
 
         if index == self.hover_index:
             painter.setPen(QtGui.QColor("white"))

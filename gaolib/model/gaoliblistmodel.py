@@ -65,8 +65,8 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
                 itemName = itemName[:-11]
             elif itemName.endswith(".multi_anim"):
                 itemName = itemName[:-11]
-            if len(itemName) > 18:
-                itemName = itemName[:15] + "..."
+            # if len(itemName) > 18:
+            #     itemName = itemName[:15] + "..."
             return itemName
 
         elif role == QtCore.Qt.DecorationRole:
