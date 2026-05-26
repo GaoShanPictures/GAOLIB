@@ -37,7 +37,6 @@ class GaoLibItem(object):
         #     self.stamped = stamped
         self.path = path
         self.bonesSelection = False
-
         self.getItemInfos()
 
     def getItemInfos(self):

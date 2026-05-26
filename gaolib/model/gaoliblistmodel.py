@@ -80,7 +80,8 @@ class GaoLibListModel(QtCore.QAbstractItemModel):
                 return QtGui.QColor(163, 46, 142, 200)
             elif item.itemType == "CONSTRAINT SET":
                 return QtGui.QColor(100, 177, 50, 200)
-
+        elif role == QtCore.Qt.ToolTipRole:
+            return item.name.split(".")[0]
         elif role == QtCore.Qt.UserRole:
             return item
 
