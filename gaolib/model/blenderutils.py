@@ -1158,6 +1158,10 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             selectedObject, selection, frameIn, frameOut, actionName, slot
         )
         # copy keyframes
+        if len(action.slots) == 1:
+            sl = action.slots[0]
+        else:
+            sl = None
         copyKeyframes(
             action,
             selectedObject,
@@ -1165,7 +1169,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             sourceFrameIn,
             sourceFrameOut,
             frameIn,
-            slot,
+            slot=sl,
         )
         # clean action
         bpy.data.actions.remove(action)
