@@ -607,10 +607,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             # Remember current tree selection
             selectedItemPath = self.mainWindow.currentTreeElement.path
 
-            trashPath = os.path.join(self.mainWindow.rootPath, "../trash")
-            if not os.path.exists(trashPath):
-                os.makedirs(trashPath)
-            trashPath = os.path.join(trashPath, os.path.basename(path))
+            # trashPath = os.path.join(self.mainWindow.rootPath, "../trash")
+            # if not os.path.exists(trashPath):
+            #     os.makedirs(trashPath)
+            # trashPath = os.path.join(trashPath, os.path.basename(path))
 
             # clean info widget
             if self.movie is not None:
@@ -621,60 +621,74 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 layout.itemAt(i).widget().deleteLater()
 
             # delete files
-            copied = False
-            attempts = 0
-            while not copied:
-                try:
-                    shutil.copytree(path, trashPath)
-                    copied = True
-                except FileExistsError:
-                    attempts += 1
-                    try:
-                        trashPath = (
-                            trashPath.split(" Copy (")[0]
-                            + " Copy ("
-                            + str(attempts)
-                            + ")"
-                        )
-                        shutil.copytree(path, trashPath)
-                        copied = True
-                    except:
-                        pass
-                except WindowsError as e:
-                    attempts += 1
-                    if str(e).startswith("[Error 183]"):
-                        try:
-                            trashPath = (
-                                trashPath.split(" Copy (")[0]
-                                + " Copy ("
-                                + str(attempts)
-                                + ")"
-                            )
-                            shutil.copytree(path, trashPath)
-                            copied = True
-                        except:
-                            pass
-                    else:
-                        raise
+            # copied = False
+            # attempts = 0
+            # while not copied:
+            #     try:
+            #         shutil.copytree(path, trashPath)
+            #         copied = True
+            #     except FileExistsError:
+            #         attempts += 1
+            #         try:
+            #             trashPath = (
+            #                 trashPath.split(" Copy (")[0]
+            #                 + " Copy ("
+            #                 + str(attempts)
+            #                 + ")"
+            #             )
+            #             shutil.copytree(path, trashPath)
+            #             copied = True
+            #         except:
+            #             pass
+            #     except WindowsError as e:
+            #         attempts += 1
+            #         if str(e).startswith("[Error 183]"):
+            #             try:
+            #                 trashPath = (
+            #                     trashPath.split(" Copy (")[0]
+            #                     + " Copy ("
+            #                     + str(attempts)
+            #                     + ")"
+            #                 )
+            #                 shutil.copytree(path, trashPath)
+            #                 copied = True
+            #             except:
+            #                 pass
+            #         else:
+            #             raise
             try:
                 if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
                     os.remove(os.path.join(path, "thumbnail.gif"))
                 else:
                     os.remove(os.path.join(path, "thumbnail.png"))
-            except Exception as e:
-                if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
-                    QtWidgets.QMessageBox.about(
-                        self,
-                        "Abort action",
-                        "Cannot remove "
-                        + os.path.join(path, "thumbnail.gif")
-                        + " : "
-                        + str(e),
-                    )
-                else:
-                    os.remove(os.path.join(path, "thumbnail.png"))
-                return
-            shutil.rmtree(path)
+            except:
+                pass
+            # except Exception as e:
+            #     if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
+            #         QtWidgets.QMessageBox.about(
+            #             self,
+            #             "Abort action",
+            #             "Cannot remove "
+            #             + os.path.join(path, "thumbnail.gif")
+            #             + " : "
+            #             + str(e),
+            #         )
+            #     else:
+            #         os.remove(os.path.join(path, "thumbnail.png"))
+            #     return
+            allDeleted = True
+            for f in os.listdir(path):
+                try:
+                    print("removing ", f)
+                    os.remove(path + "/" + f)
+                except:
+                    # if some files could not be deleted, write a todelete file to flag the folder as to be deleted at next startup
+                    allDeleted = False
+                    with open(path + "/todelete", "w") as f:
+                        f.write("")
+            # if all files have been deleted, remove the folder as well
+            if allDeleted:
+                shutil.rmtree(path)
 
             # Remember expanded states in tree view
             expanded = self.mainWindow.getTreeExpandedItems()

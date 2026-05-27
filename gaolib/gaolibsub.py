@@ -697,34 +697,37 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         poseDir = os.path.join(parentDir, name)
         # Check if item with same name already exists
         if os.path.exists(poseDir):
-            dialog = QtWidgets.QDialog(self)
-            dialog.ui = YesNoDialog()
-            dialog.ui.setupUi(dialog)
-            message = (
-                " An item named "
-                + name
-                + " already exists. Do you want to overrite this file ?"
-            )
-            dialog.ui.label.setText(message)
-            rsp = dialog.exec_()
-            # if user clicks on 'ok'
-            if rsp == QtWidgets.QDialog.Accepted:
-                if itemType in ["ANIMATION", "MULTI ANIMATION"]:
-                    try:
-                        os.remove(os.path.join(poseDir, "thumbnail.gif"))
-                    except Exception as e:
-                        QtWidgets.QMessageBox.about(
-                            self,
-                            "Abort action",
-                            "Cannot remove "
-                            + os.path.join(poseDir, "thumbnail.gif")
-                            + " : "
-                            + str(e),
-                        )
-                        return
-                shutil.rmtree(poseDir)
+            if os.path.isdir(poseDir + "/todelete"):
+                os.remove(poseDir + "/todelete")
             else:
-                return
+                dialog = QtWidgets.QDialog(self)
+                dialog.ui = YesNoDialog()
+                dialog.ui.setupUi(dialog)
+                message = (
+                    " An item named "
+                    + name
+                    + " already exists. Do you want to overwrite it ?"
+                )
+                dialog.ui.label.setText(message)
+                rsp = dialog.exec_()
+                # if user clicks on 'ok'
+                if rsp == QtWidgets.QDialog.Accepted:
+                    if itemType in ["ANIMATION", "MULTI ANIMATION"]:
+                        try:
+                            os.remove(os.path.join(poseDir, "thumbnail.gif"))
+                        except Exception as e:
+                            QtWidgets.QMessageBox.about(
+                                self,
+                                "Abort action",
+                                "Cannot remove "
+                                + os.path.join(poseDir, "thumbnail.gif")
+                                + " : "
+                                + str(e),
+                            )
+                            return
+                    shutil.rmtree(poseDir)
+                else:
+                    return
         try:
             os.mkdir(poseDir)
         except OSError as e:
@@ -1729,6 +1732,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         or it.endswith(".multi_pose")
                         or it.endswith(".multi_anim")
                     ):
+                        if os.path.isfile(itPath + "/todelete"):
+                            try:
+                                shutil.rmtree(itPath)
+                            except:
+                                pass
+                            continue
                         stamped = os.path.join(itPath, "thumbnail_stamped.png")
                         stamped = stamped.replace("\\", "/")
                         if not os.path.isfile(stamped):
@@ -1742,6 +1751,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             for it in os.listdir(folderPath):
                 itPath = os.path.join(folderPath, it)
                 if os.path.isdir(itPath):
+                    if os.path.isfile(itPath + "/todelete"):
+                        try:
+                            shutil.rmtree(itPath)
+                        except:
+                            pass
+                        continue
                     thumbnailPath = os.path.join(itPath, "thumbnail_stamped.png")
                     if os.path.isfile(thumbnailPath):
                         thumbpath = thumbnailPath.replace("\\", "/")

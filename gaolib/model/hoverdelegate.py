@@ -77,7 +77,9 @@ class HoverDelegate(QtWidgets.QStyledItemDelegate):
         if len(text) > 22:
             text = text[:19] + "..."
 
-        if index == self.hover_index:
+        if index == self.hover_index or (
+            option.state & QtWidgets.QStyle.State_Selected
+        ):
             painter.setPen(QtGui.QColor("white"))
         else:
             painter.setPen(QtGui.QColor("black"))
