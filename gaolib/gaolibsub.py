@@ -1060,16 +1060,26 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             )
             tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
             shutil.copyfile(tempPose, tempCopy)
-            bpy.ops.pose.paste(flipped=True)
-            bpy.ops.pose.copy()
+            # select all bones to flip pose
+            bpy.ops.pose.select_all(action="SELECT")  # 1 select all
+            bpy.ops.pose.copy()  # 2 copy pose
+            bpy.ops.pose.paste(flipped=True)  # 3 flip entire pose
+            bpy.ops.pose.select_all(
+                action="SELECT"
+            )  #  reselect all (in case not all same bones are visible in left and right)
+            bpy.ops.pose.copy()  # 4 make temp file of mirrored pose
             fileName = (
                 name + "__copybuffer_pose_flipped.blend"
                 if itemType != "POSE"
                 else "copybuffer_pose_flipped.blend"
             )
             tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
-            shutil.copyfile(tempPose, tempCopy)
-            bpy.ops.pose.paste(flipped=True)
+            shutil.copyfile(tempPose, tempCopy)  # 5 save mirrored pose in blend file
+            bpy.ops.pose.paste(flipped=True)  # 6 reset original pose
+            # 7 restore original selection
+            bpy.ops.pose.select_all(action="DESELECT")
+            for bone in selectedBones:
+                bone.select = True
 
     def poseCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -1336,7 +1346,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             )
             tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
             shutil.copyfile(tempPose, tempCopy)
+            # select all bones to flip pose
+            bpy.ops.pose.select_all(action="SELECT")  # 1 select all
+            bpy.ops.pose.copy()  # 2 copy pose
             bpy.ops.pose.paste(flipped=True)
+            bpy.ops.pose.select_all(
+                action="SELECT"
+            )  #  reselect all (in case not all same bones are visible in left and right)
+
             bpy.ops.pose.copy()
             fileName = (
                 name + "__copybuffer_pose_flipped.blend"
@@ -1346,6 +1363,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
             shutil.copyfile(tempPose, tempCopy)
             bpy.ops.pose.paste(flipped=True)
+            # 7 restore original selection
+            bpy.ops.pose.select_all(action="DESELECT")
+            for bone in selectedBones:
+                bone.select = True
 
     # def multiPoseCreateThumbnail(self):
 
