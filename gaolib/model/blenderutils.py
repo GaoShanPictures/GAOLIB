@@ -167,10 +167,19 @@ def selectConstraintBones(jsonPath, pairingDict):
             # select bone
             bone.select = True
     if len(pbList):
-        ShowDialog(
-            "Some problems occured while selecting bones : \n" + "\n".join(pbList),
-            title="Select bones Warning",
-        )
+        if len(pbList) > 10:
+            ShowDialog(
+                "Some problems occured while selecting bones : \n"
+                + "\n".join(pbList[:10])
+                + " \n\n... and more.",
+                title="Select bones Warning",
+            )
+            print("\n\nWhole list : " + "\n".join(pbList))
+        else:
+            ShowDialog(
+                "Some problems occured while selecting bones : \n" + "\n".join(pbList),
+                title="Select bones Warning",
+            )
 
 
 def selectMultiPoseBones(jsonPath, pairingDict):
@@ -222,10 +231,19 @@ def selectMultiPoseBones(jsonPath, pairingDict):
             # select bone
             bone.select = True
     if len(pbList):
-        ShowDialog(
-            "Some problems occured while selecting bones : \n" + "\n".join(pbList),
-            title="Select bones Warning",
-        )
+        if len(pbList) > 10:
+            ShowDialog(
+                "Some problems occured while selecting bones : \n"
+                + "\n".join(pbList[:10])
+                + " \n\n... and more.",
+                title="Select bones Warning",
+            )
+            print("\n\nWhole list : " + "\n".join(pbList))
+        else:
+            ShowDialog(
+                "Some problems occured while selecting bones : \n" + "\n".join(pbList),
+                title="Select bones Warning",
+            )
 
 
 def selectBones(jsonPath):
@@ -277,11 +295,20 @@ def selectBones(jsonPath):
             if not found:
                 pbList.append(bone)
         if len(pbList):
-            ShowDialog(
-                "Some bones could not be selected (visibility turned off or non-existent):\n\n"
-                + "\n".join(pbList),
-                title="Warning",
-            )
+            if len(pbList) > 10:
+                ShowDialog(
+                    "Some bones could not be selected (visibility turned off or non-existent):\n\n"
+                    + "\n".join(pbList[:10])
+                    + " \n\n... and more.",
+                    title="Select bones Warning",
+                )
+                print("\n\nWhole list : " + "\n".join(pbList))
+            else:
+                ShowDialog(
+                    "Some bones could not be selected (visibility turned off or non-existent):\n\n"
+                    + "\n".join(pbList),
+                    title="Select bones Warning",
+                )
 
 
 def keySelectedBonesForFrame(frame, selectedBones=None):
@@ -1073,9 +1100,12 @@ def pasteMultiAnim(animDir, pairingDict, sourceFrameIn, sourceFrameOut, infoWidg
             assignActionToObject(targetObj, action, slot=slot)
         else:
             newActionName = itemName + "_GAOLIB_NEW_ACTION"
+            sl = None
+            if targetObj.animation_data and targetObj.animation_data.action:
+                sl = targetObj.animation_data.action_slot
             # Delete frame range anim
             cleanFrameRangeToPasteAnim(
-                targetObj, selection, frameIn, frameOut, newActionName
+                targetObj, selection, frameIn, frameOut, newActionName, slot=sl
             )
             # copy keyframes from library action to current action
             copyKeyframes(
