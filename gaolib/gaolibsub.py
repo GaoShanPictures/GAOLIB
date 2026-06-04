@@ -716,20 +716,25 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         try:
                             os.remove(os.path.join(poseDir, "thumbnail.gif"))
                         except Exception as e:
-                            QtWidgets.QMessageBox.about(
-                                self,
-                                "Abort action",
-                                "Cannot remove "
-                                + os.path.join(poseDir, "thumbnail.gif")
-                                + " : "
-                                + str(e),
-                            )
-                            return
-                    shutil.rmtree(poseDir)
+                            pass
+                            # QtWidgets.QMessageBox.about(
+                            #     self,
+                            #     "Abort action",
+                            #     "Cannot remove "
+                            #     + os.path.join(poseDir, "thumbnail.gif")
+                            #     + " : "
+                            #     + str(e),
+                            # )
+                            # return
+                    try:
+                        shutil.rmtree(poseDir)
+                    except:
+                        pass
                 else:
                     return
         try:
-            os.mkdir(poseDir)
+            if not os.path.isdir(poseDir):
+                os.mkdir(poseDir)
         except OSError as e:
             print("OSError : " + str(e))
             QtWidgets.QMessageBox.about(
@@ -790,6 +795,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
         except Exception as e:
             print("Stamp Exception : " + str(e))
+
+        # remove todelete file if it exists
+        if os.path.isfile(os.path.join(poseDir, "todelete")):
+            os.remove(os.path.join(poseDir, "todelete"))
 
         # Create json in pose directory
         self.writejson(name, poseDir, itemType=itemType)
