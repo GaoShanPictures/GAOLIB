@@ -1365,6 +1365,17 @@ def copyBoneProperties(
         currentPoseRotation = currentPose[destinationBone]["rotation"].to_euler()
     elif rotationMode == currentPose[destinationBone]["rotationMode"]:
         currentPoseRotation = currentPose[destinationBone]["rotation"]
+    elif blend == 1:
+        # full paste pose no need to 'blend' rotation modes
+        print(
+            "Blend 100%, Ignore incompatible rotation modes : "
+            + currentPose[destinationBone]["rotationMode"]
+            + " (current) and "
+            + rotationMode
+            + "(source) for bone "
+            + sourceBone.name
+        )
+        currentPoseRotation = currentPose[destinationBone]["rotation"]
     else:
         # Clean orphans
         if cleanOnError:
@@ -1372,6 +1383,11 @@ def copyBoneProperties(
         raise Exception(
             "Conversion between Rotation modes other than QUATERNION and Euler are not supported !\nCheck bone named "
             + sourceBone.name
+            + " ("
+            + currentPose[destinationBone]["rotationMode"]
+            + " (current) and "
+            + rotationMode
+            + "(source))"
         )
 
     destinationBone.rotation_mode = rotationMode
@@ -1503,12 +1519,13 @@ def copyBoneProperties(
             try:
                 destinationBone.keyframe_insert(data_path='["' + key + '"]')
             except Exception as e:
-                print(
-                    "IMPOSSIBLE TO ADD KEYFRAME FOR PROP "
-                    + key
-                    + " FOR "
-                    + destinationBone.name
-                )
+                # print(
+                #     "IMPOSSIBLE TO ADD KEYFRAME FOR PROP "
+                #     + key
+                #     + " FOR "
+                #     + destinationBone.name
+                # )
+                pass
 
 
 def pasteMultiPose(
