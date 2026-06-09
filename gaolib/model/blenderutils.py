@@ -1367,14 +1367,14 @@ def copyBoneProperties(
         currentPoseRotation = currentPose[destinationBone]["rotation"]
     elif blend == 1:
         # full paste pose no need to 'blend' rotation modes
-        print(
-            "Blend 100%, Ignore incompatible rotation modes : "
-            + currentPose[destinationBone]["rotationMode"]
-            + " (current) and "
-            + rotationMode
-            + "(source) for bone "
-            + sourceBone.name
-        )
+        # print(
+        #     "Blend 100%, Ignore incompatible rotation modes : "
+        #     + currentPose[destinationBone]["rotationMode"]
+        #     + " (current) and "
+        #     + rotationMode
+        #     + "(source) for bone "
+        #     + sourceBone.name
+        # )
         currentPoseRotation = currentPose[destinationBone]["rotation"]
     else:
         # Clean orphans
@@ -1493,6 +1493,7 @@ def copyBoneProperties(
                     + " FOR "
                     + destinationBone.name
                 )
+
     # Key the pasted pose
     if insertKeyframes:
         destinationBone.keyframe_insert(data_path="rotation_mode")
