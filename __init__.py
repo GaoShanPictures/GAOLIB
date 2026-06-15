@@ -74,7 +74,7 @@ Dependency = namedtuple("Dependency", ["module", "package", "name"])
 
 dependenciesPySide6 = (
     Dependency(module="PySide6", package=None, name=None),
-    Dependency(module="imageio", package=None, name=None),
+    #Dependency(module="imageio", package=None, name=None),
 )
 
 dependencies_installed = False
