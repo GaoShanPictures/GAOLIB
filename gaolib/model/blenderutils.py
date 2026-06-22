@@ -543,6 +543,8 @@ def pasteConstraints(constraintDir, pairingDict, itemType="CONSTRAINT SET"):
     if "constraintData" in itemdata.keys():
         constraintData = itemdata["constraintData"]
     else:
+        if itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+            return []
         ShowDialog("Found no constraint data in " + jsonPath, title="Abort action")
         return
     # Get objects from which to get constraint datas
@@ -1027,7 +1029,7 @@ def pasteMultiAnim(animDir, pairingDict, sourceFrameIn, sourceFrameOut, infoWidg
     if "multiAnimData" in itemdata.keys():
         multiAnimData = itemdata["multiAnimData"]
     else:
-        ShowDialog("Found no constraint data in " + jsonPath, title="Abort action")
+        ShowDialog("Found no multi anim data in " + jsonPath, title="Abort action")
         return
     # Remember selection
     selectedObjects = getSelectedObjects()
