@@ -418,6 +418,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # if user clicks on 'ok'
         if rsp == QtWidgets.QDialog.Accepted:
             if name.replace(" ", "") != "":
+                name = name.replace(" ", "_")
                 folderPath = os.path.join(self.currentTreeElement.path, name)
                 # Check if the folder already exists
                 if os.path.exists(folderPath):
