@@ -44,7 +44,9 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidgetUi):
             self.applyPushButton.setText("SAVE ANIMATION")
             self.pushButton.installEventFilter(self)
 
-        self.contentLabel.setText("")
+        self.contentLabel_2.setText("")
+        self.refreshSelectionPushButton_3.released.connect(self.refreshSelection)
+        self.refreshSelection()
 
     def eventFilter(self, obj, event):
         """Event filter to play movie when hovered"""
@@ -71,3 +73,16 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidgetUi):
         """Play movie on hovered"""
         if self.movie:
             self.movie.start()
+
+    def refreshSelection(self):
+        import gaolib.model.blenderutils as utils
+
+        selectedObjs = utils.getSelectedObjects()
+        selectedBones = utils.getSelectedBones(allowMulti=True)
+        self.contentLabel_2.setText(
+            "Preview: "
+            + str(len(selectedObjs))
+            + " object(s)\n"
+            + str(len(selectedBones))
+            + " bone(s)"
+        )

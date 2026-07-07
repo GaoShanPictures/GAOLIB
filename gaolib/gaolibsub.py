@@ -578,6 +578,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         )
         try:
             selectedObjs = utils.getSelectedObjects()
+
+            self.createPosewidget.refreshSelection()
             if len(selectedObjs):
                 selectedObj = selectedObjs[0]
                 if selectedObj.animation_data and selectedObj.animation_data.action:
@@ -611,6 +613,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         if itemType in ["POSE", "MULTI POSE"]:
             try:
                 selectedObjs = utils.getSelectedObjects()
+                self.createPosewidget.refreshSelection()
                 if len(selectedObjs):
                     selectedObj = selectedObjs[0]
                     if selectedObj.animation_data and selectedObj.animation_data.action:
@@ -1396,6 +1399,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # isValid = self.contextCheck(itemType)
         # if not isValid:
         #     return
+
+        # display nb of objects and bones selected
+        self.createPosewidget.refreshSelection()
+
         # Set temporary paths to store thumbnail and item datas
         self.thumbTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory,
@@ -1551,18 +1558,18 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         #                 os.remove(self.jsonTempPath)
         #     # manage display
         #     if "bones" in itemdata.keys():
-        #         self.createPosewidget.contentLabel.setText(
+        #         self.createPosewidget.contentLabel_2.setText(
         #             str(itemdata["bones"]) + " bone(s)"
         #         )
         #     else:
-        #         self.createPosewidget.contentLabel.setText("")
+        #         self.createPosewidget.contentLabel_2.setText("")
         # else:
         #     msg = ""
         #     if "objects" in itemdata.keys():
         #         msg += str(len(itemdata["objects"])) + " object(s) \n"
         #     if "bones" in itemdata.keys():
         #         msg += str(itemdata["bones"]) + " bone(s)"
-        #     self.createPosewidget.contentLabel.setText(msg)
+        #     self.createPosewidget.contentLabel_2.setText(msg)
         # self.createPosewidget.pushButton.setText("")
 
         icon = QtGui.QIcon()
