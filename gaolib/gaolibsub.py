@@ -71,7 +71,15 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.setupUi(self)
 
         # self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
-        self.setWindowFlags(QtCore.Qt.Window)
+        # self.setWindowFlags(QtCore.Qt.Window)
+        self.setWindowFlags(
+            QtCore.Qt.Dialog
+            | QtCore.Qt.WindowStaysOnTopHint
+            | QtCore.Qt.WindowMinimizeButtonHint
+            | QtCore.Qt.WindowCloseButtonHint
+            | QtCore.Qt.WindowMaximizeButtonHint
+        )
+        self.setWindowTitle("GAOLIB |  %s" % os.path.basename(bpy.data.filepath))
         # Set data variables
         self.currentTreeElement = None
         self.items = {}
