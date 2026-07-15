@@ -277,9 +277,18 @@ def selectBones(jsonPath):
             if obj.pose.bones.get(bone):
                 if obj.data.bones.get(bone).hide:
                     obj.data.bones.get(bone).hide = False
-                for collection in obj.data.bones.get(bone).collections:
-                    collection.is_visible = True
-                    break
+                    print("Show bone : " + bone)
+                if not obj.data.bones.get(bone).hide:
+                    for collection in obj.data.bones.get(bone).collections:
+                        if not collection.is_visible:
+                            print(
+                                "SET Bone collection "
+                                + collection.name
+                                + " visible for bone "
+                                + bone
+                            )
+                            collection.is_visible = True
+                        break
                 obj.pose.bones.get(bone).select = True
             else:
                 print("Not found : " + bone)
@@ -825,6 +834,7 @@ def copyKeyframes(
     source_frame_out,
     frame_in,
     slot=None,
+    selectionSetBones=None,
 ):
     animation_data = target_object.animation_data
     if not animation_data:
@@ -854,6 +864,9 @@ def copyKeyframes(
                 bone_name = None
                 continue
             if not bone_name or bone_name not in bone_names:
+                continue
+            # ignore bones that were not in original selection set
+            if selectionSetBones and not bone_name in selectionSetBones:
                 continue
         if '.constraints["' in data_path:
             # For constraints, new created constraint is renamed with _GAOLIB suffix
@@ -1118,6 +1131,7 @@ def pasteMultiAnim(animDir, pairingDict, sourceFrameIn, sourceFrameOut, infoWidg
                 sourceFrameOut,
                 frameIn,
                 slot=slot,
+                selectionSetBones=selectionSetBones,
             )
 
     if quickPaste:
@@ -1139,6 +1153,15 @@ def pasteMultiAnim(animDir, pairingDict, sourceFrameIn, sourceFrameOut, infoWidg
 
 def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
     """Paste animation on selected bones"""
+    # get pose selection set
+    itemdata = {}
+    jsonPath = os.path.join(animDir, "animation.json")
+    with open(jsonPath) as file:
+        itemdata = json.load(file)
+    selectionSetBones = []
+    for key in itemdata["metadata"].keys():
+        if key == "boneNames":
+            selectionSetBones = itemdata["metadata"]["boneNames"]
     # Remember selection
     selection = getSelectedBones()
     if not selection:
@@ -1202,6 +1225,7 @@ def pasteAnim(animDir, sourceFrameIn, sourceFrameOut, infoWidget):
             sourceFrameOut,
             frameIn,
             slot=sl,
+            selectionSetBones=selectionSetBones,
         )
         # clean action
         bpy.data.actions.remove(action)
