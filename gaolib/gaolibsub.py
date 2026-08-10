@@ -87,6 +87,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.rootPath = None
         self.rootList = []
         self.recursiveDisplayMode = False
+        self.itemsInTree = False
         self.useDoubleClickToApplyPose = False
         self.useWheelToBlendPose = False
         self.ffmpegPath = None
@@ -179,6 +180,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
                 else:
                     self.recursiveDisplayMode = False
+                if "itemsInTree" in itemdata.keys():
+                    self.itemsInTree = itemdata['itemsInTree']
+                else:
+                    self.itemsInTree = False
                 if "useWheelToBlendPose" in itemdata.keys():
                     self.useWheelToBlendPose = itemdata["useWheelToBlendPose"]
                 else:
@@ -233,6 +238,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         itemWidget = RootItemWidget(rtname, rtpath, self.configPath)
                         table.insertRow(row)
                         table.setCellWidget(row, 0, itemWidget)
+                if key == 'itemsInTree':
+                    dialog.ui.itemsInTreeCheckBox.setChecked(itemdata[key])
                 if key == "recursiveDisplayMode":
                     dialog.ui.recursiveListModeCheckBox.setChecked(itemdata[key])
                 if key == "useWheelToBlendPose":
@@ -250,6 +257,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         path = dialog.ui.pathLineEdit.text()
         pathName = dialog.ui.lineEdit.text()
         recursiveDisplayMode = dialog.ui.recursiveListModeCheckBox.isChecked()
+        itemsInTree = dialog.ui.itemsInTreeCheckBox.isChecked()
         useWheelToBlendPose = dialog.ui.blendPoseOnWheelCheckBox.isChecked()
         useDoubleClickToApplyPose = (
             dialog.ui.doubleClickPoseShortcutCheckBox.isChecked()
@@ -260,6 +268,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.readConfig(allowMessage=False)
             paramsChanged = (
                 recursiveDisplayMode != self.recursiveDisplayMode
+                or itemsInTree != self.itemsInTree
                 or useWheelToBlendPose != self.useWheelToBlendPose
                 or useDoubleClickToApplyPose != self.useDoubleClickToApplyPose
                 or ffmpegPath != self.ffmpegPath
@@ -271,6 +280,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         json.dump(
                             {
                                 "rootpath": self.rootList,
+                                "itemsInTree": itemsInTree,
                                 "recursiveDisplayMode": recursiveDisplayMode,
                                 "useWheelToBlendPose": useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
@@ -304,6 +314,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                             json.dump(
                                 {
                                     "rootpath": self.rootList,
+                                    "itemsInTree": itemsInTree,
                                     "recursiveDisplayMode": recursiveDisplayMode,
                                     "useWheelToBlendPose": useWheelToBlendPose,
                                     "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
@@ -329,6 +340,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         json.dump(
                             {
                                 "rootpath": self.rootList,
+                                "itemsInTree": self.itemsInTree,
                                 "recursiveDisplayMode": self.recursiveDisplayMode,
                                 "useWheelToBlendPose": self.useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": self.useDoubleClickToApplyPose,
@@ -642,7 +654,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
-        updateTreeView = True
+        updateTreeView = self.itemsInTree # when list changes only need to refresh tree view at item creation if itemsInTree option is true
         # check context and selection
         isValid = self.contextCheck(itemType)
         if not isValid:
@@ -1737,7 +1749,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def treeElementSelected(self, selectedItem, selectListItem=None):
         """Manage selection in tree view"""
-
         self.currentTreeElement = selectedItem
         self.items = self.getListItems()
         self.setListView()
@@ -1772,12 +1783,13 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 continue
             directoryPath = os.path.join(itemPath, directory)
 
-            if "." in directory and directory.split(".")[-1] in itemSuffixes:
-                # Create Item
-                item = GaoLibTreeItem(
-                    directory, ancestors=ancestors, path=directoryPath, newName=newName
-                )
-                parentItem.addChild(item)
+            if "." in directory and directory.split(".")[-1] in itemSuffixes :
+                if self.itemsInTree:
+                    # Create Item
+                    item = GaoLibTreeItem(
+                        directory, ancestors=ancestors, path=directoryPath, newName=newName
+                    )
+                    parentItem.addChild(item)
             elif (
                 os.path.isdir(directoryPath)
                 and directory != "trash"
@@ -2040,7 +2052,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # if len(filterText):
         #     self.hierarchyTreeView.expandToDepth(-1)
         # else:
-        #     print('hereh collapse')
         #     self.hierarchyTreeView.collapseAll()
 
         regExp = QtCore.QRegularExpression(
