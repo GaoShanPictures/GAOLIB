@@ -692,20 +692,20 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
 
             # Remember expanded states in tree view
             expanded = self.mainWindow.getTreeExpandedItems()
-            if self.item.itemType == "FOLDER":
-                # Delete item from model
-                itemPath = self.item.path
-                model = self.mainWindow.treeModel
-                treeItem = model.getElemWithPath(itemPath)
-                if itemPath == selectedItemPath:
-                    selectedItemPath = treeItem.parent.path
-                # Remove item
-                model.removeElement(treeItem)
-                # Update filter
-                self.mainWindow.updateTreeFilter()
-                # Restore expand state and selected item
-                self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
-            else:
+            # if self.item.itemType == "FOLDER":
+            # Delete item from tree model
+            itemPath = self.item.path
+            model = self.mainWindow.treeModel
+            treeItem = model.getElemWithPath(itemPath)
+            if itemPath == selectedItemPath:
+                selectedItemPath = treeItem.parent.path
+            # Remove item
+            model.removeElement(treeItem)
+            # Update filter
+            self.mainWindow.updateTreeFilter()
+            # Restore expand state and selected item
+            self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
+            if self.item.itemType != "FOLDER":
                 self.mainWindow.items = self.mainWindow.getListItems()
                 self.mainWindow.setListView()
 

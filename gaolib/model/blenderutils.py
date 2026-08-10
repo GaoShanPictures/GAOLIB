@@ -277,7 +277,7 @@ def selectBones(jsonPath):
             if obj.pose.bones.get(bone):
                 if obj.data.bones.get(bone).hide:
                     obj.data.bones.get(bone).hide = False
-                    print("Show bone : " + bone)
+                    print("\nShow bone : " + bone)
                 if not obj.data.bones.get(bone).hide:
                     for collection in obj.data.bones.get(bone).collections:
                         if not collection.is_visible:
@@ -1321,7 +1321,7 @@ def getRefPoseFromLib(poseDir, selection, flipped=False, sourceObjName=None):
     # Append pose object
     prefix = ""
     if sourceObjName:
-        prefix = sourceObjName + "__"
+        prefix = sourceObjName.replace(".", "--") + "__"
     if flipped:
         posePath = os.path.join(poseDir, prefix + "pose_flipped.blend")
     else:

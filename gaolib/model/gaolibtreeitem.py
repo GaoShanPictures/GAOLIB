@@ -32,13 +32,38 @@ class GaoLibTreeItem(object):
         self.parent = parent
         self.ancestors = ancestors
         self.children = []
+        itemSuffixes = [
+            "anim",
+            "selection",
+            "pose",
+            "constraint",
+            "multi_pose",
+            "multi_anim",
+        ]
         if self.parent is not None:
             self.parent.addChild(self)
-        thumbnailPath = os.path.join(path, "thumbnail.png")
-        if os.path.isfile(thumbnailPath):
-            self.thumbnail = thumbnailPath
+
+        self.isItem = False
+        for suf in itemSuffixes:
+            if name.endswith("." + suf):
+                self.isItem = True
+                break
+        if self.isItem:
+            suff = name.split(".")[-1]
+            if suff == "selection":
+                self.thumbnail = "icons/selectionset.png"
+            elif suff in ["anim", "multi_anim"]:
+                self.thumbnail = "icons/anim2.png"
+            elif suff in ["pose", "multi_pose"]:
+                self.thumbnail = "icons/pose2.png"
+            elif suff in ["constraint"]:
+                self.thumbnail = "icons/constraint.png"
         else:
-            self.thumbnail = None
+            thumbnailPath = os.path.join(path, "thumbnail.png")
+            if os.path.isfile(thumbnailPath):
+                self.thumbnail = thumbnailPath
+            else:
+                self.thumbnail = None
 
     def parent(self):
         """Return the parent of the item"""

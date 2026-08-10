@@ -20,17 +20,18 @@ __author__ = "Anne Beurard"
 
 import getpass
 import json
-import time
 import os
 import shutil
-import sys
 import subprocess
+import sys
+import time
 from datetime import datetime
 
 # from PIL import Image
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QFileDialog
 
+import gaolib.model.thumbnailcache as thc
 from gaolib.createposewidget import CreatePoseWidget
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
 from gaolib.model.gaocustomlistview import GaoCustomListView
@@ -38,14 +39,13 @@ from gaolib.model.gaolibitem import GaoLibItem
 from gaolib.model.gaoliblistmodel import GaoLibListModel
 from gaolib.model.gaolibtreeitem import GaoLibTreeItem
 from gaolib.model.gaolibtreeitemmodel import GaoLibTreeItemModel
+from gaolib.model.hoverdelegate import HoverDelegate
 from gaolib.model.rootitemwidget import RootItemWidget
 from gaolib.model.treeitemfilterproxymodel import TreeItemFilterProxyModel
-from gaolib.model.hoverdelegate import HoverDelegate
 from gaolib.ui.gaolibui import Ui_MainWindow as GaolibMainWindow
 from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.settingsdialogui import Ui_Dialog as SettingsDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
-import gaolib.model.thumbnailcache as thc
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
@@ -642,6 +642,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
+        updateTreeView = True
         # check context and selection
         isValid = self.contextCheck(itemType)
         if not isValid:
@@ -724,6 +725,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 rsp = dialog.exec_()
                 # if user clicks on 'ok'
                 if rsp == QtWidgets.QDialog.Accepted:
+                    updateTreeView = False
                     if itemType in ["ANIMATION", "MULTI ANIMATION"]:
                         try:
                             os.remove(os.path.join(poseDir, "thumbnail.gif"))
@@ -815,7 +817,21 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Create json in pose directory
         self.writejson(name, poseDir, itemType=itemType)
 
-        # Refresh view
+        # update tree view
+        if updateTreeView:
+            # Remember expanded states in tree view
+            expanded = self.getTreeExpandedItems()
+            parentItem = self.currentTreeElement
+            selectedItemPath = parentItem.path
+            ancestors = parentItem.ancestors + [parentItem]
+            newItem = GaoLibTreeItem(name, ancestors=ancestors, path=poseDir)
+            # refresh TreeView
+            self.treeModel.addElement(newItem, parentItem)
+            # Update filter
+            self.updateTreeFilter()
+            # Restore expand state and selected item
+            self.restoreExpandedState(expanded, selectedItemPath)
+        # Refresh list view
         oldItems = self.items
         self.items = self.getListItems()
         self.setListView()
@@ -1663,7 +1679,13 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 indexes[0], QtCore.Qt.UserRole
             )
             if selectedItem:
-                self.treeElementSelected(selectedItem)
+                # if selected folder is an item folder, select its parent
+                if selectedItem.isItem:
+                    self.treeElementSelected(
+                        selectedItem.parent, selectListItem=selectedItem.name
+                    )
+                else:
+                    self.treeElementSelected(selectedItem)
             else:
                 print("Warning : Selected Item is None")
 
@@ -1713,8 +1735,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 lambda: self.applyPose(itemType=selectedItem.itemType)
             )
 
-    def treeElementSelected(self, selectedItem):
+    def treeElementSelected(self, selectedItem, selectListItem=None):
         """Manage selection in tree view"""
+
         self.currentTreeElement = selectedItem
         self.items = self.getListItems()
         self.setListView()
@@ -1722,22 +1745,41 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.rootPath = selectedItem.ancestors[1].path
         else:
             self.rootPath = selectedItem.path
+        if selectListItem:
+            model = self.listView.model()
+            for row in range(model.rowCount()):
+                idx = model.index(row, 0)
+                item = idx.data(QtCore.Qt.UserRole)
+                if item.name == selectListItem:
+                    # self.listView.selectionModel().clear()
+                    self.listView.selectionModel().select(
+                        idx, QtCore.QItemSelectionModel.Select
+                    )
 
     def recursivelyPopulateTreeView(self, parentItem, itemPath, newName=None, step=0):
         """Recursively populate treeView by parsing directories from the ROOT directory"""
         ancestors = parentItem.ancestors + [parentItem]
+        itemSuffixes = [
+            "anim",
+            "selection",
+            "pose",
+            "constraint",
+            "multi_pose",
+            "multi_anim",
+        ]
         for directory in os.listdir(itemPath):
             if step == 0 and directory != "ROOT":
                 continue
             directoryPath = os.path.join(itemPath, directory)
-            if (
+
+            if "." in directory and directory.split(".")[-1] in itemSuffixes:
+                # Create Item
+                item = GaoLibTreeItem(
+                    directory, ancestors=ancestors, path=directoryPath, newName=newName
+                )
+                parentItem.addChild(item)
+            elif (
                 os.path.isdir(directoryPath)
-                and ".anim" not in directory
-                and ".selection" not in directory
-                and ".pose" not in directory
-                and ".constraint" not in directory
-                and ".multi_pose" not in directory
-                and ".multi_anim" not in directory
                 and directory != "trash"
                 and not directory.startswith(".")
             ):
@@ -1787,7 +1829,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         stamped = os.path.join(itPath, "thumbnail_stamped.png")
                         stamped = stamped.replace("\\", "/")
                         if not os.path.isfile(stamped):
-                            stamped = "icons/nopreview2.png"
+                            stamped = os.path.join(itPath, "thumbnail.png")
+                            if not os.path.isfile(stamped):
+                                stamped = "icons/nopreview2.png"
                         # Create Item
                         gaoLibItem = GaoLibItem(name=it, thumbpath=stamped, path=itPath)
                         items[i] = gaoLibItem
@@ -1973,9 +2017,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def initUi(self):
         """INIT"""
-        self.configPath = os.path.join(
+        sharedConfig = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "config", "config.json"
         )
+        self.configPath = os.path.join(
+            os.path.expanduser("~"), "blenderTemp", "gaolib_config", "config.json"
+        )
+        if not os.path.isfile(self.configPath) and os.path.isfile(sharedConfig):
+            if not os.path.isdir(os.path.dirname(self.configPath)):
+                os.makedirs(os.path.dirname(self.configPath))
+            shutil.copyfile(sharedConfig, self.configPath)
 
         self.setTreeView()
 
@@ -1986,16 +2037,20 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     def filterTree(self):
         """Manage text filter research for treeView"""
         filterText = self.searchHierarchyEdit.text().lower()
-        if len(filterText):
-            self.hierarchyTreeView.expandToDepth(-1)
-        else:
-            self.hierarchyTreeView.collapseAll()
+        # if len(filterText):
+        #     self.hierarchyTreeView.expandToDepth(-1)
+        # else:
+        #     print('hereh collapse')
+        #     self.hierarchyTreeView.collapseAll()
+
         regExp = QtCore.QRegularExpression(
             str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
         )
         self.treeItemProxyModel.text = filterText
         self.treeItemProxyModel.setFilterRegularExpression(regExp)
         self.hierarchyTreeView.expandAll()
+        if not len(filterText):
+            self.hierarchyTreeView.expandToDepth(0)
 
     @QtCore.Slot()
     def filterList(self):
