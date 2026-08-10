@@ -454,14 +454,21 @@ QPlainTextEdit {
          </font>
         </property>
         <property name="text">
-         <string>Item List Display Mode</string>
+         <string>Item Display Mode</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QCheckBox" name="recursiveListModeCheckBox">
         <property name="text">
-         <string>Display all items contained in subfolders recursively</string>
+         <string>Display all items contained in subfolders recursively (main view)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="itemsInTreeCheckBox">
+        <property name="text">
+         <string>Display items in folder hierarchy (tree view)</string>
         </property>
        </widget>
       </item>
