@@ -280,9 +280,13 @@ def selectBones(jsonPath):
                     print("\nShow bone : " + bone)
                 if not obj.data.bones.get(bone).hide:
                     for collection in obj.data.bones.get(bone).collections:
-                        if not collection.is_visible:
+                        if not collection.is_visible and collection.name not in [
+                            "ORG",
+                            "MCH",
+                            "DEF",
+                        ]:
                             print(
-                                "SET Bone collection "
+                                "\nSET Bone collection "
                                 + collection.name
                                 + " visible for bone "
                                 + bone
@@ -290,8 +294,6 @@ def selectBones(jsonPath):
                             collection.is_visible = True
                         break
                 obj.pose.bones.get(bone).select = True
-            else:
-                print("Not found : " + bone)
         # check selected bones
         pbList = []
         selectedBones = getSelectedBones()
