@@ -22,13 +22,16 @@ import getpass
 import json
 import os
 import shutil
+import subprocess
 import sys
+import time
 from datetime import datetime
 
-from PIL import Image
+# from PIL import Image
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import QFileDialog
 
+import gaolib.model.thumbnailcache as thc
 from gaolib.createposewidget import CreatePoseWidget
 from gaolib.gaolibinfowidget import GaoLibInfoWidget
 from gaolib.model.gaocustomlistview import GaoCustomListView
@@ -36,6 +39,7 @@ from gaolib.model.gaolibitem import GaoLibItem
 from gaolib.model.gaoliblistmodel import GaoLibListModel
 from gaolib.model.gaolibtreeitem import GaoLibTreeItem
 from gaolib.model.gaolibtreeitemmodel import GaoLibTreeItemModel
+from gaolib.model.hoverdelegate import HoverDelegate
 from gaolib.model.rootitemwidget import RootItemWidget
 from gaolib.model.treeitemfilterproxymodel import TreeItemFilterProxyModel
 from gaolib.ui.gaolibui import Ui_MainWindow as GaolibMainWindow
@@ -54,20 +58,28 @@ except Exception as e:
     print("IMPORT EXCEPTION : " + str(e))
 
 
+import time
+
+
 class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     """GAOLIB Main window."""
 
-    # Manage window resize
-    resized = QtCore.Signal()
-
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
-
+        #
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.setupUi(self)
 
-        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
-
+        # self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
+        # self.setWindowFlags(QtCore.Qt.Window)
+        self.setWindowFlags(
+            QtCore.Qt.Dialog
+            | QtCore.Qt.WindowStaysOnTopHint
+            | QtCore.Qt.WindowMinimizeButtonHint
+            | QtCore.Qt.WindowCloseButtonHint
+            | QtCore.Qt.WindowMaximizeButtonHint
+        )
+        self.setWindowTitle("GAOLIB |  %s" % os.path.basename(bpy.data.filepath))
         # Set data variables
         self.currentTreeElement = None
         self.items = {}
@@ -77,6 +89,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.recursiveDisplayMode = False
         self.useDoubleClickToApplyPose = False
         self.useWheelToBlendPose = False
+        self.ffmpegPath = None
         self.listView = GaoCustomListView(parent=self)
         self.listView.setSpacing(10)
         self.listView.setMinimumSize(QtCore.QSize(50, 50))
@@ -94,10 +107,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         )
         self.newPushButton.setStyleSheet("QPushButton::menu-indicator { width:0px; }")
         self._connectUi()
+        #
+        cache = thc.ThumbnailCache.instance()
+        cache.thumbnailLoaded.connect(self.onThumbLoaded)
+        # If temp folder is not empty, clean items
+        self.cleanTempFolder()
 
     def _connectUi(self):
         # Connect Actions
-        self.resized.connect(self.setListView)
         self.searchHierarchyEdit.textChanged.connect(self.filterTree)
         self.searchEdit.textChanged.connect(self.filterList)
         # Set menus for buttons in the main window
@@ -110,8 +127,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         createMenu = QtWidgets.QMenu(self.newPushButton)
         poseIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "pose2.png")))
         createMenu.addAction(poseIcon, "New Pose", lambda: self.createItemSetUI("POSE"))
+        createMenu.addAction(
+            poseIcon, "New Multi Pose", lambda: self.createItemSetUI("MULTI POSE")
+        )
         animIcon = QtGui.QIcon(QtGui.QPixmap(os.path.join(iconFolder, "anim2.png")))
         createMenu.addAction(animIcon, "New Animation", self.createAnimSetUI)
+        createMenu.addAction(
+            animIcon,
+            "New Multi Animation",
+            lambda: self.createAnimSetUI(itemType="MULTI ANIMATION"),
+        )
         constraintIcon = QtGui.QIcon(
             QtGui.QPixmap(os.path.join(iconFolder, "constraint.png"))
         )
@@ -137,14 +162,15 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Settings functionnalities
         createMenu = QtWidgets.QMenu(self.settingsPushButton)
         createMenu.addAction("Settings", self.settings)
-        refreshAction = createMenu.addAction("Refresh central view", self.setListView)
-        refreshAction.setShortcut(QtGui.QKeySequence("Ctrl+R"))
+        # refreshAction = createMenu.addAction("Refresh central view", self.setListView)
+        # refreshAction.setShortcut(QtGui.QKeySequence("Ctrl+R"))
         self.settingsPushButton.setMenu(createMenu)
 
-    def readConfig(self):
+    def readConfig(self, allowMessage=True):
         """Read Json config"""
         self.rootList = []
         self.rootPath = None
+        self.ffmpegPath = None
         if os.path.exists(self.configPath):
             with open(self.configPath) as file:
                 itemdata = json.load(file)
@@ -163,6 +189,26 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     ]
                 else:
                     self.useDoubleClickToApplyPose = False
+                if "ffmpegPath" in itemdata.keys():
+                    self.ffmpegPath = itemdata["ffmpegPath"]
+        # FFMPEG_PATH can be set as environment variable, if so, this value prevales on the settings
+        if "FFMPEG_PATH" not in os.environ.keys() or not os.path.isfile(
+            os.environ["FFMPEG_PATH"]
+        ):
+            print("Need to update env var FFMPEG_PATH")
+            if self.ffmpegPath in [None, ""] or not os.path.isfile(self.ffmpegPath):
+                print("Failed !")
+                if allowMessage:
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Warning",
+                        "No valid FFMPEG Path were found in environment variable FFMPEG_PATH, nor in GaoLib settings. You will not be able to create new items in the library. \nPlease, add FFMPEG path in the settings window.",
+                    )
+            else:
+                print("FFMPEG_PATH = " + self.ffmpegPath)
+                os.environ["FFMPEG_PATH"] = self.ffmpegPath
+        else:
+            print("Env var FFMPEG_PATH = " + os.environ["FFMPEG_PATH"])
 
     def settings(self):
         """Manage change of ROOT folder location"""
@@ -193,6 +239,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     dialog.ui.blendPoseOnWheelCheckBox.setChecked(itemdata[key])
                 if key == "useDoubleClickToApplyPose":
                     dialog.ui.doubleClickPoseShortcutCheckBox.setChecked(itemdata[key])
+                if key == "ffmpegPath":
+                    dialog.ui.ffmpegPathLlineEdit.setText(itemdata[key])
         # File browser
         dialog.ui.browsePushButton.released.connect(
             lambda: self.openFileNameDialog(dialog)
@@ -206,13 +254,15 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         useDoubleClickToApplyPose = (
             dialog.ui.doubleClickPoseShortcutCheckBox.isChecked()
         )
+        ffmpegPath = dialog.ui.ffmpegPathLlineEdit.text()
         # The user clicks OK
         if rsp == QtWidgets.QDialog.Accepted:
-            self.readConfig()
+            self.readConfig(allowMessage=False)
             paramsChanged = (
                 recursiveDisplayMode != self.recursiveDisplayMode
                 or useWheelToBlendPose != self.useWheelToBlendPose
                 or useDoubleClickToApplyPose != self.useDoubleClickToApplyPose
+                or ffmpegPath != self.ffmpegPath
             )
             if not len(path):
                 if paramsChanged:
@@ -224,6 +274,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                 "recursiveDisplayMode": recursiveDisplayMode,
                                 "useWheelToBlendPose": useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
+                                "ffmpegPath": ffmpegPath,
                             },
                             file,
                             indent=4,
@@ -256,6 +307,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                     "recursiveDisplayMode": recursiveDisplayMode,
                                     "useWheelToBlendPose": useWheelToBlendPose,
                                     "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
+                                    "ffmpegPath": ffmpegPath,
                                 },
                                 file,
                                 indent=4,
@@ -280,6 +332,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                 "recursiveDisplayMode": self.recursiveDisplayMode,
                                 "useWheelToBlendPose": self.useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": self.useDoubleClickToApplyPose,
+                                "ffmpegPath": self.ffmpegPath,
                             },
                             file,
                             indent=4,
@@ -373,6 +426,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # if user clicks on 'ok'
         if rsp == QtWidgets.QDialog.Accepted:
             if name.replace(" ", "") != "":
+                name = name.replace(" ", "_")
                 folderPath = os.path.join(self.currentTreeElement.path, name)
                 # Check if the folder already exists
                 if os.path.exists(folderPath):
@@ -449,49 +503,81 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         return expandedIndexes
 
     def cleanTempFolder(self):
-        if os.path.exists(self.jsonTempPath):
-            os.remove(self.jsonTempPath)
-        if os.path.exists(self.thumbTempPath):
-            os.remove(self.thumbTempPath)
-        sequencePath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
-        if os.path.exists(sequencePath):
-            shutil.rmtree(sequencePath)
-        os.makedirs(sequencePath)
+        tempPath = os.path.join(
+            bpy.context.preferences.filepaths.temporary_directory, "gaolib_temp"
+        )
+        sequencePath = os.path.join(tempPath, "sequence")
+        toRemove = []
+        if os.path.isdir(tempPath):
+            for e in os.listdir(tempPath):
+                path = os.path.join(tempPath, e)
+                if os.path.isfile(path):
+                    toRemove.append(path)
+            # shutil.rmtree(tempPath)
+        if os.path.isdir(sequencePath):
+            for e in os.listdir(sequencePath):
+                path = os.path.join(sequencePath, e)
+                if os.path.isfile(path):
+                    toRemove.append(path)
+        for path in toRemove:
+            try:
+                os.remove(path)
+            except Exception as e:
+                print("Info : Could not remove " + path + " : " + str(e))
+        # if not os.path.isdir(sequencePath):
+        #     os.makedirs(sequencePath)
 
     def createGenericItemSetUI(self):
         """Prepare UI to create new animation/pose/selection/constraint set item"""
         # Temporary path for thumnail
+        timestamp = time.strftime("%Y%m%d%H%M%S")
         self.thumbTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory,
-            "temp",
-            "thumbnail.png",
+            "gaolib_temp",
+            f"thumbnail_{timestamp}.png",
         )
         self.jsonTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory,
-            "temp",
+            "gaolib_temp",
             "temp.json",
         )
         # # Delete files before creating new item
-        self.cleanTempFolder()
+        # self.cleanTempFolder()
         # Clear information layout
         for i in reversed(range(self.verticalLayout_5.count())):
             self.verticalLayout_5.itemAt(i).widget().deleteLater()
 
-    def createAnimSetUI(self):
+    def createAnimSetUI(self, itemType="ANIMATION"):
         """Prepare UI to Create new animation item"""
-        itemType = "ANIMATION"
+        # check ffmpeg path
+        if "FFMPEG_PATH" not in os.environ.keys() or not os.path.isfile(
+            os.environ["FFMPEG_PATH"]
+        ):
+            # message
+            QtWidgets.QMessageBox.about(
+                self,
+                "Abort action",
+                "Cannot create animation item. Please, add a valid path for FFMPEG path in GaoLib settings.",
+            )
+            return
+        # # choose between animation or Multi animation
+        # # Get selectd object
+        # selectedObjs = utils.getSelectedObjects()
+        # if len(selectedObjs) > 1:
+        #     itemType = "MULTI ANIMATION"
         self.createGenericItemSetUI()
         # Create widget for create anim
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
         self.verticalLayout_5.addWidget(self.createPosewidget)
 
-        self.beginCreateThumb = True  # remember step of createThumbnail
+        # self.beginCreateThumb = True  # remember step of createThumbnail
         self.createPosewidget.pushButton.released.connect(
             lambda: self.createThumbnail(itemType=itemType)
         )
         self.createPosewidget.applyPushButton.released.connect(
             lambda: self.savePose(itemType=itemType)
         )
+        self.createPosewidget.cancelPushButton.released.connect(self.cancelSavePose)
         self.createPosewidget.fromRangeSpinBox.setProperty(
             "value", bpy.context.scene.frame_start
         )
@@ -500,6 +586,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         )
         try:
             selectedObjs = utils.getSelectedObjects()
+
+            self.createPosewidget.refreshSelection()
             if len(selectedObjs):
                 selectedObj = selectedObjs[0]
                 if selectedObj.animation_data and selectedObj.animation_data.action:
@@ -509,14 +597,31 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         except Exception as e:
             print("Automatic name setting failed : " + str(e))
 
+    def cancelSavePose(self):
+        print("canceling")
+        self.verticalLayout_5.removeWidget(self.createPosewidget)
+        self.createPosewidget.deleteLater()
+
     def createItemSetUI(self, itemType):
         """Prepare UI to Create new pose item"""
+        # check ffmpeg path
+        if "FFMPEG_PATH" not in os.environ.keys() or not os.path.isfile(
+            os.environ["FFMPEG_PATH"]
+        ):
+            # message
+            QtWidgets.QMessageBox.about(
+                self,
+                "Abort action",
+                "Cannot create animation item. Please, add a valid path for FFMPEG path in GaoLib settings.",
+            )
+            return
         self.createGenericItemSetUI()
         # Create widget for create pose
         self.createPosewidget = CreatePoseWidget(itemType=itemType, parent=self)
-        if itemType == "POSE":
+        if itemType in ["POSE", "MULTI POSE"]:
             try:
                 selectedObjs = utils.getSelectedObjects()
+                self.createPosewidget.refreshSelection()
                 if len(selectedObjs):
                     selectedObj = selectedObjs[0]
                     if selectedObj.animation_data and selectedObj.animation_data.action:
@@ -527,7 +632,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 print("Automatic name setting failed : " + str(e))
         self.verticalLayout_5.addWidget(self.createPosewidget)
 
-        self.beginCreateThumb = True  # remember step of createThumbnail
+        # self.beginCreateThumb = True  # remember step of createThumbnail
         self.createPosewidget.pushButton.released.connect(
             lambda: self.createThumbnail(itemType=itemType)
         )
@@ -537,22 +642,49 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
-        if itemType == "ANIMATION":
-            itemTypeStr = "anim"
-            thumbTempPath = self.thumbTempPath.replace(".png", ".gif")
-            stamp = "icons/anim2.png"
-        elif itemType == "POSE":
-            itemTypeStr = "pose"
-            thumbTempPath = self.thumbTempPath
-            stamp = "icons/pose2.png"
-        elif itemType == "SELECTION SET":
-            itemTypeStr = "selection"
-            thumbTempPath = self.thumbTempPath
-            stamp = "icons/selectionset.png"
-        elif itemType == "CONSTRAINT SET":
-            itemTypeStr = "constraint"
-            thumbTempPath = self.thumbTempPath
-            stamp = "icons/constraint.png"
+        updateTreeView = True
+        # check context and selection
+        isValid = self.contextCheck(itemType)
+        if not isValid:
+            return
+        currentFrame = bpy.context.scene.frame_current
+        with bpy.context.temp_override(
+            area=self.context["area"],
+            region=self.context["region"],
+            region_data=self.context["region_data"],
+            screen=self.context["screen"],
+            space_data=self.context["space_data"],
+            window=self.context["window"],
+        ):
+            if itemType == "ANIMATION":
+                self.generateAnimItemData()
+                itemTypeStr = "anim"
+                thumbTempPath = self.thumbTempPath.replace(".png", ".gif")
+                stamp = "icons/anim2.png"
+            elif itemType == "POSE":
+                self.generatePoseItemData()
+                itemTypeStr = "pose"
+                thumbTempPath = self.thumbTempPath
+                stamp = "icons/pose2.png"
+            elif itemType == "SELECTION SET":
+                itemTypeStr = "selection"
+                thumbTempPath = self.thumbTempPath
+                stamp = "icons/selectionset.png"
+            elif itemType == "CONSTRAINT SET":
+                self.generateConstraintItemData()
+                itemTypeStr = "constraint"
+                thumbTempPath = self.thumbTempPath
+                stamp = "icons/constraint.png"
+            elif itemType == "MULTI POSE":
+                self.generateMultiPoseItemData()
+                itemTypeStr = "multi_pose"
+                thumbTempPath = self.thumbTempPath
+                stamp = "icons/pose2.png"
+            elif itemType == "MULTI ANIMATION":
+                self.generateMultiAnimItemData()
+                itemTypeStr = "multi_anim"
+                thumbTempPath = self.thumbTempPath.replace(".png", ".gif")
+                stamp = "icons/anim2.png"
 
         # Check if valid name
         name = self.createPosewidget.nameLineEdit.text()
@@ -578,36 +710,45 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         poseDir = os.path.join(parentDir, name)
         # Check if item with same name already exists
         if os.path.exists(poseDir):
-            dialog = QtWidgets.QDialog(self)
-            dialog.ui = YesNoDialog()
-            dialog.ui.setupUi(dialog)
-            message = (
-                " An item named "
-                + name
-                + " already exists. Do you want to overrite this file ?"
-            )
-            dialog.ui.label.setText(message)
-            rsp = dialog.exec_()
-            # if user clicks on 'ok'
-            if rsp == QtWidgets.QDialog.Accepted:
-                if itemType == "ANIMATION":
-                    try:
-                        os.remove(os.path.join(poseDir, "thumbnail.gif"))
-                    except Exception as e:
-                        QtWidgets.QMessageBox.about(
-                            self,
-                            "Abort action",
-                            "Cannot remove "
-                            + os.path.join(poseDir, "thumbnail.gif")
-                            + " : "
-                            + str(e),
-                        )
-                        return
-                shutil.rmtree(poseDir)
+            if os.path.isdir(poseDir + "/todelete"):
+                os.remove(poseDir + "/todelete")
             else:
-                return
+                dialog = QtWidgets.QDialog(self)
+                dialog.ui = YesNoDialog()
+                dialog.ui.setupUi(dialog)
+                message = (
+                    " An item named "
+                    + name
+                    + " already exists. Do you want to overwrite it ?"
+                )
+                dialog.ui.label.setText(message)
+                rsp = dialog.exec_()
+                # if user clicks on 'ok'
+                if rsp == QtWidgets.QDialog.Accepted:
+                    updateTreeView = False
+                    if itemType in ["ANIMATION", "MULTI ANIMATION"]:
+                        try:
+                            os.remove(os.path.join(poseDir, "thumbnail.gif"))
+                        except Exception as e:
+                            pass
+                            # QtWidgets.QMessageBox.about(
+                            #     self,
+                            #     "Abort action",
+                            #     "Cannot remove "
+                            #     + os.path.join(poseDir, "thumbnail.gif")
+                            #     + " : "
+                            #     + str(e),
+                            # )
+                            # return
+                    try:
+                        shutil.rmtree(poseDir)
+                    except:
+                        pass
+                else:
+                    return
         try:
-            os.mkdir(poseDir)
+            if not os.path.isdir(poseDir):
+                os.mkdir(poseDir)
         except OSError as e:
             print("OSError : " + str(e))
             QtWidgets.QMessageBox.about(
@@ -622,21 +763,26 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             return
 
         # Copy thumbnail in pose directory
-        if itemType == "ANIMATION":
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
             pngThumb = os.path.join(poseDir, "thumbnail.png")
             tempPngDir = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
-            tempPng = None
-            if os.path.isdir(tempPngDir):
-                if len(os.listdir(tempPngDir)):
-                    tempPng = os.path.join(tempPngDir, os.listdir(tempPngDir)[0])
-            if tempPng:
-                shutil.copyfile(tempPng, pngThumb)
-
+            movFile = os.path.join(tempPngDir, "thumbnail.mp4")
+            ffmpegCmd = (
+                f"{os.environ['FFMPEG_PATH']} -i {movFile} -frames:v 1 -y {pngThumb}"
+            )
+            p = subprocess.Popen(ffmpegCmd)
+            p.communicate()
+            # tempPng = None
+            # if os.path.isdir(tempPngDir):
+            #     if len(os.listdir(tempPngDir)):
+            #         tempPng = os.path.join(tempPngDir, os.listdir(tempPngDir)[0])
+            # if tempPng:
+            #     shutil.copyfile(tempPng, pngThumb)
             thumbPath = os.path.join(poseDir, "thumbnail.gif")
             shutil.copyfile(thumbTempPath, thumbPath)
             # Copy blend in pose directory
             utils.copyAnim(poseDir)
-        elif itemType == "POSE":
+        elif itemType in ["POSE", "MULTI POSE"]:
             thumbPath = os.path.join(poseDir, "thumbnail.png")
             shutil.copyfile(thumbTempPath, thumbPath)
             # Copy blend in pose directory
@@ -651,20 +797,41 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Add stamp on thumbnail
         try:
             pngThumb = os.path.join(poseDir, "thumbnail.png")
-            im1 = Image.open(pngThumb)
-            im2 = Image.open(stamp)
-            im2 = im2.resize((30, 30))
-            im1.paste(im2, (165, 170), im2)
+            # im1 = Image.open(pngThumb)
+            # im2 = Image.open(stamp)
+            # im2 = im2.resize((30, 30))
+            # im1.paste(im2, (165, 170), im2)
             destination = os.path.join(poseDir, "thumbnail_stamped.png")
-            im1.save(destination, quality=100)
+            # im1.save(destination, quality=100)
+            ffmpegCmd = f'{os.environ["FFMPEG_PATH"]} -i {pngThumb} -i {stamp} -filter_complex "overlay=W-w-3:H-h-3" -y {destination}'
+            p = subprocess.Popen(ffmpegCmd)
+            p.communicate()
 
         except Exception as e:
             print("Stamp Exception : " + str(e))
 
+        # remove todelete file if it exists
+        if os.path.isfile(os.path.join(poseDir, "todelete")):
+            os.remove(os.path.join(poseDir, "todelete"))
+
         # Create json in pose directory
         self.writejson(name, poseDir, itemType=itemType)
 
-        # Refresh view
+        # update tree view
+        if updateTreeView:
+            # Remember expanded states in tree view
+            expanded = self.getTreeExpandedItems()
+            parentItem = self.currentTreeElement
+            selectedItemPath = parentItem.path
+            ancestors = parentItem.ancestors + [parentItem]
+            newItem = GaoLibTreeItem(name, ancestors=ancestors, path=poseDir)
+            # refresh TreeView
+            self.treeModel.addElement(newItem, parentItem)
+            # Update filter
+            self.updateTreeFilter()
+            # Restore expand state and selected item
+            self.restoreExpandedState(expanded, selectedItemPath)
+        # Refresh list view
         oldItems = self.items
         self.items = self.getListItems()
         self.setListView()
@@ -682,9 +849,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         index = self.listView.model().index(newIndex, 0)
         self.listView.selectionModel().clear()
         self.listView.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
+        bpy.context.scene.frame_current = currentFrame
 
     def applyPose(self, itemType="POSE", flipped=False, blendPose=1, currentPose=None):
         """Paste animation/pose from the library to the selected object of the scene"""
+        pbList = []
         try:
             if itemType == "ANIMATION":
                 frameIn = self.infoWidget.fromRangeSpinBox.value()
@@ -692,9 +861,38 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 utils.pasteAnim(
                     self.currentListItem.path, frameIn, frameOut, self.infoWidget
                 )
+            elif itemType == "MULTI ANIMATION":
+                frameIn = self.infoWidget.fromRangeSpinBox.value()
+                frameOut = self.infoWidget.toRangeSpinBox.value()
+                pairingDict = self.infoWidget.getConstraintPairing()
+                pbList = pbList + utils.pasteConstraints(
+                    self.currentListItem.path, pairingDict, itemType="MULTI ANIMATION"
+                )
+                utils.pasteMultiAnim(
+                    self.currentListItem.path,
+                    pairingDict,
+                    frameIn,
+                    frameOut,
+                    self.infoWidget,
+                )
+
             elif itemType == "CONSTRAINT SET":
                 pairingDict = self.infoWidget.getConstraintPairing()
-                utils.pasteConstraints(self.currentListItem.path, pairingDict)
+                countConstraints = 0
+                for objName in pairingDict.keys():
+                    if "constraints" in pairingDict[objName].keys():
+                        for constName in pairingDict[objName]["constraints"].keys():
+                            countConstraints += 1
+                if not countConstraints:
+                    QtWidgets.QMessageBox.about(
+                        self,
+                        "Info",
+                        "No constraint is currently selected to be applied.",
+                    )
+                else:
+                    pbList += utils.pasteConstraints(
+                        self.currentListItem.path, pairingDict
+                    )
             elif itemType == "POSE":
                 if not blendPose:
                     blendPose = 1
@@ -708,17 +906,42 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     currentPose=currentPose,
                     additiveMode=self.infoWidget.additiveModeCheckBox.isChecked(),
                 )
+            elif itemType == "MULTI POSE":
+                if not blendPose:
+                    blendPose = 1
+                if self.infoWidget.refPose:
+                    refPose = self.infoWidget.refPose
+                    utils.deleteRefPose(refPose, self.infoWidget)
+                pairingDict = self.infoWidget.getConstraintPairing()
+                pbList += utils.pasteConstraints(
+                    self.currentListItem.path, pairingDict, itemType="MULTI POSE"
+                )
+                utils.pasteMultiPose(
+                    self.currentListItem.path,
+                    pairingDict,
+                    flipped=flipped,
+                    blend=blendPose,
+                    currentPose=currentPose,
+                    additiveMode=self.infoWidget.additiveModeCheckBox.isChecked(),
+                )
+
         except Exception as e:
             QtWidgets.QMessageBox.about(
                 self, "Abort action", "An error has occured, check Console : " + str(e)
             )
             raise
+        if len(pbList):
+            utils.ShowDialog(
+                "Infos : \n" + "\n".join(pbList),
+                title="WARNING",
+            )
         # Reset currentPose to applied one
         self.infoWidget.currentPose = None
         self.infoWidget.bonesToBlend = None
         self.infoWidget.blendPoseSlider.setValue(0)
-        # print("UNDO PUSH")
-        # bpy.ops.ed.undo_push()
+        # # applying after using ctrl + z using the two lines below makes belnder crash
+        # with bpy.context.temp_override(**self.context):
+        #     bpy.ops.ed.undo_push()
 
     def writejson(self, name, directory, itemType="POSE"):
         """Create json file corresponding to pose/animation item"""
@@ -730,6 +953,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             jsonFile = os.path.join(directory, "selection_set.json")
         elif itemType == "CONSTRAINT SET":
             jsonFile = os.path.join(directory, "constraint_set.json")
+        elif itemType == "MULTI POSE":
+            jsonFile = os.path.join(directory, "multi_pose.json")
+        elif itemType == "MULTI ANIMATION":
+            jsonFile = os.path.join(directory, "multi_animation.json")
 
         if os.path.exists(self.jsonTempPath):
             with open(self.jsonTempPath) as file:
@@ -739,6 +966,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             os.remove(jsonFile)
         date = datetime.now().strftime("%d/%m/%Y")
         # gather the datas
+        framerange = (
+            str(self.createPosewidget.fromRangeSpinBox.value())
+            + "-"
+            + str(self.createPosewidget.toRangeSpinBox.value())
+        )
+        content = ""
+        if "objects" in itemdata.keys():
+            content += str(len(itemdata["objects"])) + " object(s) \n"
+        if "bones" in itemdata.keys():
+            content += str(itemdata["bones"]) + " bone(s)"
         data = {
             "metadata": {
                 "name": name,
@@ -747,14 +984,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 "type": itemType,
                 "user": getpass.getuser(),
                 "date": date,
-                "content": self.createPosewidget.contentLabel.text(),
-                "frameRange": str(self.createPosewidget.fromRangeSpinBox.value())
-                + "-"
-                + str(self.createPosewidget.toRangeSpinBox.value()),
-            }
+                "content": content,
+                "frameRange": framerange,
+            },
         }
         for key in itemdata.keys():
             if key == "constraintData":
+                data[key] = itemdata[key]
+            elif key == "multiAnimData":
                 data[key] = itemdata[key]
             elif key not in data["metadata"].keys():
                 data["metadata"][key] = itemdata[key]
@@ -783,6 +1020,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             return False
         # set context with self.context
         try:
+            selectedObjects = utils.getSelectedObjects()
             with bpy.context.temp_override(
                 area=self.context["area"],
                 region=self.context["region"],
@@ -791,15 +1029,19 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 space_data=self.context["space_data"],
                 window=self.context["window"],
             ):
-                # Check number of selected objects
-                selectedObjects = []
-                for o in bpy.context.selected_objects:
-                    selectedObjects.append(o.name)
-                if itemType == "CONSTRAINT SET":
+                if itemType in ["CONSTRAINT SET", "MULTI POSE", "MULTI ANIMATION"]:
                     # # constraint set need at least one object selected
                     if len(selectedObjects) == 0:
                         utils.ShowDialog("PLEASE, SELECT AT LEAST ONE OBJECT.")
                         return False
+                    if itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+                        foundNonArmature = []
+                        for o in selectedObjects:
+                            if o.type != "ARMATURE":
+                                foundNonArmature.append(o)
+                        if len(foundNonArmature):
+                            utils.ShowDialog("PLEASE, ONLY SELECT ARMATURE OBJECTS")
+                            return False
                 else:
                     # # animation, pose and selection set need nly one objet selected
                     if len(selectedObjects) != 1:
@@ -819,145 +1061,149 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             print('Context is lost ! Please, use "Get Context" tool.\n' + str(e))
             return False
 
-    def poseCreateThumbnail(self):
-        """Save new item datas and thumbnail to temp directory"""
+    def generatePoseItemData(self):
+        itemType = "POSE"
         # Get selectd object
+        selectedObjs = utils.getSelectedObjects()
         selectedObjects = []
-        for o in bpy.context.selected_objects:
+        selection = []
+        selectedBones = utils.getSelectedBones()
+        for o in selectedObjs:
             selectedObjects.append(o.name)
+            selection.append(o)
         # Write Json file
         data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "bones": len(selectedBones),
+            "boneNames": [bone.name for bone in selectedBones],
             "objects": selectedObjects,
         }
-        jsonFile = os.path.join(
-            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
-        )
-        with open(jsonFile, "w") as file:
+        with open(self.jsonTempPath, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
-        # Copy selection
-        bpy.ops.pose.copy()
-        # create mirror and original buffer files
-        tempDir = bpy.context.preferences.filepaths.temporary_directory
-        tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
-        tempCopy = os.path.join(tempDir, "copybuffer_pose_original.blend")
-        shutil.copyfile(tempPose, tempCopy)
-        bpy.ops.pose.paste(flipped=True)
-        bpy.ops.pose.copy()
-        tempCopy = os.path.join(tempDir, "copybuffer_pose_flipped.blend")
-        shutil.copyfile(tempPose, tempCopy)
-        bpy.ops.pose.paste(flipped=True)
+
+        for o in selection:
+            # set active object
+            if o != bpy.context.view_layer.objects.active:
+                bpy.context.view_layer.objects.active = o
+            # Copy selection
+            bpy.ops.pose.copy()
+            # create mirror and original buffer files
+            name = o.name.replace(".", "--")
+            tempDir = bpy.context.preferences.filepaths.temporary_directory
+            tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
+            fileName = (
+                name + "__copybuffer_pose_original.blend"
+                if itemType != "POSE"
+                else "copybuffer_pose_original.blend"
+            )
+            tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
+            shutil.copyfile(tempPose, tempCopy)
+            # select all bones to flip pose
+            bpy.ops.pose.select_all(action="SELECT")  # 1 select all
+            bpy.ops.pose.copy()  # 2 copy pose
+            bpy.ops.pose.paste(flipped=True)  # 3 flip entire pose
+            bpy.ops.pose.select_all(
+                action="SELECT"
+            )  #  reselect all (in case not all same bones are visible in left and right)
+            bpy.ops.pose.copy()  # 4 make temp file of mirrored pose
+            fileName = (
+                name + "__copybuffer_pose_flipped.blend"
+                if itemType != "POSE"
+                else "copybuffer_pose_flipped.blend"
+            )
+            tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
+            shutil.copyfile(tempPose, tempCopy)  # 5 save mirrored pose in blend file
+            bpy.ops.pose.paste(flipped=True)  # 6 reset original pose
+            # 7 restore original selection
+            bpy.ops.pose.select_all(action="DESELECT")
+            for bone in selectedBones:
+                bone.select = True
+
+    def poseCreateThumbnail(self):
+        """Save new item datas and thumbnail to temp directory"""
         # hide some overlays before rendering
         space = bpy.context.space_data
         space.overlay.show_overlays = False
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return True
 
-    def animCreateThumbnail(self):
-        """Save new item datas and thumbnail to temp directory"""
+    def generateAnimItemData(self):
         # get frame range
         frameIn = bpy.context.scene.frame_start
         frameOut = bpy.context.scene.frame_end
         # Get selectd object
+        selectedObjs = utils.getSelectedObjects()
         selectedObjects = []
-        for o in bpy.context.selected_objects:
+        for o in selectedObjs:
             selectedObjects.append(o.name)
-        # Write Json file
-        data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
-            "objects": selectedObjects,
-        }
-        jsonFile = os.path.join(
-            os.path.dirname(os.path.dirname(bpy.context.scene.render.filepath)),
-            "temp.json",
-        )
-        with open(jsonFile, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
-        # Copy Animation
-        currentObject = bpy.context.selected_objects[0]
+        currentObject = selectedObjs[0]
         try:
             currentAction = currentObject.animation_data.action
         except:
             utils.ShowDialog("FOUND NO ACTION ON SELECTED OBJECT.", title="ABORT")
             return
+        selectedBones = utils.getSelectedBones()
+        data = {
+            "bones": len(selectedBones),
+            "boneNames": [bone.name for bone in selectedBones],
+            "objects": selectedObjects,
+        }
+        with open(self.jsonTempPath, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        # Copy Animation
         newAction = currentAction.copy()
         newAction.name = "Animation"
         currentObject.animation_data.action = None
         currentObject.animation_data.action = newAction
+        # clean slots of new action
+        toCleanSlots = []
+        for slot in newAction.slots:
+            if currentObject not in slot.users():
+                toCleanSlots.append(slot)
+        for slot in toCleanSlots:
+            newAction.slots.remove(slot)
         # key first frame
-        bpy.context.scene.frame_set(frameIn)
-        for bone in bpy.context.selected_pose_bones:
-            bone.keyframe_insert(data_path="rotation_mode", frame=frameIn)
-            for axis in range(3):
-                if not bone.lock_location[axis]:
-                    bone.keyframe_insert(
-                        data_path="location", index=axis, frame=frameIn
-                    )
-                if not bone.lock_rotation[axis]:
-                    bone.keyframe_insert(
-                        data_path="rotation_euler", index=axis, frame=frameIn
-                    )
-                if not bone.lock_scale[axis]:
-                    bone.keyframe_insert(data_path="scale", index=axis, frame=frameIn)
-            for key in bone.keys():
-                try:
-                    bone.keyframe_insert(data_path='["' + key + '"]', frame=frameIn)
-                except Exception as e:
-                    pass
+        utils.keySelectedBonesForFrame(frameIn, selectedBones=selectedBones)
         keyLastFrame = self.createPosewidget.keyLastCheckBox.isChecked()
         if keyLastFrame:
-            bpy.context.scene.frame_set(frameOut)
-            for bone in bpy.context.selected_pose_bones:
-                bone.keyframe_insert(data_path="rotation_mode", frame=frameOut)
-                for axis in range(3):
-                    if not bone.lock_location[axis]:
-                        bone.keyframe_insert(
-                            data_path="location", index=axis, frame=frameOut
-                        )
-                    if not bone.lock_rotation[axis]:
-                        bone.keyframe_insert(
-                            data_path="rotation_euler", index=axis, frame=frameOut
-                        )
-                    if not bone.lock_scale[axis]:
-                        bone.keyframe_insert(
-                            data_path="scale", index=axis, frame=frameOut
-                        )
-                for key in bone.keys():
-                    try:
-                        bone.keyframe_insert(
-                            data_path='["' + key + '"]', frame=frameOut
-                        )
-                    except Exception as e:
-                        pass
-        # Create animation.blend file
+            utils.keySelectedBonesForFrame(frameOut, selectedBones=selectedBones)
+        # Create animation.blend file in gaolib_temp directory
         animDir = bpy.context.preferences.filepaths.temporary_directory
         filename = "animation.blend"
-        filepath = os.path.join(animDir, filename)
+        filepath = os.path.join(animDir, "gaolib_temp", filename)
         bpy.data.libraries.write(filepath, set([newAction]))
-        # hide some overlays before rendering
-        space = bpy.context.space_data
-        space.overlay.show_overlays = False
-        # Render
-        print("Render animation")
-        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
         # Delete temp action
         currentObject.animation_data.action = currentAction
         bpy.data.actions.remove(newAction)
 
-    def constraintCreateThumbnail(self):
+    def animCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
+        # hide some overlays before rendering
+        space = bpy.context.space_data
+        space.shading.type = "SOLID"
+        space.overlay.show_overlays = False
+        space.shading.show_xray = False
+        space.shading.show_shadows = False
+        space.shading.show_cavity = False
+        # Render
+        print("Render animation")
+        bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
+        return True
+
+    def generateConstraintItemData(self):
+        """Save new item datas to temp directory"""
         # Get selected objects
+        selectedObjs = utils.getSelectedObjects()
         selectedObjects = []
-        for o in bpy.context.selected_objects:
+        for o in selectedObjs:
             selectedObjects.append(o.name)
+        selectedBones = utils.getSelectedBones(allowMulti=True)
         # get contraint datas
         boneDict = {}
         for objName in selectedObjects:
             obj = bpy.data.objects.get(objName)
             if obj.pose:
-                for bone in bpy.context.selected_pose_bones:
+                for bone in selectedBones:
                     for objBone in obj.pose.bones:
                         if bone == objBone:
                             if not obj.name in boneDict.keys():
@@ -966,42 +1212,43 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                             break
 
         data = {
-            "bones": len(bpy.context.selected_pose_bones),
+            "bones": len(selectedBones),
             "boneDict": boneDict,
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "boneNames": [bone.name for bone in selectedBones],
             "objects": selectedObjects,
         }
         constraintData = utils.getConstraintsForSelection()
         if not constraintData:
-            utils.ShowDialog("Found no constraint data.", title="ABORT")
+            utils.ShowDialog("Found no BONE CONSTRAINT data.", title="ABORT")
             return
         data["constraintData"] = constraintData
         # Write Json file
-        jsonFile = os.path.join(
-            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
-        )
-        with open(jsonFile, "w") as file:
+        with open(self.jsonTempPath, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
+
+    def constraintCreateThumbnail(self):
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return True
 
-    def selectionCreateThumbnail(self):
-        """Save new item datas and thumbnail to temp directory"""
+    def generateSelectionItemData(self):
+        """Save new item datas to temp directory"""
         # Get selected objects
+        selectedObjs = utils.getSelectedObjects()
         selectedObjects = []
-        for o in bpy.context.selected_objects:
+        for o in selectedObjs:
             selectedObjects.append(o.name)
+        selectedBones = utils.getSelectedBones()
         # Write Json file
         data = {
-            "bones": len(bpy.context.selected_pose_bones),
-            "boneNames": [bone.name for bone in bpy.context.selected_pose_bones],
+            "bones": len(selectedBones),
+            "boneNames": [bone.name for bone in selectedBones],
             "objects": selectedObjects,
         }
-        jsonFile = os.path.join(
-            os.path.dirname(bpy.context.scene.render.filepath), "temp.json"
-        )
-        with open(jsonFile, "w") as file:
+        with open(self.jsonTempPath, "w") as file:
             json.dump(data, file, indent=4, sort_keys=True)
+
+    def selectionCreateThumbnail(self):
         # hide some overlays before rendering
         space = bpy.context.space_data
         overlayHide = ["show_axis_x", "show_axis_y", "show_floor"]
@@ -1013,38 +1260,199 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 overlayHidden.append(toHide)
         # Render
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+        return True
+
+    def generateMultiAnimItemData(self):
+        # get frame range
+        frameIn = bpy.context.scene.frame_start
+        frameOut = bpy.context.scene.frame_end
+        # Get selected objects
+        selectedObjs = utils.getSelectedObjects()
+        selectedObjects = []
+        selection = []
+        boneNamesDict = {}
+        objectActions = []
+        selectedBones = utils.getSelectedBones(allowMulti=True)
+        for o in selectedObjs:
+            if o.type == "ARMATURE":
+                # ignore non armature objects  =>
+                selectedObjects.append(o.name)
+                selection.append(o)
+                # <=
+                boneNamesDict[o.name] = []
+                for bone in o.pose.bones:
+                    if bone in selectedBones:
+                        boneNamesDict[o.name].append(bone.name)
+                if o.animation_data and o.animation_data.action:
+                    objectActions.append(
+                        (o, o.animation_data.action, o.animation_data.action_slot)
+                    )
+        # copy animation
+        keyLastFrame = self.createPosewidget.keyLastCheckBox.isChecked()
+        newActionDict = utils.createActionsForLib(
+            selection, frameIn, frameOut, keyLastFrame
+        )
+        newActions = [newActionDict[key] for key in newActionDict.keys()]
+        slotAnimDict = {}
+        for t in objectActions:
+            obj, action, slot = t[0], t[1], t[2]
+            libAction = newActionDict[action.name].name
+            slotAnimDict[obj.name] = {
+                "original_action": action.name,
+                "slot": slot.identifier,
+                "lib_action": libAction,
+            }
+
+        # Create animation.blend file
+        animDir = bpy.context.preferences.filepaths.temporary_directory
+        filename = "animation.blend"
+        filepath = os.path.join(animDir, "gaolib_temp", filename)
+        bpy.data.libraries.write(filepath, set(newActions))
+        # Write Json file
+        data = {
+            "bones": len(selectedBones),
+            "boneNames": boneNamesDict,
+            "objects": selectedObjects,
+            "multiAnimData": slotAnimDict,
+        }
+        constraintData = utils.getConstraintsForSelection()
+        if constraintData:
+            data["constraintData"] = constraintData
+        with open(self.jsonTempPath, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        # Delete temp action
+        for t in objectActions:
+            obj, action, slot = t[0], t[1], t[2]
+            obj.animation_data.action = action
+        for newAct in newActions:
+            bpy.data.actions.remove(newAct)
+
+    # def multiAnimCreateThumbnail(self):
+    #     """Save new item datas and thumbnail to temp directory"""
+
+    #     # hide some overlays before rendering
+    #     space = bpy.context.space_data
+    #     space.overlay.show_overlays = False
+    #     # Render
+    #     print("Render animation")
+    #     bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
+    #     return True
+
+    def generateMultiPoseItemData(self):
+        """Save new item datas to temp directory"""
+        itemType = "MULTI POSE"
+        # Get selected objects
+        selectedObjs = utils.getSelectedObjects()
+        selectedObjects = []
+        selection = []
+        boneNamesDict = {}
+        selectedBones = utils.getSelectedBones(allowMulti=True)
+        for o in selectedObjs:
+            selectedObjects.append(o.name)
+            selection.append(o)
+            if o.type == "ARMATURE":
+                boneNamesDict[o.name] = []
+                for bone in o.pose.bones:
+                    if bone in selectedBones:
+                        boneNamesDict[o.name].append(bone.name)
+        # Write Json file
+        data = {
+            "bones": len(selectedBones),
+            "boneNames": boneNamesDict,
+            "objects": selectedObjects,
+        }
+        constraintData = utils.getConstraintsForSelection()
+        if constraintData:
+            data["constraintData"] = constraintData
+        with open(self.jsonTempPath, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
+        for o in selection:
+            # set active object
+            if o != bpy.context.view_layer.objects.active:
+                bpy.context.view_layer.objects.active = o
+            # Copy selection
+            bpy.ops.pose.copy()
+            # create mirror and original buffer files
+            name = o.name.replace(".", "--")
+            tempDir = bpy.context.preferences.filepaths.temporary_directory
+            tempPose = os.path.join(tempDir, "copybuffer_pose.blend")
+            fileName = (
+                name + "__copybuffer_pose_original.blend"
+                if itemType == "MULTI POSE"
+                else "copybuffer_pose_original.blend"
+            )
+            tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
+            shutil.copyfile(tempPose, tempCopy)
+            # select all bones to flip pose
+            bpy.ops.pose.select_all(action="SELECT")  # 1 select all
+            bpy.ops.pose.copy()  # 2 copy pose
+            bpy.ops.pose.paste(flipped=True)
+            bpy.ops.pose.select_all(
+                action="SELECT"
+            )  #  reselect all (in case not all same bones are visible in left and right)
+
+            bpy.ops.pose.copy()
+            fileName = (
+                name + "__copybuffer_pose_flipped.blend"
+                if itemType == "MULTI POSE"
+                else "copybuffer_pose_flipped.blend"
+            )
+            tempCopy = os.path.join(tempDir, "gaolib_temp", fileName)
+            shutil.copyfile(tempPose, tempCopy)
+            bpy.ops.pose.paste(flipped=True)
+            # 7 restore original selection
+            bpy.ops.pose.select_all(action="DESELECT")
+            for bone in selectedBones:
+                bone.select = True
+
+    # def multiPoseCreateThumbnail(self):
+
+    #     # hide some overlays before rendering
+    #     space = bpy.context.space_data
+    #     space.overlay.show_overlays = False
+    #     # Render
+    #     bpy.ops.render.opengl("INVOKE_DEFAULT", animation=False, write_still=True)
+    #     return True
 
     def createThumbnail(self, itemType="POSE"):
         """Create item thumbnail and prepare to save as new item"""
+
         # Clean any existing temp files
-        self.cleanTempFolder()
+        #  self.cleanTempFolder()
         # check context and selection
-        isValid = self.contextCheck(itemType)
-        if not isValid:
-            return
+        # isValid = self.contextCheck(itemType)
+        # if not isValid:
+        #     return
+
+        # display nb of objects and bones selected
+        self.createPosewidget.refreshSelection()
+
         # Set temporary paths to store thumbnail and item datas
         self.thumbTempPath = os.path.join(
             bpy.context.preferences.filepaths.temporary_directory,
-            "temp",
+            "gaolib_temp",
             "thumbnail.png",
         )
         self.jsonTempPath = os.path.join(
-            bpy.context.preferences.filepaths.temporary_directory, "temp", "temp.json"
+            bpy.context.preferences.filepaths.temporary_directory,
+            "gaolib_temp",
+            "temp.json",
         )
         if not os.path.isdir(os.path.dirname(self.jsonTempPath)):
             os.makedirs(os.path.dirname(self.jsonTempPath))
         # PRE RENDER SETTINGS
-        if itemType == "ANIMATION":
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
             self.createPosewidget.movie = None
             renderpath = os.path.join(
                 os.path.dirname(self.thumbTempPath),
                 "sequence",
-                "thumbnail.####.png",
+                "thumbnail.mp4",
             )
         else:
             renderpath = self.thumbTempPath
         # Remember current render settings
         self.renderPath = bpy.context.scene.render.filepath
+        self.mediaType = bpy.context.scene.render.image_settings.media_type
         self.renderFormat = bpy.context.scene.render.image_settings.file_format
         self.frameStep = bpy.context.scene.frame_step
         self.frameStart = bpy.context.scene.frame_start
@@ -1056,19 +1464,34 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.color_mode = bpy.context.scene.render.image_settings.color_mode
         # Modify render settings
         bpy.context.scene.render.filepath = renderpath
-        bpy.context.scene.render.image_settings.file_format = "PNG"
         bpy.context.scene.render.use_stamp = False
-        bpy.context.scene.render.image_settings.color_mode = "RGB"
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
+            bpy.context.scene.render.image_settings.media_type = "VIDEO"
+            bpy.context.scene.render.ffmpeg.format = "MPEG4"
+            bpy.context.scene.render.ffmpeg.codec = "H264"
+            bpy.context.scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
+            bpy.context.scene.render.ffmpeg.ffmpeg_preset = "REALTIME"
+            bpy.context.scene.render.ffmpeg.video_bitrate = 4000
+        else:
+            bpy.context.scene.render.image_settings.media_type = "IMAGE"
+            bpy.context.scene.render.image_settings.file_format = "PNG"
+            bpy.context.scene.render.image_settings.color_mode = "RGB"
 
         bpy.context.scene.render.resolution_x = 200
         bpy.context.scene.render.resolution_y = 200
         bpy.context.scene.render.resolution_percentage = 100
-        if itemType == "ANIMATION":
+        # for performance improvements
+        bpy.context.scene.render.use_simplify = True
+        bpy.context.scene.render.simplify_subdivision = 0
+        bpy.context.scene.render.simplify_child_particles = 0
+        bpy.context.scene.render.simplify_volumes = True
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
             bpy.context.scene.frame_step = self.createPosewidget.spinBox.value()
             bpy.context.scene.frame_start = (
                 self.createPosewidget.fromRangeSpinBox.value()
             )
             bpy.context.scene.frame_end = self.createPosewidget.toRangeSpinBox.value()
+        success = False
         # set context with self.context before calling blender operations
         with bpy.context.temp_override(
             area=self.context["area"],
@@ -1078,41 +1501,51 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             space_data=self.context["space_data"],
             window=self.context["window"],
         ):
-            if itemType == "POSE":
-                self.poseCreateThumbnail()
-            elif itemType == "ANIMATION":
-                self.animCreateThumbnail()
+            if itemType in ["POSE", "MULTI POSE"]:
+                success = self.poseCreateThumbnail()
+            elif itemType in ["ANIMATION", "MULTI ANIMATION"]:
+                success = self.animCreateThumbnail()
             elif itemType == "CONSTRAINT SET":
-                self.constraintCreateThumbnail()
+                success = self.constraintCreateThumbnail()
             elif itemType == "SELECTION SET":
-                self.selectionCreateThumbnail()
-        # Wait for end of render to call createThumbnailEnd
-        bpy.app.timers.register(
-            lambda: self.createThumbnailEnd(itemType=itemType), first_interval=0.1
-        )
+                success = self.selectionCreateThumbnail()
+            # elif itemType == "MULTI ANIMATION":
+            #     success = self.multiAnimCreateThumbnail()
+            # elif itemType == "MULTI POSE":
+            #     success = self.multiPoseCreateThumbnail()
+
+        if success:
+            # Wait for end of render to call createThumbnailEnd
+            bpy.app.timers.register(
+                lambda: self.createThumbnailEnd(itemType=itemType), first_interval=0.1
+            )
 
     def createThumbnailEnd(self, itemType="POSE"):
         """Second click on the create thumbnail button,create item files"""
+
         # Check if render is done before ending
-        lastFrame = bpy.context.scene.render.filepath.replace(
-            ".####.", "." + format(bpy.context.scene.frame_end, "04d") + "."
-        )
-        lastFrameList = []
-        for i in range(bpy.context.scene.frame_step):
-            lastFrameList.append(
-                bpy.context.scene.render.filepath.replace(
-                    ".####.", "." + format(bpy.context.scene.frame_end + i, "04d") + "."
-                )
-            )
-        foundLastFrame = False
-        for lastFramePath in lastFrameList:
-            if os.path.exists(lastFramePath):
-                foundLastFrame = True
-                break
-        if not foundLastFrame:
-            # Try again in 0.5 sec
-            print("Wait for " + lastFrame)
-            return 0.5
+        # lastFrame = bpy.context.scene.render.filepath.replace(
+        #     ".####.", "." + format(bpy.context.scene.frame_end, "04d") + "."
+        # )
+        # lastFrameList = []
+        # for i in range(bpy.context.scene.frame_step):
+        #     lastFrameList.append(
+        #         bpy.context.scene.render.filepath.replace(
+        #             ".####.", "." + format(bpy.context.scene.frame_end + i, "04d") + "."
+        #         )
+        #     )
+        # foundLastFrame = False
+        # for lastFramePath in lastFrameList:
+        #     if os.path.exists(lastFramePath):
+        #         foundLastFrame = True
+        #         break
+        # if not foundLastFrame:
+        #     # Try again in 0.5 sec
+        #     print("Wait for " + lastFrame)
+        #     return 0.5
+        if bpy.app.is_job_running("RENDER"):
+            # print("still rendering")
+            return 0.1
         # Reset overlays
         try:
             with bpy.context.temp_override(
@@ -1123,45 +1556,48 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 space_data=self.context["space_data"],
                 window=self.context["window"],
             ):
-                if itemType in ["ANIMATION", "POSE"]:
+                if itemType in ["ANIMATION", "POSE", "MULTI ANIMATION", "MULTI POSE"]:
                     bpy.context.space_data.overlay.show_overlays = True
                 elif itemType == "SELECTION SET":
                     bpy.ops.development.show_overlay_params()
         except Exception as e:
             print("Could not set the overlay parameters : " + str(e))
 
-        itemdata = {}
-        # Read Json Datas
-        if os.path.exists(self.jsonTempPath):
-            with open(self.jsonTempPath) as file:
-                itemdata = json.load(file)
-        if itemType != "CONSTRAINT SET":
-            if "objects" in itemdata.keys():
-                if len(itemdata["objects"]) != 1:
-                    QtWidgets.QMessageBox.about(
-                        self,
-                        "Abort action",
-                        "Found no or several selected objects. Need exactly one.",
-                    )
-                    os.remove(self.thumbTempPath)
-                    os.remove(self.jsonTempPath)
-            # manage display
-            if "bones" in itemdata.keys():
-                self.createPosewidget.contentLabel.setText(
-                    str(itemdata["bones"]) + " bone(s)"
-                )
-            else:
-                self.createPosewidget.contentLabel.setText("")
-        else:
-            msg = ""
-            if "objects" in itemdata.keys():
-                msg += str(len(itemdata["objects"])) + " object(s) \n"
-            if "bones" in itemdata.keys():
-                msg += str(itemdata["bones"]) + " bone(s)"
-            self.createPosewidget.contentLabel.setText(msg)
-        self.createPosewidget.pushButton.setText("")
+        # # Display infos on current item in creation
+        # itemdata = {}
+        # # Read Json Datas
+        # if os.path.exists(self.jsonTempPath):
+        #     with open(self.jsonTempPath) as file:
+        #         itemdata = json.load(file)
+        # if itemType not in ["CONSTRAINT SET", "MULTI ANIMATION", "MULTI POSE"]:
+        #     if "objects" in itemdata.keys():
+        #         if len(itemdata["objects"]) != 1:
+        #             QtWidgets.QMessageBox.about(
+        #                 self,
+        #                 "Abort action",
+        #                 "Found no or several selected objects. Need exactly one.",
+        #             )
+        #             os.remove(self.thumbTempPath)
+        #             if os.path.exists(self.jsonTempPath):
+        #                 os.remove(self.jsonTempPath)
+        #     # manage display
+        #     if "bones" in itemdata.keys():
+        #         self.createPosewidget.contentLabel_2.setText(
+        #             str(itemdata["bones"]) + " bone(s)"
+        #         )
+        #     else:
+        #         self.createPosewidget.contentLabel_2.setText("")
+        # else:
+        #     msg = ""
+        #     if "objects" in itemdata.keys():
+        #         msg += str(len(itemdata["objects"])) + " object(s) \n"
+        #     if "bones" in itemdata.keys():
+        #         msg += str(itemdata["bones"]) + " bone(s)"
+        #     self.createPosewidget.contentLabel_2.setText(msg)
+        # self.createPosewidget.pushButton.setText("")
+
         icon = QtGui.QIcon()
-        if itemType == "ANIMATION":
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
             thumbpath = os.path.join(os.path.dirname(self.thumbTempPath), "sequence")
             # Create GIF
             try:
@@ -1176,7 +1612,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         else:
             thumbpath = self.thumbTempPath
         if os.path.isfile(thumbpath):
-            if itemType == "ANIMATION":
+            if itemType in ["ANIMATION", "MULTI ANIMATION"]:
                 movie = QtGui.QMovie(thumbpath, QtCore.QByteArray(), self)
                 movie.frameChanged.connect(self.createPosewidget.updateMovie)
                 movie.setCacheMode(QtGui.QMovie.CacheAll)
@@ -1192,24 +1628,24 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 )
                 self.createPosewidget.pushButton.setIcon(icon)
         else:
-            icon.addPixmap(
-                QtGui.QPixmap("icons/photo.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
-            )
+            iconPath = "icons/photo.png"
+            icon.addPixmap(QtGui.QPixmap(iconPath), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self.createPosewidget.pushButton.setIcon(icon)
 
         # put back previous render settings
         bpy.context.scene.render.filepath = self.renderPath
+        bpy.context.scene.render.image_settings.media_type = self.mediaType
         bpy.context.scene.render.image_settings.file_format = self.renderFormat
         bpy.context.scene.render.resolution_x = self.xres
         bpy.context.scene.render.resolution_y = self.yres
         bpy.context.scene.render.resolution_percentage = self.respercentage
         bpy.context.scene.render.use_stamp = self.use_stamp
         bpy.context.scene.render.image_settings.color_mode = self.color_mode
-        if itemType == "ANIMATION":
+        bpy.context.scene.render.use_simplify = False
+        if itemType in ["ANIMATION", "MULTI ANIMATION"]:
             bpy.context.scene.frame_step = self.frameStep
             bpy.context.scene.frame_start = self.frameStart
             bpy.context.scene.frame_end = self.frameEnd
-
         # Close render window
         try:
             override = None
@@ -1235,11 +1671,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         except Exception as e:
             print("Couldn't close render window : " + str(e))
 
-    def resizeEvent(self, event):
-        """Manage window resizing"""
-        self.resized.emit()
-        return super(GaoLib, self).resizeEvent(event)
-
     def folderSelected(self):
         """Update treeView to display selected folder content"""
         indexes = self.treeSelectionModel.selection().indexes()
@@ -1248,7 +1679,13 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 indexes[0], QtCore.Qt.UserRole
             )
             if selectedItem:
-                self.treeElementSelected(selectedItem)
+                # if selected folder is an item folder, select its parent
+                if selectedItem.isItem:
+                    self.treeElementSelected(
+                        selectedItem.parent, selectListItem=selectedItem.name
+                    )
+                else:
+                    self.treeElementSelected(selectedItem)
             else:
                 print("Warning : Selected Item is None")
 
@@ -1273,7 +1710,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.infoWidget = GaoLibInfoWidget(selectedItem, self, parent=self)
         self.infoWidget.infoGroupBox.setToolTip(self.infoWidget.nameLabel.text())
         layout.addWidget(self.infoWidget)
-        if selectedItem.itemType == "POSE":
+        if selectedItem.itemType in ["POSE", "MULTI POSE"]:
             # check if exists mirror pose
             itemDir = selectedItem.path
             flipped = os.path.join(itemDir, "pose_flipped.blend")
@@ -1289,7 +1726,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 )
             )
 
-        elif selectedItem.itemType == "ANIMATION":
+        elif selectedItem.itemType in ["ANIMATION", "MULTI ANIMATION"]:
             self.infoWidget.applyPushButton.released.connect(
                 lambda: self.applyPose(itemType=selectedItem.itemType)
             )
@@ -1298,8 +1735,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 lambda: self.applyPose(itemType=selectedItem.itemType)
             )
 
-    def treeElementSelected(self, selectedItem):
+    def treeElementSelected(self, selectedItem, selectListItem=None):
         """Manage selection in tree view"""
+
         self.currentTreeElement = selectedItem
         self.items = self.getListItems()
         self.setListView()
@@ -1307,20 +1745,41 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.rootPath = selectedItem.ancestors[1].path
         else:
             self.rootPath = selectedItem.path
+        if selectListItem:
+            model = self.listView.model()
+            for row in range(model.rowCount()):
+                idx = model.index(row, 0)
+                item = idx.data(QtCore.Qt.UserRole)
+                if item.name == selectListItem:
+                    # self.listView.selectionModel().clear()
+                    self.listView.selectionModel().select(
+                        idx, QtCore.QItemSelectionModel.Select
+                    )
 
     def recursivelyPopulateTreeView(self, parentItem, itemPath, newName=None, step=0):
         """Recursively populate treeView by parsing directories from the ROOT directory"""
         ancestors = parentItem.ancestors + [parentItem]
+        itemSuffixes = [
+            "anim",
+            "selection",
+            "pose",
+            "constraint",
+            "multi_pose",
+            "multi_anim",
+        ]
         for directory in os.listdir(itemPath):
             if step == 0 and directory != "ROOT":
                 continue
             directoryPath = os.path.join(itemPath, directory)
-            if (
+
+            if "." in directory and directory.split(".")[-1] in itemSuffixes:
+                # Create Item
+                item = GaoLibTreeItem(
+                    directory, ancestors=ancestors, path=directoryPath, newName=newName
+                )
+                parentItem.addChild(item)
+            elif (
                 os.path.isdir(directoryPath)
-                and ".anim" not in directory
-                and ".selection" not in directory
-                and ".pose" not in directory
-                and ".constraint" not in directory
                 and directory != "trash"
                 and not directory.startswith(".")
             ):
@@ -1332,57 +1791,84 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
                 self.recursivelyPopulateTreeView(item, directoryPath, step=step + 1)
 
+    def onThumbLoaded(self, key):
+        # refresh the view when thumbnail is loaded from cache
+        model = self.listView.model()
+        for row in range(model.rowCount()):
+            idx = model.index(row, 0)
+            item = idx.data(QtCore.Qt.UserRole)
+            if item.thumbpath == key:
+                self.listView.viewport().update(self.listView.visualRect(idx))
+
     def getListItems(self):
         """Display current selected folder content in listView"""
         recursiveSearch = self.recursiveDisplayMode
         folderPath = self.currentTreeElement.path
         items = {}
+        QtGui.QPixmapCache.setCacheLimit(102400)
         # Parse folder
         if recursiveSearch:
             i = 0
             for root, dirs, files in os.walk(folderPath):
                 for it in dirs:
                     itPath = os.path.join(root, it)
-                    if os.path.isdir(itPath):
-                        if (
-                            it.endswith(".anim")
-                            or it.endswith(".pose")
-                            or it.endswith(".selection")
-                            or it.endswith(".constraint")
-                        ):
-                            thumbnailPath = os.path.join(itPath, "thumbnail.png")
-                            if os.path.isfile(thumbnailPath):
-                                thumbpath = thumbnailPath
-                            else:
-                                thumbpath = None
-
-                            # Create Item
-                            gaoLibItem = GaoLibItem(
-                                name=it, thumbpath=thumbpath, path=itPath
-                            )
-                            items[i] = gaoLibItem
-                            i += 1
+                    if (
+                        it.endswith(".anim")
+                        or it.endswith(".pose")
+                        or it.endswith(".selection")
+                        or it.endswith(".constraint")
+                        or it.endswith(".multi_pose")
+                        or it.endswith(".multi_anim")
+                    ):
+                        if os.path.isfile(itPath + "/todelete"):
+                            try:
+                                shutil.rmtree(itPath)
+                            except:
+                                pass
+                            continue
+                        stamped = os.path.join(itPath, "thumbnail_stamped.png")
+                        stamped = stamped.replace("\\", "/")
+                        if not os.path.isfile(stamped):
+                            stamped = os.path.join(itPath, "thumbnail.png")
+                            if not os.path.isfile(stamped):
+                                stamped = "icons/nopreview2.png"
+                        # Create Item
+                        gaoLibItem = GaoLibItem(name=it, thumbpath=stamped, path=itPath)
+                        items[i] = gaoLibItem
+                        i += 1
         else:
             i = 0
             for it in os.listdir(folderPath):
                 itPath = os.path.join(folderPath, it)
                 if os.path.isdir(itPath):
-                    thumbnailPath = os.path.join(itPath, "thumbnail.png")
+                    if os.path.isfile(itPath + "/todelete"):
+                        try:
+                            shutil.rmtree(itPath)
+                        except:
+                            pass
+                        continue
+                    thumbnailPath = os.path.join(itPath, "thumbnail_stamped.png")
                     if os.path.isfile(thumbnailPath):
-                        thumbpath = thumbnailPath
+                        thumbpath = thumbnailPath.replace("\\", "/")
+                    elif os.path.isfile(thumbnailPath.replace("_stamped", "")):
+                        thumbpath = thumbnailPath.replace("_stamped", "").replace(
+                            "\\", "/"
+                        )
                     elif (
                         os.path.isdir(itPath)
                         and not it.endswith(".anim")
                         and not it.endswith(".pose")
                         and not it.endswith(".selection")
                         and not it.endswith(".constraint")
+                        and not it.endswith(".multi_pose")
+                        and not it.endswith(".multi_anim")
                     ):
                         thumbpath = os.path.join(
                             os.path.dirname(os.path.realpath(__file__)),
                             "icons/folder2.png",
                         )
                     else:
-                        thumbpath = None
+                        thumbpath = "icons/nopreview2.png"
 
                     # Create Item
                     gaoLibItem = GaoLibItem(name=it, thumbpath=thumbpath, path=itPath)
@@ -1459,6 +1945,24 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.proxyModel = QtCore.QSortFilterProxyModel()
         self.proxyModel.setSourceModel(model)
         self.listView.setModel(self.proxyModel)
+        # use a delegate to play the gif when hovering on item
+        delegate = HoverDelegate(self.listView)
+        self.listView.setItemDelegate(delegate)
+        # display optimization
+        self.listView.setViewMode(QtWidgets.QListView.IconMode)
+        self.listView.setResizeMode(QtWidgets.QListView.Adjust)
+        # necessary to detect hover
+        self.listView.setMouseTracking(True)
+
+        # call to gif player when hovering
+        def on_hover_changed(index):
+            if index:
+                delegate.set_hover_index(index)
+            else:
+                delegate.clear_hover_index()
+
+        self.listView.hoverChanged.connect(on_hover_changed)
+        #
         self.listView.selectionModel().selectionChanged.connect(self.listItemSelected)
         self.proxyModel.sort(0, QtCore.Qt.AscendingOrder)
         self.proxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
@@ -1513,9 +2017,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def initUi(self):
         """INIT"""
-        self.configPath = os.path.join(
+        sharedConfig = os.path.join(
             os.path.dirname(os.path.abspath(__file__)), "config", "config.json"
         )
+        self.configPath = os.path.join(
+            os.path.expanduser("~"), "blenderTemp", "gaolib_config", "config.json"
+        )
+        if not os.path.isfile(self.configPath) and os.path.isfile(sharedConfig):
+            if not os.path.isdir(os.path.dirname(self.configPath)):
+                os.makedirs(os.path.dirname(self.configPath))
+            shutil.copyfile(sharedConfig, self.configPath)
 
         self.setTreeView()
 
@@ -1526,16 +2037,20 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     def filterTree(self):
         """Manage text filter research for treeView"""
         filterText = self.searchHierarchyEdit.text().lower()
-        if len(filterText):
-            self.hierarchyTreeView.expandToDepth(-1)
-        else:
-            self.hierarchyTreeView.collapseAll()
+        # if len(filterText):
+        #     self.hierarchyTreeView.expandToDepth(-1)
+        # else:
+        #     print('hereh collapse')
+        #     self.hierarchyTreeView.collapseAll()
+
         regExp = QtCore.QRegularExpression(
             str(filterText), QtCore.QRegularExpression.CaseInsensitiveOption
         )
         self.treeItemProxyModel.text = filterText
         self.treeItemProxyModel.setFilterRegularExpression(regExp)
         self.hierarchyTreeView.expandAll()
+        if not len(filterText):
+            self.hierarchyTreeView.expandToDepth(0)
 
     @QtCore.Slot()
     def filterList(self):

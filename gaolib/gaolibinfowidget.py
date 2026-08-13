@@ -39,29 +39,44 @@ from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
 class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
     def __init__(
         self,
+        objectName,
         constraintName,
         bone,
         targetBone,
         targetObject,
-        comboList,
+        actualObject,
+        actualTargetObject,
+        # comboList,
         parent=None,
     ):
         super(ConstrainInfoWidget, self).__init__(parent=parent)
         self.setupUi(self)
         self.groupBox.setTitle(constraintName)
+        self.sourceObject = objectName
         self.constraintName = constraintName
         self.targetObject = targetObject
         self.targetBone = bone
+        self.sourceObjectLabel.setText(objectName)
+        self.sourceObjectLabel.setToolTip(objectName)
         self.boneLabel.setText(bone)
         self.boneLabel.setToolTip(bone)
         self.sourceTargetLabel.setText(targetObject)
         self.sourceTargetLabel.setToolTip(targetObject)
         self.targetBoneLabel.setText(targetBone)
         self.targetBoneLabel.setToolTip(targetBone)
-        self.comboBox.addItems(comboList)
-        index = self.comboBox.findText(self.targetObject)
-        if index >= 0:
-            self.comboBox.setCurrentIndex(index)
+        self.applyTargetLabel.setText(actualTargetObject)
+        self.applyTargetLabel.setToolTip(actualTargetObject)
+        self.applyObjectLabel.setText(actualObject)
+        self.applyObjectLabel.setToolTip(actualObject)
+        self.applyTargetBoneLabel.setText(targetBone)
+        self.applyBoneLabel.setText(bone)
+        self.applyConstraintCheckBox.setChecked(True)
+        self.sourceWidget.setVisible(False)
+        self.line.setVisible(False)
+        # self.comboBox.addItems(comboList)
+        # index = self.comboBox.findText(self.targetObject)
+        # if index >= 0:
+        #     self.comboBox.setCurrentIndex(index)
 
 
 class PairingWidget(QtWidgets.QWidget, Pairing_Form):
@@ -70,9 +85,11 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
         objectName,
         comboList,
         constraintDict,
+        itemType="CONSTRAINT SET",
         parent=None,
     ):
         super(PairingWidget, self).__init__(parent=parent)
+        self.parentInfoWidget = parent
         self.setupUi(self)
         self.objectName = objectName
         self.objectNameLabel.setText(objectName)
@@ -82,6 +99,8 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
             self.armatureComboBox.setCurrentIndex(index)
 
         self.constraintInfoWidgets = []
+        # if itemType != "CONSTRAINT SET":
+        #     return
 
         if objectName in constraintDict.keys():
             if "bone_constraints" in constraintDict[objectName].keys():
@@ -97,46 +116,42 @@ class PairingWidget(QtWidgets.QWidget, Pairing_Form):
                                 targetBone = consDict["subtarget"]
                             else:
                                 targetBone = None
-                            targetObject = consDict["target"]["name"]
+                            targetObject = ""
+                            if (
+                                consDict["target"] != "None"
+                                and "name" in consDict["target"].keys()
+                            ):
+                                targetObject = consDict["target"]["name"]
                             constraintItem = ConstrainInfoWidget(
+                                objectName,
                                 constraintName,
                                 bone,
                                 targetBone,
                                 targetObject,
-                                comboList,
+                                # comboList,
+                                "",
+                                "",
                                 parent=None,
                             )
-                            self.widgetVerticalLayout.addWidget(constraintItem)
+                            # self.widgetVerticalLayout.addWidget(constraintItem)
                             self.constraintInfoWidgets.append(constraintItem)
+        self.armatureComboBox.currentTextChanged.connect(
+            lambda: self.parentInfoWidget.updateConstraintsTarget()
+        )
 
 
-class CustomSliderWidget(QtWidgets.QSlider):
-    def __init__(self, parent=None):
-        super(CustomSliderWidget, self).__init__(parent=parent)
+class SliderEventFilter(QtCore.QObject):
+    def __init__(self, parent=...):
+        super().__init__(parent)
+        self.parentInfoWidget = parent
 
-    def mousePressEvent(self, event: QtGui.QMouseEvent):
-        # manage cancel blending at right click
-        if event.button() == QtCore.Qt.RightButton:
-            self.setValue(0)
-            self.valueChanged.disconnect()
-            self.valueChanged.connect(lambda: self.setValue(0))
-            self.parentInfoWidget.mainWindow.statusBar().showMessage(
-                "Cancel Blending",
-                timeout=5000,
-            )
-        super(CustomSliderWidget, self).mousePressEvent(event)
-
-    def mouseReleaseEvent(self, event: QtGui.QMouseEvent):
-        if event.button() == QtCore.Qt.LeftButton:
-            self.valueChanged.disconnect()
-            self.valueChanged.connect(
-                lambda: self.parentInfoWidget.blendSliderChanged(
-                    self.parentInfoWidget.item.path,
-                    blend=self.parentInfoWidget.blendPoseSlider.value() / 100,
-                )
-            )
-
-        super(CustomSliderWidget, self).mouseReleaseEvent(event)
+    def eventFilter(self, obj, event):
+        if event.type() == QtCore.QEvent.MouseButtonPress:
+            if event.button() == QtCore.Qt.RightButton:
+                self.parentInfoWidget.onSliderPressed()
+        elif event.type() == QtCore.QEvent.MouseButtonRelease:
+            if event.button() == QtCore.Qt.LeftButton:
+                self.parentInfoWidget.onSliderReleased()
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
@@ -153,20 +168,23 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.refPose = None
         self.bonesToBlend = None
         self.toggleAdditive = False
-        utils.removeOrphans()
+        self.pairWidgets = []
+        # utils.removeOrphans()
 
         # allow frame range in negative
         self.fromRangeSpinBox.setMinimum(-1000000)
         self.toRangeSpinBox.setMinimum(-1000000)
 
-        # recast blendPoseSlider
-        self.blendPoseSlider.__class__ = CustomSliderWidget
-        self.blendPoseSlider.parentInfoWidget = self
+        # event filter on slider
+        self.filter = SliderEventFilter(self)
+        self.blendPoseSlider.installEventFilter(self.filter)
 
         # For animation item use gif thumbnail
         self.movie = None
-        if self.item.itemType == "ANIMATION":
-            self.thumbpath = self.item.thumbpath.replace("png", "gif")
+        if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
+            self.thumbpath = self.item.thumbpath.replace("png", "gif").replace(
+                "_stamped", ""
+            )
         self.showInfos()
         # Connect functions
         self.trashPushButton.released.connect(self.delete)
@@ -188,6 +206,26 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.updateConstraintPairingList
         )
         self.flippedCheckBox.checkStateChanged.connect(self.flippedChange)
+
+    def onSliderPressed(self):
+        self.blendPoseSlider.setValue(0)
+        self.blendPoseSlider.valueChanged.disconnect()
+        self.blendPoseSlider.valueChanged.connect(
+            lambda: self.blendPoseSlider.setValue(0)
+        )
+        self.mainWindow.statusBar().showMessage(
+            "Cancel Blending",
+            timeout=5000,
+        )
+
+    def onSliderReleased(self):
+        self.blendPoseSlider.valueChanged.disconnect()
+        self.blendPoseSlider.valueChanged.connect(
+            lambda: self.blendSliderChanged(
+                self.item.path,
+                blend=self.blendPoseSlider.value() / 100,
+            )
+        )
 
     def flippedChange(self):
         self.blendPoseSlider.setValue(0)
@@ -254,6 +292,12 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     suffix = ".anim"
                     name = name.split(".")[0] + suffix
                     wrongName = True
+                if self.item.itemType == "MULTI ANIMATION" and not name.endswith(
+                    ".multi_anim"
+                ):
+                    suffix = ".multi_anim"
+                    name = name.split(".")[0] + suffix
+                    wrongName = True
                 elif self.item.itemType == "SELECTION SET" and not name.endswith(
                     ".selection"
                 ):
@@ -262,13 +306,19 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                     wrongName = True
                 elif self.item.itemType == "POSE" and not name.endswith(".pose"):
                     suffix = ".pose"
-                    name = name.split(".")[0] + ".pose"
+                    name = name.split(".")[0] + suffix
+                    wrongName = True
+                elif self.item.itemType == "MULTI POSE" and not name.endswith(
+                    ".multi_pose"
+                ):
+                    suffix = ".multi_pose"
+                    name = name.split(".")[0] + suffix
                     wrongName = True
                 elif self.item.itemType == "CONSTRAINT SET" and not name.endswith(
                     ".constraint"
                 ):
                     suffix = ".constraint"
-                    name = name.split(".")[0] + ".constraint"
+                    name = name.split(".")[0] + suffix
                     wrongName = True
                 if wrongName:
                     utils.ShowDialog(
@@ -521,359 +571,20 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         if not self.bonesToBlend:
             self.bonesToBlend = self.getBonesToBlend(poseDir, additiveMode=additiveMode)
 
-        refPose = self.refPose
-        pose = refPose.pose
         try:
             # Copy properties from ref bones current object
             for posebone, selectedbone in self.bonesToBlend.items():
-                # Manage if different rotation modes used (WARNING : axis angle not supported !)
-                rotationMode = posebone.rotation_mode
-                if (
-                    rotationMode == "AXIS_ANGLE"
-                    or selectedbone.rotation_mode == "AXIS_ANGLE"
-                ):
-                    raise Exception(
-                        "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
-                    )
-                elif (
-                    rotationMode == "QUATERNION"
-                    and self.currentPose[selectedbone]["rotationMode"] != "QUATERNION"
-                ):
-                    currentPoseRotation = self.currentPose[selectedbone][
-                        "rotation"
-                    ].to_quaternion()
-                elif (
-                    rotationMode != "QUATERNION"
-                    and self.currentPose[selectedbone]["rotationMode"] == "QUATERNION"
-                ):
-                    currentPoseRotation = self.currentPose[selectedbone][
-                        "rotation"
-                    ].to_euler()
-                elif rotationMode == self.currentPose[selectedbone]["rotationMode"]:
-                    currentPoseRotation = self.currentPose[selectedbone]["rotation"]
-                else:
-                    raise Exception(
-                        "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
-                    )
-
-                selectedbone.rotation_mode = rotationMode
-
-                for axis in range(3):
-                    if not selectedbone.lock_location[axis]:
-                        if additiveMode:
-                            selectedbone.location[axis] = (
-                                blend * posebone.location[axis]
-                                + self.currentPose[selectedbone]["location"][axis]
-                            )
-                        else:
-                            selectedbone.location[axis] = (
-                                blend * posebone.location[axis]
-                                + (1 - blend)
-                                * self.currentPose[selectedbone]["location"][axis]
-                            )
-                    if rotationMode != "QUATERNION":
-                        if not selectedbone.lock_rotation[axis]:
-                            if additiveMode:
-                                selectedbone.rotation_euler[axis] = (
-                                    blend * posebone.rotation_euler[axis]
-                                    + currentPoseRotation[axis]
-                                )
-                            else:
-                                selectedbone.rotation_euler[axis] = (
-                                    blend * posebone.rotation_euler[axis]
-                                    + (1 - blend) * currentPoseRotation[axis]
-                                )
-                    if not selectedbone.lock_scale[axis]:
-                        if additiveMode:
-                            selectedbone.scale[axis] = (
-                                blend * posebone.scale[axis]
-                                + self.currentPose[selectedbone]["scale"][axis]
-                                - blend
-                            )
-                        else:
-                            selectedbone.scale[axis] = (
-                                blend * posebone.scale[axis]
-                                + (1 - blend)
-                                * self.currentPose[selectedbone]["scale"][axis]
-                            )
-                if rotationMode == "QUATERNION":
-                    if not selectedbone.lock_rotation[0]:
-                        if additiveMode:
-                            selectedbone.rotation_quaternion[0] = (
-                                blend * posebone.rotation_quaternion[0]
-                                + currentPoseRotation[0]
-                                - blend
-                            )
-                        else:
-                            selectedbone.rotation_quaternion[0] = (
-                                blend * posebone.rotation_quaternion[0]
-                                + (1 - blend) * currentPoseRotation[0]
-                            )
-                    for axis in range(3):
-                        if not selectedbone.lock_rotation[axis]:
-                            if additiveMode:
-                                selectedbone.rotation_quaternion[axis + 1] = (
-                                    blend * posebone.rotation_quaternion[axis + 1]
-                                    + currentPoseRotation[axis + 1]
-                                )
-                            else:
-                                selectedbone.rotation_quaternion[axis + 1] = (
-                                    blend * posebone.rotation_quaternion[axis + 1]
-                                    + (1 - blend) * currentPoseRotation[axis + 1]
-                                )
-                # handle properties
-                for key in posebone.keys():
-                    try:
-                        propertyType = eval("selectedbone." + key).__class__.__name__
-                        if propertyType == "float":
-                            exec(
-                                "selectedbone."
-                                + key
-                                + " = blend * posebone."
-                                + key
-                                + " + (1-blend) * self.currentPose[selectedbone]."
-                                + key
-                            )
-                        else:
-                            exec("selectedbone." + key + " = posebone." + key)
-                    except:
-                        try:
-                            propertyType = eval(
-                                'selectedbone["' + key + '"]'
-                            ).__class__.__name__
-                            if propertyType == "float":
-                                command = (
-                                    'selectedbone["'
-                                    + key
-                                    + '"] = blend * posebone["'
-                                    + key
-                                    + '"]'
-                                    + '+ (1-blend) * self.currentPose[selectedbone]["properties"]["'
-                                    + key
-                                    + '"]'
-                                )
-                                exec(command)
-                            else:
-                                exec(
-                                    'selectedbone["'
-                                    + key
-                                    + '"] = posebone["'
-                                    + key
-                                    + '"]'
-                                )
-                        except:
-                            print(
-                                "IMPOSSIBLE TO HANDLE PROPERTY "
-                                + key
-                                + " FOR "
-                                + selectedbone.name
-                            )
+                utils.copyBoneProperties(
+                    posebone,
+                    selectedbone,
+                    self.currentPose,
+                    blend,
+                    False,
+                    additiveMode=additiveMode,
+                    cleanOnError=False,
+                )
         except Exception as e:
             print("Blend Pose Exception : " + str(e))
-
-    # def blendSliderChanged(self, poseDir, blend=1):
-    #     """Update pose from current scene according to the blend slider parameter value"""
-    #     # Refresh display
-    #     additiveMode = self.additiveModeCheckBox.isChecked()
-    #     value = self.blendPoseSlider.value()
-    #     if additiveMode:
-    #         self.blendPoseLabel.setText("Add to Pose " + str(value) + "%")
-    #     else:
-    #         self.blendPoseLabel.setText("Blend Pose " + str(value) + "%")
-    #     if value:
-    #         self.applyPushButton.setText("APPLY " + str(value) + "%")
-    #     else:
-    #         self.applyPushButton.setText("APPLY 100 %")
-    #     # If additive mode checkbox has just been toggled, do not update pose
-    #     if self.toggleAdditive:
-    #         self.toggleAdditive = False
-    #         return
-    #     # get pose selection set
-    #     itemdata = {}
-    #     jsonPath = os.path.join(poseDir, "pose.json")
-    #     with open(jsonPath) as file:
-    #         itemdata = json.load(file)
-    #     selectionSetBones = []
-    #     for key in itemdata["metadata"].keys():
-    #         if key == "boneNames":
-    #             selectionSetBones = itemdata["metadata"]["boneNames"]
-    #     # Remember current pose
-    #     selection = utils.getSelectedBones()
-    #     if not self.currentPose:
-    #         self.currentPose = utils.getCurrentPose()
-    #     # Append pose object
-    #     if not self.refPose:
-    #         self.refPose = utils.getRefPoseFromLib(poseDir, selection)
-    #     refPose = self.refPose
-    #     pose = refPose.pose
-    #     try:
-    #         # Copy properties from ref bones current object
-    #         for posebone in pose.bones:
-    #             for selectedbone in selection:
-    #                 if not selectedbone.name in selectionSetBones:
-    #                     # ignore bones outside original pose selection set
-    #                     continue
-    #                 if posebone.name == selectedbone.name:
-    #                     # Manage if different rotation modes used (WARNING : axis angle not supported !)
-    #                     rotationMode = posebone.rotation_mode
-    #                     if (
-    #                         rotationMode == "AXIS_ANGLE"
-    #                         or selectedbone.rotation_mode == "AXIS_ANGLE"
-    #                     ):
-    #                         raise Exception(
-    #                             "AXIS_ANGLE Rotation mode not supported, use QUATERNION or Euler."
-    #                         )
-    #                     elif (
-    #                         rotationMode == "QUATERNION"
-    #                         and self.currentPose[selectedbone]["rotationMode"]
-    #                         != "QUATERNION"
-    #                     ):
-    #                         currentPoseRotation = self.currentPose[selectedbone][
-    #                             "rotation"
-    #                         ].to_quaternion()
-    #                     elif (
-    #                         rotationMode != "QUATERNION"
-    #                         and self.currentPose[selectedbone]["rotationMode"]
-    #                         == "QUATERNION"
-    #                     ):
-    #                         currentPoseRotation = self.currentPose[selectedbone][
-    #                             "rotation"
-    #                         ].to_euler()
-    #                     elif (
-    #                         rotationMode
-    #                         == self.currentPose[selectedbone]["rotationMode"]
-    #                     ):
-    #                         currentPoseRotation = self.currentPose[selectedbone][
-    #                             "rotation"
-    #                         ]
-    #                     else:
-    #                         raise Exception(
-    #                             "Conversion between Rotation modes other than QUATERNION and Euler are not supported !"
-    #                         )
-
-    #                     selectedbone.rotation_mode = rotationMode
-
-    #                     for axis in range(3):
-    #                         if not selectedbone.lock_location[axis]:
-    #                             if additiveMode:
-    #                                 selectedbone.location[axis] = (
-    #                                     blend * posebone.location[axis]
-    #                                     + self.currentPose[selectedbone]["location"][
-    #                                         axis
-    #                                     ]
-    #                                 )
-    #                             else:
-    #                                 selectedbone.location[axis] = (
-    #                                     blend * posebone.location[axis]
-    #                                     + (1 - blend)
-    #                                     * self.currentPose[selectedbone]["location"][
-    #                                         axis
-    #                                     ]
-    #                                 )
-    #                         if rotationMode != "QUATERNION":
-    #                             if not selectedbone.lock_rotation[axis]:
-    #                                 if additiveMode:
-    #                                     selectedbone.rotation_euler[axis] = (
-    #                                         blend * posebone.rotation_euler[axis]
-    #                                         + currentPoseRotation[axis]
-    #                                     )
-    #                                 else:
-    #                                     selectedbone.rotation_euler[axis] = (
-    #                                         blend * posebone.rotation_euler[axis]
-    #                                         + (1 - blend) * currentPoseRotation[axis]
-    #                                     )
-    #                         if not selectedbone.lock_scale[axis]:
-    #                             if additiveMode:
-    #                                 selectedbone.scale[axis] = (
-    #                                     blend * posebone.scale[axis]
-    #                                     + self.currentPose[selectedbone]["scale"][axis]
-    #                                     - blend
-    #                                 )
-    #                             else:
-    #                                 selectedbone.scale[axis] = (
-    #                                     blend * posebone.scale[axis]
-    #                                     + (1 - blend)
-    #                                     * self.currentPose[selectedbone]["scale"][axis]
-    #                                 )
-    #                     if rotationMode == "QUATERNION":
-    #                         if not selectedbone.lock_rotation[0]:
-    #                             if additiveMode:
-    #                                 selectedbone.rotation_quaternion[0] = (
-    #                                     blend * posebone.rotation_quaternion[0]
-    #                                     + currentPoseRotation[0]
-    #                                     - blend
-    #                                 )
-    #                             else:
-    #                                 selectedbone.rotation_quaternion[0] = (
-    #                                     blend * posebone.rotation_quaternion[0]
-    #                                     + (1 - blend) * currentPoseRotation[0]
-    #                                 )
-    #                         for axis in range(3):
-    #                             if not selectedbone.lock_rotation[axis]:
-    #                                 if additiveMode:
-    #                                     selectedbone.rotation_quaternion[axis + 1] = (
-    #                                         blend
-    #                                         * posebone.rotation_quaternion[axis + 1]
-    #                                         + currentPoseRotation[axis + 1]
-    #                                     )
-    #                                 else:
-    #                                     selectedbone.rotation_quaternion[axis + 1] = (
-    #                                         blend
-    #                                         * posebone.rotation_quaternion[axis + 1]
-    #                                         + (1 - blend)
-    #                                         * currentPoseRotation[axis + 1]
-    #                                     )
-    #                     # handle properties
-    #                     for key in posebone.keys():
-    #                         try:
-    #                             propertyType = eval(
-    #                                 "selectedbone." + key
-    #                             ).__class__.__name__
-    #                             if propertyType == "float":
-    #                                 exec(
-    #                                     "selectedbone."
-    #                                     + key
-    #                                     + " = blend * posebone."
-    #                                     + key
-    #                                     + " + (1-blend) * self.currentPose[selectedbone]."
-    #                                     + key
-    #                                 )
-    #                             else:
-    #                                 exec("selectedbone." + key + " = posebone." + key)
-    #                         except:
-    #                             try:
-    #                                 propertyType = eval(
-    #                                     'selectedbone["' + key + '"]'
-    #                                 ).__class__.__name__
-    #                                 if propertyType == "float":
-    #                                     command = (
-    #                                         'selectedbone["'
-    #                                         + key
-    #                                         + '"] = blend * posebone["'
-    #                                         + key
-    #                                         + '"]'
-    #                                         + '+ (1-blend) * self.currentPose[selectedbone]["properties"]["'
-    #                                         + key
-    #                                         + '"]'
-    #                                     )
-    #                                     exec(command)
-    #                                 else:
-    #                                     exec(
-    #                                         'selectedbone["'
-    #                                         + key
-    #                                         + '"] = posebone["'
-    #                                         + key
-    #                                         + '"]'
-    #                                     )
-    #                             except:
-    #                                 print(
-    #                                     "IMPOSSIBLE TO HANDLE PROPERTY "
-    #                                     + key
-    #                                     + " FOR "
-    #                                     + selectedbone.name
-    #                                 )
-    #     except Exception as e:
-    #         print("Blend Pose Exception : " + str(e))
 
     def delete(self):
         """Delete selected item"""
@@ -896,10 +607,10 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             # Remember current tree selection
             selectedItemPath = self.mainWindow.currentTreeElement.path
 
-            trashPath = os.path.join(self.mainWindow.rootPath, "../trash")
-            if not os.path.exists(trashPath):
-                os.makedirs(trashPath)
-            trashPath = os.path.join(trashPath, os.path.basename(path))
+            # trashPath = os.path.join(self.mainWindow.rootPath, "../trash")
+            # if not os.path.exists(trashPath):
+            #     os.makedirs(trashPath)
+            # trashPath = os.path.join(trashPath, os.path.basename(path))
 
             # clean info widget
             if self.movie is not None:
@@ -910,83 +621,100 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 layout.itemAt(i).widget().deleteLater()
 
             # delete files
-            copied = False
-            attempts = 0
-            while not copied:
-                try:
-                    shutil.copytree(path, trashPath)
-                    copied = True
-                except FileExistsError:
-                    attempts += 1
-                    try:
-                        trashPath = (
-                            trashPath.split(" Copy (")[0]
-                            + " Copy ("
-                            + str(attempts)
-                            + ")"
-                        )
-                        shutil.copytree(path, trashPath)
-                        copied = True
-                    except:
-                        pass
-                except WindowsError as e:
-                    attempts += 1
-                    if str(e).startswith("[Error 183]"):
-                        try:
-                            trashPath = (
-                                trashPath.split(" Copy (")[0]
-                                + " Copy ("
-                                + str(attempts)
-                                + ")"
-                            )
-                            shutil.copytree(path, trashPath)
-                            copied = True
-                        except:
-                            pass
-                    else:
-                        raise
+            # copied = False
+            # attempts = 0
+            # while not copied:
+            #     try:
+            #         shutil.copytree(path, trashPath)
+            #         copied = True
+            #     except FileExistsError:
+            #         attempts += 1
+            #         try:
+            #             trashPath = (
+            #                 trashPath.split(" Copy (")[0]
+            #                 + " Copy ("
+            #                 + str(attempts)
+            #                 + ")"
+            #             )
+            #             shutil.copytree(path, trashPath)
+            #             copied = True
+            #         except:
+            #             pass
+            #     except WindowsError as e:
+            #         attempts += 1
+            #         if str(e).startswith("[Error 183]"):
+            #             try:
+            #                 trashPath = (
+            #                     trashPath.split(" Copy (")[0]
+            #                     + " Copy ("
+            #                     + str(attempts)
+            #                     + ")"
+            #                 )
+            #                 shutil.copytree(path, trashPath)
+            #                 copied = True
+            #             except:
+            #                 pass
+            #         else:
+            #             raise
             try:
-                if self.item.itemType == "ANIMATION":
+                if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
                     os.remove(os.path.join(path, "thumbnail.gif"))
                 else:
                     os.remove(os.path.join(path, "thumbnail.png"))
-            except Exception as e:
-                if self.item.itemType == "ANIMATION":
-                    QtWidgets.QMessageBox.about(
-                        self,
-                        "Abort action",
-                        "Cannot remove "
-                        + os.path.join(path, "thumbnail.gif")
-                        + " : "
-                        + str(e),
-                    )
-                else:
-                    os.remove(os.path.join(path, "thumbnail.png"))
-                return
-            shutil.rmtree(path)
+            except:
+                pass
+            # except Exception as e:
+            #     if self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
+            #         QtWidgets.QMessageBox.about(
+            #             self,
+            #             "Abort action",
+            #             "Cannot remove "
+            #             + os.path.join(path, "thumbnail.gif")
+            #             + " : "
+            #             + str(e),
+            #         )
+            #     else:
+            #         os.remove(os.path.join(path, "thumbnail.png"))
+            #     return
+            allDeleted = True
+            for f in os.listdir(path):
+                try:
+                    print("removing ", f)
+                    os.remove(path + "/" + f)
+                except:
+                    # if some files could not be deleted, write a todelete file to flag the folder as to be deleted at next startup
+                    allDeleted = False
+                    with open(path + "/todelete", "w") as f:
+                        f.write("")
+            # if all files have been deleted, remove the folder as well
+            if allDeleted:
+                shutil.rmtree(path)
 
             # Remember expanded states in tree view
             expanded = self.mainWindow.getTreeExpandedItems()
-            if self.item.itemType == "FOLDER":
-                # Delete item from model
-                itemPath = self.item.path
-                model = self.mainWindow.treeModel
-                treeItem = model.getElemWithPath(itemPath)
-                if itemPath == selectedItemPath:
-                    selectedItemPath = treeItem.parent.path
-                # Remove item
-                model.removeElement(treeItem)
-                # Update filter
-                self.mainWindow.updateTreeFilter()
-                # Restore expand state and selected item
-                self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
-            else:
+            # if self.item.itemType == "FOLDER":
+            # Delete item from tree model
+            itemPath = self.item.path
+            model = self.mainWindow.treeModel
+            treeItem = model.getElemWithPath(itemPath)
+            if itemPath == selectedItemPath:
+                selectedItemPath = treeItem.parent.path
+            # Remove item
+            model.removeElement(treeItem)
+            # Update filter
+            self.mainWindow.updateTreeFilter()
+            # Restore expand state and selected item
+            self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
+            if self.item.itemType != "FOLDER":
                 self.mainWindow.items = self.mainWindow.getListItems()
                 self.mainWindow.setListView()
 
     def updateConstraintPairingList(self):
         """Update pairing list combobox"""
-        comboList = [obj.name for obj in utils.getSelectedObjects()]
+        if self.item.itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+            comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
+        else:
+            comboList = [obj.name for obj in utils.getSelectedObjects()]
         for widget in self.pairWidgets:
             widget.armatureComboBox.clear()
             widget.armatureComboBox.addItems(comboList)
@@ -994,25 +722,29 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             index = widget.armatureComboBox.findText(widget.objectName)
             if index >= 0:
                 widget.armatureComboBox.setCurrentIndex(index)
-            for constraintWidget in widget.constraintInfoWidgets:
-                constraintWidget.comboBox.clear()
-                constraintWidget.comboBox.addItems(comboList)
-                index = constraintWidget.comboBox.findText(
-                    constraintWidget.targetObject
-                )
-                if index >= 0:
-                    constraintWidget.comboBox.setCurrentIndex(index)
+            # for constraintWidget in widget.constraintInfoWidgets:
+            #     constraintWidget.comboBox.clear()
+            #     constraintWidget.comboBox.addItems(comboList)
+            #     index = constraintWidget.comboBox.findText(
+            #         constraintWidget.targetObject
+            #     )
+            #     if index >= 0:
+            #         constraintWidget.comboBox.setCurrentIndex(index)
+        self.updateConstraintsTarget()
 
     def selectBones(self):
         """Select bones listed in json file"""
         for file in os.listdir(self.item.path):
             if file.endswith(".json"):
                 jsonPath = os.path.join(self.item.path, file)
-        if self.item.itemType != "CONSTRAINT SET":
-            utils.selectBones(jsonPath)
-        else:
+        if self.item.itemType == "CONSTRAINT SET":
             pairingDict = self.getConstraintPairing()
             utils.selectConstraintBones(jsonPath, pairingDict)
+        elif self.item.itemType in ["MULTI POSE", "MULTI ANIMATION"]:
+            pairingDict = self.getConstraintPairing()
+            utils.selectMultiPoseBones(jsonPath, pairingDict)
+        else:
+            utils.selectBones(jsonPath)
 
     def getConstraintPairing(self):
         """Return dict of json object name and selected objet to which we want to apply the constraint(s)"""
@@ -1023,15 +755,16 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             pairingDict[objName]["object"] = widget.armatureComboBox.currentText()
             pairingDict[objName]["constraints"] = {}
             for constraintWidget in widget.constraintInfoWidgets:
-                consInfo = {
-                    "sourceTarget": constraintWidget.targetObject,
-                    "sourceTargetBone": constraintWidget.targetBone,
-                    "destinationTarget": constraintWidget.comboBox.currentText(),
-                    "destinationTargetBone": constraintWidget.targetBone,
-                }
-                pairingDict[objName]["constraints"][
-                    constraintWidget.constraintName
-                ] = consInfo
+                if constraintWidget.applyConstraintCheckBox.isChecked():
+                    consInfo = {
+                        "sourceTarget": constraintWidget.targetObject,
+                        "sourceTargetBone": constraintWidget.targetBone,
+                        "destinationTarget": constraintWidget.applyTargetLabel.text(),  # constraintWidget.comboBox.currentText(),
+                        "destinationTargetBone": constraintWidget.targetBone,
+                    }
+                    pairingDict[objName]["constraints"][
+                        constraintWidget.constraintName
+                    ] = consInfo
         return pairingDict
 
     def getItemDict(self):
@@ -1050,9 +783,12 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
         self.ownerLabel.setText(self.item.owner)
         self.dateLabel.setText(self.item.date)
         self.contentLabel.setText(self.item.content)
-        self.thumbnailLabel.setPixmap((QtGui.QPixmap(self.thumbpath).scaled(200, 200)))
+        if self.thumbpath and os.path.isfile(self.thumbpath):
+            pixmap = QtGui.QPixmap(self.thumbpath).scaled(200, 200)
+        else:
+            pixmap = QtGui.QPixmap()
+        self.thumbnailLabel.setPixmap(pixmap)
         self.frameRangeLabel.setText(self.item.frameRange)
-
         if not self.item.bonesSelection:
             self.selectBonesPushButton.setEnabled(False)
         # Set visibility of widgets
@@ -1063,10 +799,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.animOptionsWidget.setVisible(False)
             self.constraintOptionsGroupBox.setVisible(False)
             self.applyPushButton.setText("APPLY 100 %")
-            # self.optionsGroupBox.setVisible(True)
-            # self.poseOptionsWidget.setVisible(True)
-            # self.flippedCheckBox.setVisible(False)
-            # self.flippedCheckBox.setEnabled(False)
         elif self.item.itemType == "SELECTION SET":
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
@@ -1075,7 +807,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(False)
             self.applyPushButton.setVisible(False)
-            # self.selectionSetOptionsWidget.setVisible(True)
         elif self.item.itemType == "CONSTRAINT SET":
             self.selectionSetOptionsWidget.setVisible(False)
             self.label_5.setVisible(False)
@@ -1083,7 +814,6 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.animOptionsWidget.setVisible(False)
             self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(False)
-            # self.constraintOptionsGroupBox.setVisible(True)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/constraint.png"),
@@ -1092,39 +822,69 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             )
             self.applyPushButton.setIcon(icon1)
             # set objects pairing widgets
-            self.pairWidgets = []
             comboList = [obj.name for obj in utils.getSelectedObjects()]
             for objName in self.item.objects:
                 constraintDict = self.getItemDict()["constraintData"]
-
                 item = PairingWidget(objName, comboList, constraintDict, parent=self)
                 self.verticalLayout_3.addWidget(item)
                 self.pairWidgets.append(item)
-
-        elif self.item.itemType == "FOLDER":
+            for pair in self.pairWidgets:
+                for constraintWidget in pair.constraintInfoWidgets:
+                    self.verticalLayout_3.addWidget(constraintWidget)
+        if self.item.itemType == "MULTI POSE":
             self.selectionSetOptionsWidget.setVisible(False)
             self.label_5.setVisible(False)
             self.frameRangeLabel.setVisible(False)
             self.animOptionsWidget.setVisible(False)
-            self.constraintOptionsGroupBox.setVisible(False)
-            self.poseOptionsWidget.setVisible(False)
             self.optionsGroupBox.setVisible(False)
-            self.applyPushButton.setVisible(False)
-            self.ownerLabel.setVisible(False)
-            self.dateLabel.setVisible(False)
-            self.contentLabel.setVisible(False)
-            self.label_2.setVisible(False)
-            self.label_3.setVisible(False)
-            self.label_4.setVisible(False)
-            self.selectBonesPushButton.setVisible(False)
-        elif self.item.itemType == "ANIMATION":
+            # self.constraintOptionsGroupBox.setVisible(False)
+            self.applyPushButton.setText("APPLY 100 %")
+            # set objects pairing widgets
+            comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
+            for objName in self.item.objects:
+                data = self.getItemDict()
+                if "constraintData" in data.keys():
+                    constraintDict = data["constraintData"]
+                else:
+                    constraintDict = {}
+                item = PairingWidget(
+                    objName,
+                    comboList,
+                    constraintDict,
+                    itemType="MULTI POSE",
+                    parent=self,
+                )
+                self.verticalLayout_3.addWidget(item)
+                self.pairWidgets.append(item)
+            for pair in self.pairWidgets:
+                for constraintWidget in pair.constraintInfoWidgets:
+                    self.verticalLayout_3.addWidget(constraintWidget)
+        elif self.item.itemType in ["ANIMATION", "MULTI ANIMATION"]:
             self.selectionSetOptionsWidget.setVisible(False)
             self.poseOptionsWidget.setVisible(False)
-            # self.optionsGroupBox.setVisible(True)
-            self.constraintOptionsGroupBox.setVisible(False)
-            # self.label_5.setVisible(True)
-            # self.frameRangeLabel.setVisible(True)
-            # self.animOptionsWidget.setVisible(True)
+            if self.item.itemType == "MULTI ANIMATION":
+                # set objects pairing widgets
+                comboList = [""] + [obj.name for obj in utils.getSelectedObjects()]
+                for objName in self.item.objects:
+                    data = self.getItemDict()
+                    if "constraintData" in data.keys():
+                        constraintDict = data["constraintData"]
+                    else:
+                        constraintDict = {}
+                    item = PairingWidget(
+                        objName,
+                        comboList,
+                        constraintDict,
+                        itemType="MULTI ANIMATION",
+                        parent=self,
+                    )
+                    self.verticalLayout_3.addWidget(item)
+                    self.pairWidgets.append(item)
+                for pair in self.pairWidgets:
+                    for constraintWidget in pair.constraintInfoWidgets:
+                        self.verticalLayout_3.addWidget(constraintWidget)
+            else:
+                self.constraintOptionsGroupBox.setVisible(False)
             icon1 = QtGui.QIcon()
             icon1.addPixmap(
                 QtGui.QPixmap("icons/anim2.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off
@@ -1155,6 +915,23 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.thumbnailLabel.setMovie(self.movie)
             self.movie.start()
             self.movie.stop()
+        elif self.item.itemType == "FOLDER":
+            self.selectionSetOptionsWidget.setVisible(False)
+            self.label_5.setVisible(False)
+            self.frameRangeLabel.setVisible(False)
+            self.animOptionsWidget.setVisible(False)
+            self.constraintOptionsGroupBox.setVisible(False)
+            self.poseOptionsWidget.setVisible(False)
+            self.optionsGroupBox.setVisible(False)
+            self.applyPushButton.setVisible(False)
+            self.ownerLabel.setVisible(False)
+            self.dateLabel.setVisible(False)
+            self.contentLabel.setVisible(False)
+            self.label_2.setVisible(False)
+            self.label_3.setVisible(False)
+            self.label_4.setVisible(False)
+            self.selectBonesPushButton.setVisible(False)
+        self.updateConstraintsTarget()
 
     def fromSpinBoxChanged(self):
         """Keep consistancy between spinboxes"""
@@ -1175,6 +952,41 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             self.toRangeSpinBox.setValue(self.toRangeSpinBox.maximum())
         if self.toRangeSpinBox.value() < self.toRangeSpinBox.minimum():
             self.toRangeSpinBox.setValue(self.toRangeSpinBox.minimum())
+
+    def getConstraintWidgets(self):
+        """make list of all constraints widgets"""
+        allConstraintWidgets = []
+        for widget in self.pairWidgets:
+            for constraintWidget in widget.constraintInfoWidgets:
+                allConstraintWidgets.append(constraintWidget)
+        return allConstraintWidgets
+
+    def updateConstraintsTarget(self):
+        """In constraint info widgets, update the name of the target object according to the pairing options"""
+        allConstraintWidgets = self.getConstraintWidgets()
+
+        # check all constraint widgets to know if refresh is needed
+        for widget in self.pairWidgets:
+            for constraintWidget in widget.constraintInfoWidgets:
+                if constraintWidget.sourceObject == widget.objectName:
+                    constraintWidget.applyObjectLabel.setText(
+                        widget.armatureComboBox.currentText()
+                    )
+            for constraintWidget in allConstraintWidgets:
+                if constraintWidget.targetObject == widget.objectName:
+                    constraintWidget.applyTargetLabel.setText(
+                        widget.armatureComboBox.currentText()
+                    )
+
+        # update check (apply constraint)
+        for widget in self.pairWidgets:
+            for constraintWidget in widget.constraintInfoWidgets:
+                if widget.armatureComboBox.currentText() != "":
+                    constraintWidget.applyConstraintCheckBox.setChecked(True)
+                    constraintWidget.setVisible(True)
+                else:
+                    constraintWidget.applyConstraintCheckBox.setChecked(False)
+                    constraintWidget.setVisible(False)
 
     def eventFilter(self, obj, event):
         """Event filter to play movie when hovered"""

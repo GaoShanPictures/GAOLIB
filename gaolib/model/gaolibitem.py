@@ -27,17 +27,16 @@ class GaoLibItem(object):
     def __init__(self, name="", thumbpath=None, path=None):
         self.name = name
         self.thumbpath = thumbpath
-        if self.thumbpath is None or not os.path.isfile(self.thumbpath):
-            self.thumbpath = os.path.join(
-                os.path.dirname(os.path.realpath(__file__)), "../icons/nopreview2.png"
-            )
-        stamped = self.thumbpath.replace("thumbnail.png", "thumbnail_stamped.png")
+        # if self.thumbpath is None or not os.path.isfile(self.thumbpath):
+        #     self.thumbpath = os.path.join(
+        #         os.path.dirname(os.path.realpath(__file__)), "../icons/nopreview2.png"
+        #     )
+        # stamped = self.thumbpath.replace("thumbnail.png", "thumbnail_stamped.png")
         self.stamped = self.thumbpath
-        if os.path.isfile(stamped):
-            self.stamped = stamped
+        # if os.path.isfile(stamped):
+        #     self.stamped = stamped
         self.path = path
         self.bonesSelection = False
-
         self.getItemInfos()
 
     def getItemInfos(self):
@@ -54,6 +53,12 @@ class GaoLibItem(object):
         elif self.name.endswith(".constraint"):
             jsonPath = os.path.join(self.path, "constraint_set.json")
             self.itemType = "CONSTRAINT SET"
+        elif self.name.endswith(".multi_pose"):
+            jsonPath = os.path.join(self.path, "multi_pose.json")
+            self.itemType = "MULTI POSE"
+        elif self.name.endswith(".multi_anim"):
+            jsonPath = os.path.join(self.path, "multi_animation.json")
+            self.itemType = "MULTI ANIMATION"
         else:
             jsonPath = None
             self.itemType = "FOLDER"

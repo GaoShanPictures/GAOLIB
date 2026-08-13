@@ -8,10 +8,15 @@ The design of the user interface of this project, and its main purpose are inspi
 
 
 ## Latest Updates
-- GAOLIB Now Available for blender 4.5 ! 
+- GAOLIB Now Available for blender 5.0 ! 
 <!--
 Warning : In Preferences > System > Display Graphics the choosing Vulkan for Backend seems a bit less instable than OpenGL (less crashes)
 -->
+- New prerequisite : This version of GaoLib requires the user to provide the path to an ffmpeg.exe file. The user has to install FFMPEG. 
+
+- New Feature : New MULTI POSE item available. Save pose of multiple armatures in one item and also saves bone constraints existing between the different armatures. WARNING : Blending pose is not available with MULTI POSE items.
+
+- New Feature : New MULTI ANIMATION item available. If several armatures are selected when creating an ANIMATION item, the created item will be a MULTI ANIMATION item. Save animation and constraints for multiple armatures in one item. 
 
 - New Feature : Option to Paste or Blend mirrored pose (not available on items created with the previous versions of Gaolib)
 
@@ -24,7 +29,8 @@ Warning : In Preferences > System > Display Graphics the choosing Vulkan for Bac
 - Former note : 'In order to remove properly the add-on from Blender, the user has to do it from a Blender session in which the Gaolib main window has not been opened. Otherwise, when trying to remove the add-on it will raise an Error in Windows (WinError 32:  The process cannot access the file because it is being used by another process).' bug has been fixed ! However, after installing a new version of GAOLIB, you may need to close and reopen Bender (Read more about it in the note section).
 
 ## Prerequisite
-GAOLIB works with Blender 2.93 and above.
+GAOLIB works with Blender 5.0 and above.
+This version of GaoLib requires the user to provide the path to an ffmpeg.exe file. The user has to install FFMPEG. 
 
 ## Installation
 

@@ -17,10 +17,10 @@
 bl_info = {
     "name": "GAOLIB",
     "author": "Anne Beurard",
-    "version": (3, 1, 0),
-    "blender": (4, 0, 0),
+    "version": (5, 0, 0),
+    "blender": (5, 0, 0),
     "location": "View 3D",
-    "warning": "Requires installation of dependencies",
+    "warning": "Requires installation of dependencies (install dependencies button). Also requires the user to MANUALLY install FFMPEG.",
     "description": "Animation and Pose library tool for Blender.",
     "category": "3D View",
 }
@@ -74,7 +74,7 @@ Dependency = namedtuple("Dependency", ["module", "package", "name"])
 
 dependenciesPySide6 = (
     Dependency(module="PySide6", package=None, name=None),
-    Dependency(module="imageio", package=None, name=None),
+    # Dependency(module="imageio", package=None, name=None),
 )
 
 dependencies_installed = False
@@ -324,14 +324,22 @@ class OT_gaolib(bpy.types.Operator):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        from PySide6 import QtWidgets
+        from PySide6 import QtWidgets, QtCore
 
         if not QtWidgets.QApplication.instance():
             self._app = QtWidgets.QApplication(sys.argv)
         else:
             self._app = QtWidgets.QApplication.instance()
+        self.createWindow = True
         for tlw in self._app.topLevelWindows():
-            tlw.close()
+            if tlw.title().startswith("GAOLIB"):
+                if tlw.isVisible() and not tlw.isExposed():
+                    self.createWindow = False
+                    tlw.setWindowState(QtCore.Qt.WindowNoState)
+                elif tlw.isVisible():
+                    self.createWindow = False
+                    tlw.raise_()
+                # tlw.close()
 
     def modal(self, context, event):
         # Finish running operator if window is closed
@@ -340,7 +348,7 @@ class OT_gaolib(bpy.types.Operator):
                 context.window_manager.event_timer_remove(self._timer)
                 return {"FINISHED"}
             # Procecess any events
-            # self._app.processEvents() # test reduce crashes
+            # self._app.processEvents() # test ignore this line to try to reduce crashes ?
         except Exception as e:
             print("Caught Exception : " + str(e))
             # widget already deleted
@@ -353,6 +361,8 @@ class OT_gaolib(bpy.types.Operator):
 
         from .gaolib.gaolibsub import GaoLib
 
+        if not self.createWindow:
+            return {"FINISHED"}
         # Show QT Widget
         self._widget = GaoLib()
         self._widget.show()

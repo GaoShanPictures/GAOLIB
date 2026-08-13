@@ -19,10 +19,10 @@ __author__ = "Anne Beurard"
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidget
+from gaolib.ui.createposewidgetui import Ui_Form as CreatePoseWidgetUi
 
 
-class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
+class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidgetUi):
     """Manage pose/animation item creation"""
 
     def __init__(self, itemType="POSE", parent=None):
@@ -31,9 +31,8 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         self.setupUi(self)
         self.type = itemType
         self.movie = None
-
         self.parent.infoGroupBox.setTitle(self.type)
-        if self.type == "POSE":
+        if self.type in ["POSE", "MULTI POSE"]:
             self.frameRangeWidget.setVisible(False)
         elif self.type == "SELECTION SET":
             self.frameRangeWidget.setVisible(False)
@@ -41,11 +40,13 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         elif self.type == "CONSTRAINT SET":
             self.frameRangeWidget.setVisible(False)
             self.applyPushButton.setText("SAVE CONSTRAINT SET")
-        elif self.type == "ANIMATION":
+        elif self.type in ["ANIMATION", "MULTI ANIMATION"]:
             self.applyPushButton.setText("SAVE ANIMATION")
             self.pushButton.installEventFilter(self)
 
-        self.contentLabel.setText("")
+        self.contentLabel_2.setText("")
+        self.refreshSelectionPushButton_3.released.connect(self.refreshSelection)
+        self.refreshSelection()
 
     def eventFilter(self, obj, event):
         """Event filter to play movie when hovered"""
@@ -72,3 +73,16 @@ class CreatePoseWidget(QtWidgets.QWidget, CreatePoseWidget):
         """Play movie on hovered"""
         if self.movie:
             self.movie.start()
+
+    def refreshSelection(self):
+        import gaolib.model.blenderutils as utils
+
+        selectedObjs = utils.getSelectedObjects()
+        selectedBones = utils.getSelectedBones(allowMulti=True)
+        self.contentLabel_2.setText(
+            "Preview: "
+            + str(len(selectedObjs))
+            + " object(s)\n"
+            + str(len(selectedBones))
+            + " bone(s)"
+        )

@@ -538,9 +538,7 @@ class Ui_Form(object):
         self.ownerLabel.setText(_translate("Form", "Test"))
         self.label_5.setText(_translate("Form", "Frame Range"))
         self.frameRangeLabel.setText(_translate("Form", "0-100"))
-        self.constraintOptionsGroupBox.setTitle(
-            _translate("Form", "Constraints Options")
-        )
+        self.constraintOptionsGroupBox.setTitle(_translate("Form", "Pairing Options"))
         self.refreshPairingListPushButton.setText(
             _translate("Form", "Refresh selection list")
         )
