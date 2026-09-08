@@ -423,11 +423,13 @@ def getSelectedBones(allowMulti=False):
             continue
         for posebone in obj.pose.bones:
             if posebone.select:
+                visibleBoneCollection = False
+                for bc in posebone.bone.collections:
+                    if bc.is_visible_effectively:
+                        visibleBoneCollection = True
+                        break
                 if not posebone.bone.hide and (
-                    (
-                        len(posebone.bone.collections)
-                        and posebone.bone.collections[0].is_visible_effectively
-                    )
+                    (len(posebone.bone.collections) and visibleBoneCollection)
                     or not len(posebone.bone.collections)
                 ):
                     bones.append(posebone)
