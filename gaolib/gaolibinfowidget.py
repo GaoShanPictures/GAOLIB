@@ -20,6 +20,7 @@ __author__ = "Anne Beurard"
 import json
 import os
 import shutil
+from pathlib import Path
 
 try:
     import bpy
@@ -34,6 +35,7 @@ from gaolib.ui.constraintpairingwidgetui import Ui_Form as Pairing_Form
 from gaolib.ui.infowidgetui import Ui_Form as InfoWidget
 from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
+from gaolib.lockfile import Lock
 
 
 class ConstrainInfoWidget(QtWidgets.QWidget, Constraint_Form):
@@ -152,6 +154,7 @@ class SliderEventFilter(QtCore.QObject):
         elif event.type() == QtCore.QEvent.MouseButtonRelease:
             if event.button() == QtCore.Qt.LeftButton:
                 self.parentInfoWidget.onSliderReleased()
+        return super(SliderEventFilter, self).eventFilter(obj, event)
 
 
 class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
@@ -690,6 +693,9 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             if allDeleted:
                 shutil.rmtree(path)
 
+            # remove element in db.json as well
+            self.removeItemInDb(path)
+
             # Remember expanded states in tree view
             expanded = self.mainWindow.getTreeExpandedItems()
             if self.item.itemType == "FOLDER" or self.mainWindow.itemsInTree:
@@ -706,8 +712,29 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 # Restore expand state and selected item
                 self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
             if self.item.itemType != "FOLDER":
-                self.mainWindow.items = self.mainWindow.getListItems()
+                self.mainWindow.items = self.mainWindow.getListItems(forceRefresh=True)
                 self.mainWindow.setListView()
+
+    def removeItemInDb(self, path):
+        n = None
+        dbPath = Path("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json")
+        # use a lock for the whole operation to avoid concurrence
+        with Lock(dbPath):
+            # reload the database to have the latest
+            with open(dbPath, "r") as f:
+                n = json.loads(f.read())
+            # find the dict to update
+            elementPath = path.split("ROOT/")[-1].split(".")[0]
+            foldersList = elementPath.split("/")
+            current = n["children"]
+            for idx, folder in enumerate(foldersList):
+                if idx == len(foldersList) - 1:
+                    current.pop(folder)
+                else:
+                    current = current[folder]['children']
+            # save the new database
+            with open(dbPath, "w") as f:
+                f.write(json.dumps(n))
 
     def updateConstraintPairingList(self):
         """Update pairing list combobox"""

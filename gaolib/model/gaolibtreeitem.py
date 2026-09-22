@@ -65,6 +65,9 @@ class GaoLibTreeItem(object):
             else:
                 self.thumbnail = None
 
+        # added by arnaudc
+        self.gaolibItems = []
+
     def parent(self):
         """Return the parent of the item"""
         return self.parent

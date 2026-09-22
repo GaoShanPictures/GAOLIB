@@ -26,6 +26,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 # from PIL import Image
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -46,6 +47,7 @@ from gaolib.ui.gaolibui import Ui_MainWindow as GaolibMainWindow
 from gaolib.ui.newfolderdialogui import Ui_Dialog as NewFolderDialog
 from gaolib.ui.settingsdialogui import Ui_Dialog as SettingsDialog
 from gaolib.ui.yesnodialogui import Ui_Dialog as YesNoDialog
+from gaolib.lockfile import Lock
 
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__))))
 
@@ -67,6 +69,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QMainWindow.__init__(self, parent)
         #
+        # import cProfile
+        # import io
+        # import pstats
+        # pr = cProfile.Profile()
+        # pr.enable()
+        #
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         self.setupUi(self)
 
@@ -86,7 +94,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.projName = ""
         self.rootPath = None
         self.rootList = []
-        self.recursiveDisplayMode = False
+        self.recursiveDisplayMode = True
         self.itemsInTree = False
         self.useDoubleClickToApplyPose = False
         self.useWheelToBlendPose = False
@@ -113,6 +121,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         cache.thumbnailLoaded.connect(self.onThumbLoaded)
         # If temp folder is not empty, clean items
         self.cleanTempFolder()
+        #
+        QtWidgets.QApplication.restoreOverrideCursor()
+        # pr.disable()
+        # s = io.StringIO()
+        # sortby = "cumulative"
+        # ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        # ps.print_stats()
+        # print(s.getvalue())
 
     def _connectUi(self):
         # Connect Actions
@@ -180,10 +196,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
                 else:
                     self.recursiveDisplayMode = False
-                if "itemsInTree" in itemdata.keys():
-                    self.itemsInTree = itemdata['itemsInTree']
-                else:
-                    self.itemsInTree = False
+                # if "itemsInTree" in itemdata.keys():
+                #     self.itemsInTree = itemdata['itemsInTree']
+                # else:
+                self.itemsInTree = False
                 if "useWheelToBlendPose" in itemdata.keys():
                     self.useWheelToBlendPose = itemdata["useWheelToBlendPose"]
                 else:
@@ -238,8 +254,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         itemWidget = RootItemWidget(rtname, rtpath, self.configPath)
                         table.insertRow(row)
                         table.setCellWidget(row, 0, itemWidget)
-                if key == 'itemsInTree':
-                    dialog.ui.itemsInTreeCheckBox.setChecked(itemdata[key])
+                # if key == 'itemsInTree':
+                #     dialog.ui.itemsInTreeCheckBox.setChecked(itemdata[key])
                 if key == "recursiveDisplayMode":
                     dialog.ui.recursiveListModeCheckBox.setChecked(itemdata[key])
                 if key == "useWheelToBlendPose":
@@ -257,7 +273,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         path = dialog.ui.pathLineEdit.text()
         pathName = dialog.ui.lineEdit.text()
         recursiveDisplayMode = dialog.ui.recursiveListModeCheckBox.isChecked()
-        itemsInTree = dialog.ui.itemsInTreeCheckBox.isChecked()
+        # itemsInTree = dialog.ui.itemsInTreeCheckBox.isChecked()
         useWheelToBlendPose = dialog.ui.blendPoseOnWheelCheckBox.isChecked()
         useDoubleClickToApplyPose = (
             dialog.ui.doubleClickPoseShortcutCheckBox.isChecked()
@@ -268,10 +284,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.readConfig(allowMessage=False)
             paramsChanged = (
                 recursiveDisplayMode != self.recursiveDisplayMode
-                or itemsInTree != self.itemsInTree
                 or useWheelToBlendPose != self.useWheelToBlendPose
                 or useDoubleClickToApplyPose != self.useDoubleClickToApplyPose
                 or ffmpegPath != self.ffmpegPath
+                # or itemsInTree != self.itemsInTree
             )
             if not len(path):
                 if paramsChanged:
@@ -280,7 +296,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         json.dump(
                             {
                                 "rootpath": self.rootList,
-                                "itemsInTree": itemsInTree,
+                                # "itemsInTree": itemsInTree,
                                 "recursiveDisplayMode": recursiveDisplayMode,
                                 "useWheelToBlendPose": useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
@@ -314,7 +330,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                             json.dump(
                                 {
                                     "rootpath": self.rootList,
-                                    "itemsInTree": itemsInTree,
+                                    # "itemsInTree": itemsInTree,
                                     "recursiveDisplayMode": recursiveDisplayMode,
                                     "useWheelToBlendPose": useWheelToBlendPose,
                                     "useDoubleClickToApplyPose": useDoubleClickToApplyPose,
@@ -340,7 +356,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         json.dump(
                             {
                                 "rootpath": self.rootList,
-                                "itemsInTree": self.itemsInTree,
+                                # "itemsInTree": self.itemsInTree,
                                 "recursiveDisplayMode": self.recursiveDisplayMode,
                                 "useWheelToBlendPose": self.useWheelToBlendPose,
                                 "useDoubleClickToApplyPose": self.useDoubleClickToApplyPose,
@@ -654,6 +670,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
+        QtWidgets.QApplication.setOverrideCursor(QtGui.QCursor(QtCore.Qt.WaitCursor))
         updateTreeView = self.itemsInTree # when list changes only need to refresh tree view at item creation if itemsInTree option is true
         # check context and selection
         isValid = self.contextCheck(itemType)
@@ -668,35 +685,36 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             space_data=self.context["space_data"],
             window=self.context["window"],
         ):
+            stamp = "Q:/TOOLS/arnaudc/gaolib/"
             if itemType == "ANIMATION":
                 self.generateAnimItemData()
                 itemTypeStr = "anim"
                 thumbTempPath = self.thumbTempPath.replace(".png", ".gif")
-                stamp = "icons/anim2.png"
+                stamp += "icons/anim2.png"
             elif itemType == "POSE":
                 self.generatePoseItemData()
                 itemTypeStr = "pose"
                 thumbTempPath = self.thumbTempPath
-                stamp = "icons/pose2.png"
+                stamp += "icons/pose2.png"
             elif itemType == "SELECTION SET":
                 itemTypeStr = "selection"
                 thumbTempPath = self.thumbTempPath
-                stamp = "icons/selectionset.png"
+                stamp += "icons/selectionset.png"
             elif itemType == "CONSTRAINT SET":
                 self.generateConstraintItemData()
                 itemTypeStr = "constraint"
                 thumbTempPath = self.thumbTempPath
-                stamp = "icons/constraint.png"
+                stamp += "icons/constraint.png"
             elif itemType == "MULTI POSE":
                 self.generateMultiPoseItemData()
                 itemTypeStr = "multi_pose"
                 thumbTempPath = self.thumbTempPath
-                stamp = "icons/pose2.png"
+                stamp += "icons/pose2.png"
             elif itemType == "MULTI ANIMATION":
                 self.generateMultiAnimItemData()
                 itemTypeStr = "multi_anim"
                 thumbTempPath = self.thumbTempPath.replace(".png", ".gif")
-                stamp = "icons/anim2.png"
+                stamp += "icons/anim2.png"
 
         # Check if valid name
         name = self.createPosewidget.nameLineEdit.text()
@@ -844,24 +862,33 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             # Restore expand state and selected item
             self.restoreExpandedState(expanded, selectedItemPath)
         # Refresh list view
-        oldItems = self.items
-        self.items = self.getListItems()
+        # oldItems = self.items
+        self.items = self.getListItems(forceRefresh=True)
         self.setListView()
 
         # Find new item
-        newIndex = None
-        for item in self.items.keys():
-            if self.items[item].name == name:
-                newIndex = item
+        # newIndex = None
+        # for item in self.items.keys():
+        #     if self.items[item].name == name.split(".")[0]:
+        #         newIndex = item
+        #         break
+        p = QtCore.QModelIndex()
+        idx = None
+        for row in range(self.listView.model().rowCount(p)):
+            idx = self.listView.model().index(row, 0, p)
+            if idx.data() == name.split(".")[0]:
                 break
         # disconnect pushbutton
         if self.createPosewidget.movie is not None:
             self.createPosewidget.movie.setFileName("")
         # Select newItem
-        index = self.listView.model().index(newIndex, 0)
+        # index = self.listView.model().index(newIndex, 0)
         self.listView.selectionModel().clear()
-        self.listView.selectionModel().select(index, QtCore.QItemSelectionModel.Select)
+        self.listView.setCurrentIndex(idx)
+        self.listView.selectionModel().select(idx, QtCore.QItemSelectionModel.Select)
         bpy.context.scene.frame_current = currentFrame
+        
+        QtWidgets.QApplication.restoreOverrideCursor()
 
     def applyPose(self, itemType="POSE", flipped=False, blendPose=1, currentPose=None):
         """Paste animation/pose from the library to the selected object of the scene"""
@@ -969,7 +996,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             jsonFile = os.path.join(directory, "multi_pose.json")
         elif itemType == "MULTI ANIMATION":
             jsonFile = os.path.join(directory, "multi_animation.json")
-
+        jsonFile = jsonFile.replace("\\", "/")
         if os.path.exists(self.jsonTempPath):
             with open(self.jsonTempPath) as file:
                 itemdata = json.load(file)
@@ -1008,8 +1035,41 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             elif key not in data["metadata"].keys():
                 data["metadata"][key] = itemdata[key]
         # write json
-        with open(jsonFile, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
+        with open(jsonFile, "w") as f:
+            json.dump(data, f, indent=4, sort_keys=True)
+        # save this item in the db.json
+        self.addItemInDb(jsonFile, data)
+        
+    def addItemInDb(self, jsonFile, data):
+        n = None
+        dbPath = Path("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json")
+        # use a lock for the whole operation to avoid concurrence
+        with Lock(dbPath):
+            # reload the database to have the latest
+            with open(dbPath, "r") as f:
+                n = json.loads(f.read())
+            # find the dict to update
+            parentDir = os.path.dirname(jsonFile)
+            elementPath = parentDir.split("ROOT/")[-1]
+            foldersList = elementPath.split("/")
+            current = n["children"]
+            for idx, folder in enumerate(foldersList):
+                if idx == len(foldersList) - 1:
+                    current[data["metadata"]["name"].split(".")[0]] = {"type": data["metadata"]["type"],
+                                                        "path": parentDir,
+                                                        "user": data["metadata"]["user"],
+                                                        "date": data["metadata"]["date"],
+                                                        "content": data["metadata"]["content"],
+                                                        "frameRange": data["metadata"]["frameRange"],
+                                                        "objects": data["metadata"]["objects"]}
+                    break
+                elif folder not in current.keys():
+                    current[folder] = {'type': 'FOLDER', 'children': {}}
+                if "children" in current[folder].keys():
+                    current = current[folder]['children']
+            # save the new database
+            with open(dbPath, "w") as f:
+                f.write(json.dumps(n))
 
     def contextCheck(self, itemType):
         """Check if context and selections are compatible with the creation of item"""
@@ -1752,6 +1812,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.currentTreeElement = selectedItem
         self.items = self.getListItems()
         self.setListView()
+        self.filterList()
         if len(selectedItem.ancestors) > 1:
             self.rootPath = selectedItem.ancestors[1].path
         else:
@@ -1812,7 +1873,40 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             if item.thumbpath == key:
                 self.listView.viewport().update(self.listView.visualRect(idx))
 
-    def getListItems(self):
+    def recursiveListItems(self, itemList, treeElem):
+        for libItem in treeElem.gaolibItems:
+            itemList.append(libItem)
+        for child in treeElem.children:
+            self.recursiveListItems(itemList, child)
+        return itemList
+
+    def getListItems(self, forceRefresh=False):
+        items = {}
+        QtGui.QPixmapCache.setCacheLimit(102400)
+        if forceRefresh:
+            dbPath = Path("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json")
+            with open(dbPath, "r") as f:
+                n = json.loads(f.read())
+            parentDir = self.currentTreeElement.path
+            elementPath = parentDir.split("ROOT/")[-1]
+            foldersList = elementPath.split("/")
+            current = n["children"]
+            for folder in foldersList:
+                current = current[folder]['children']
+            self.currentTreeElement.gaolibItems = []
+            for childName, childDict in current.items():
+                if childDict["type"] == "FOLDER":
+                    continue
+                GaoLibItem(childName, itemType=childDict["type"], owner=childDict["user"], path=childDict["path"], date=childDict["date"], content=childDict["content"], frameRange=childDict["frameRange"], objects=childDict["objects"], parent=self.currentTreeElement)
+        if self.recursiveDisplayMode:
+            itemList = self.recursiveListItems([], self.currentTreeElement)
+        else:
+            itemList = self.currentTreeElement.gaolibItems
+        for i, item in enumerate(itemList):
+            items[i] = item
+        return items
+
+    def getListItemsOld(self):
         """Display current selected folder content in listView"""
         recursiveSearch = self.recursiveDisplayMode
         folderPath = self.currentTreeElement.path
@@ -1992,17 +2086,15 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.treeItemProxyModel.sort(0, QtCore.Qt.AscendingOrder)
         self.treeItemProxyModel.setSortCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
-    def setTreeView(self):
+    def setTreeViewOld(self):
         """Set Tree model and connect it to UI"""
         self.readConfig()
-
         self.treeroot = GaoLibTreeItem("root")
         rootName = None
         for rootItem in self.rootList:
             # self.treeroot = GaoLibTreeItem("Root", path=self.rootPath)
             rootPath = rootItem["path"]
             rootName = rootItem["name"]
-
             if not self.currentTreeElement:
                 self.currentTreeElement = self.treeroot
             if os.path.isdir(rootPath):
@@ -2016,17 +2108,68 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     "FOLDER NOT FOUND",
                     "Root folder does not exist :\n" + str(rootPath),
                 )
-
         self.treeModel = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
         self.updateTreeFilter()
-
         if rootName:
             self.selectChildItemInTree(rootName)
         else:
             self.items = {}
-
         self.setListView()
 
+    def setTreeView(self):
+        self.readConfig()
+        n = None
+        with open("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json", "r") as f:
+            n = json.loads(f.read())
+        self.treeroot = GaoLibTreeItem("ROOT", parent=None, path="Q:/TOOLS/GAOLIB_ANIM/ROOT")
+        self.createHierarchy("ROOT", n, self.treeroot)
+        self.treeModel = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
+        self.updateTreeFilter()
+        rootIdx = self.hierarchyTreeView.model().index(0, 0, self.hierarchyTreeView.rootIndex())
+        self.treeSelectionModel.select(rootIdx, QtCore.QItemSelectionModel.Select)
+        self.hierarchyTreeView.expand(rootIdx)
+        self.setListView()
+
+    def createHierarchy(self, name, node, parent=None):
+        if node["type"] == "FOLDER":
+            item = GaoLibTreeItem(name, parent=parent, path=node["path"])
+            if 'children' in node.keys():
+                children = node["children"]
+                for childName, childDict in children.items():
+                    if childDict["type"] == "FOLDER":
+                        self.createHierarchy(childName, childDict, item)
+                    else:
+                        GaoLibItem(childName, itemType=childDict["type"], owner=childDict["user"], path=childDict["path"], date=childDict["date"], content=childDict["content"], frameRange=childDict["frameRange"], objects=childDict["objects"], parent=item)
+            return item
+
+    def dumpHierarchy(self, pathStr="Q:/TOOLS/GAOLIB_ANIM/ROOT"):
+        path = Path(pathStr)
+        node = {
+            "type": "FOLDER",
+            "path": path.as_posix(),
+            "children": {}
+        }
+        for child in path.iterdir():
+            if child.is_dir():
+                node["children"][child.stem] = self.buildHierarchy(child)
+            elif child.is_file():
+                if child.suffix == ".json" and child.stem != "db":
+                    with child.open("r") as f:
+                        infoDict = json.load(f)
+                        print(child.as_posix())
+                        node = {
+                            "type": child.stem.upper().replace("_", " "),
+                            "path": path.as_posix(),
+                            "user": infoDict["metadata"]["user"],
+                            "date": infoDict["metadata"]["date"],
+                            "content": infoDict["metadata"]["content"],
+                            "frameRange": infoDict["metadata"]["frameRange"],
+                            "objects": infoDict["metadata"]["objects"]
+                        }
+        with open("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json", "w") as f:
+            f.write(json.dumps(node))
+        return node
+    
     def initUi(self):
         """INIT"""
         sharedConfig = os.path.join(
