@@ -181,7 +181,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 else:
                     self.recursiveDisplayMode = False
                 if "itemsInTree" in itemdata.keys():
-                    self.itemsInTree = itemdata['itemsInTree']
+                    self.itemsInTree = itemdata["itemsInTree"]
                 else:
                     self.itemsInTree = False
                 if "useWheelToBlendPose" in itemdata.keys():
@@ -238,7 +238,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         itemWidget = RootItemWidget(rtname, rtpath, self.configPath)
                         table.insertRow(row)
                         table.setCellWidget(row, 0, itemWidget)
-                if key == 'itemsInTree':
+                if key == "itemsInTree":
                     dialog.ui.itemsInTreeCheckBox.setChecked(itemdata[key])
                 if key == "recursiveDisplayMode":
                     dialog.ui.recursiveListModeCheckBox.setChecked(itemdata[key])
@@ -654,7 +654,9 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def savePose(self, itemType="POSE"):
         """Save a new item in the library"""
-        updateTreeView = self.itemsInTree # when list changes only need to refresh tree view at item creation if itemsInTree option is true
+        updateTreeView = (
+            self.itemsInTree
+        )  # when list changes only need to refresh tree view at item creation if itemsInTree option is true
         # check context and selection
         isValid = self.contextCheck(itemType)
         if not isValid:
@@ -1155,13 +1157,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             utils.ShowDialog("FOUND NO ACTION ON SELECTED OBJECT.", title="ABORT")
             return
         selectedBones = utils.getSelectedBones()
-        data = {
-            "bones": len(selectedBones),
-            "boneNames": [bone.name for bone in selectedBones],
-            "objects": selectedObjects,
-        }
-        with open(self.jsonTempPath, "w") as file:
-            json.dump(data, file, indent=4, sort_keys=True)
         # Copy Animation
         newAction = currentAction.copy()
         newAction.name = "Animation"
@@ -1187,6 +1182,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Delete temp action
         currentObject.animation_data.action = currentAction
         bpy.data.actions.remove(newAction)
+        # write temp json
+        data = {
+            "bones": len(selectedBones),
+            "boneNames": [bone.name for bone in selectedBones],
+            "objects": selectedObjects,
+        }
+        with open(self.jsonTempPath, "w") as file:
+            json.dump(data, file, indent=4, sort_keys=True)
 
     def animCreateThumbnail(self):
         """Save new item datas and thumbnail to temp directory"""
@@ -1783,11 +1786,14 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 continue
             directoryPath = os.path.join(itemPath, directory)
 
-            if "." in directory and directory.split(".")[-1] in itemSuffixes :
+            if "." in directory and directory.split(".")[-1] in itemSuffixes:
                 if self.itemsInTree:
                     # Create Item
                     item = GaoLibTreeItem(
-                        directory, ancestors=ancestors, path=directoryPath, newName=newName
+                        directory,
+                        ancestors=ancestors,
+                        path=directoryPath,
+                        newName=newName,
                     )
                     parentItem.addChild(item)
             elif (
