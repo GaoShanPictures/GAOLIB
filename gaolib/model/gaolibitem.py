@@ -24,8 +24,10 @@ import os
 class GaoLibItem(object):
     """Description of one item of the list view"""
 
-    def __init__(self, name="", thumbpath=None, path=None):
+    def __init__(self, name="", thumbpath=None, path=None, itemType="", owner="", date="", content="", frameRange="", objects=[], parent=None):
         self.name = name
+        self.path = path
+        thumbpath = path + "/thumbnail_stamped.png"
         self.thumbpath = thumbpath
         # if self.thumbpath is None or not os.path.isfile(self.thumbpath):
         #     self.thumbpath = os.path.join(
@@ -35,9 +37,18 @@ class GaoLibItem(object):
         self.stamped = self.thumbpath
         # if os.path.isfile(stamped):
         #     self.stamped = stamped
-        self.path = path
-        self.bonesSelection = False
-        self.getItemInfos()
+        self.bonesSelection = True
+        # self.getItemInfos()
+        # added by arnaudc
+        self.itemType = itemType
+        self.owner = owner
+        self.date = date
+        self.content = content
+        self.frameRange = frameRange
+        self.objects = objects
+        if parent:
+            self.parent = parent
+            self.parent.gaolibItems.append(self)
 
     def getItemInfos(self):
         """Read json infos from json"""
