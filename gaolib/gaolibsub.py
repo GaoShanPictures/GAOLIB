@@ -456,6 +456,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             if name.replace(" ", "") != "":
                 name = name.replace(" ", "_")
                 folderPath = os.path.join(self.currentTreeElement.path, name)
+                folderPath = folderPath.replace("\\", "/")
                 # Check if the folder already exists
                 if os.path.exists(folderPath):
                     QtWidgets.QMessageBox.about(
@@ -473,7 +474,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     for ances in ancestors:
                         ancestorNames.append(ances.name)
 
-                    path = os.path.join(parentItem.path, name)
+                    path = os.path.join(parentItem.path, name).replace("\\", "/")
                     # Copy thumbnail
                     folderIconPath = os.path.join(
                         folderIcons, dialog.ui.iconComboBox.currentText()
@@ -494,6 +495,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 QtWidgets.QMessageBox.about(
                     self, "Abort action", "Folder name must not be empty."
                 )
+        # TODO add folder in the db.json
 
     def restoreExpandedState(self, expanded, selectedItemPath):
         """Expand items corresponding to given list of treeModel item indexes"""
@@ -1052,10 +1054,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                 n = json.loads(f.read())
             # find the dict to update
             parentDir = os.path.dirname(jsonFile)
-            elementPath = parentDir.split("ROOT/")[-1]
+            elementPath = parentDir.replace("\\", "/").split("ROOT/")[-1]
             foldersList = elementPath.split("/")
             current = n["children"]
+            baseFolderPath = "Q:/TOOLS/GAOLIB_ANIM/ROOT/"
             for idx, folder in enumerate(foldersList):
+                currentFolderPath = baseFolderPath + folder + "/"
                 if idx == len(foldersList) - 1:
                     current[data["metadata"]["name"].split(".")[0]] = {
                         "type": data["metadata"]["type"],
@@ -1068,7 +1072,7 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     }
                     break
                 elif folder not in current.keys():
-                    current[folder] = {"type": "FOLDER", "children": {}}
+                    current[folder] = {'type': 'FOLDER', 'path': currentFolderPath, 'children': {}}
                 if "children" in current[folder].keys():
                     current = current[folder]["children"]
             # save the new database
@@ -2154,6 +2158,10 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createHierarchy(self, name, node, parent=None):
         if node["type"] == "FOLDER":
+            print("***********")
+            print(parent)
+            print(name)
+            print(node)
             item = GaoLibTreeItem(name, parent=parent, path=node["path"])
             if "children" in node.keys():
                 children = node["children"]
