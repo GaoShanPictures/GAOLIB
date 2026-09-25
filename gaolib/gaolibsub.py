@@ -2158,10 +2158,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def createHierarchy(self, name, node, parent=None):
         if node["type"] == "FOLDER":
-            print("***********")
-            print(parent)
-            print(name)
-            print(node)
             item = GaoLibTreeItem(name, parent=parent, path=node["path"])
             if "children" in node.keys():
                 children = node["children"]
