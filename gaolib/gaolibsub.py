@@ -137,6 +137,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # Set menus for buttons in the main window
         self.createMenuNew()
         self.createMenuSettings()
+        # set menu for tree items
+        self.hierarchyTreeView.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
+        self.hierarchyTreeView.customContextMenuRequested.connect(self.showTreeItemMenu)
 
     def createMenuNew(self):
         """Create items functionnalities"""
@@ -192,6 +197,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             with open(self.configPath) as file:
                 itemdata = json.load(file)
                 self.rootList = itemdata["rootpath"]
+                if len(self.rootList):
+                    self.rootPath = os.path.join(self.rootList[0]["path"], "ROOT")
                 if "recursiveDisplayMode" in itemdata.keys():
                     self.recursiveDisplayMode = itemdata["recursiveDisplayMode"]
                 else:
@@ -322,9 +329,13 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                                 return
                         # Change the ROOT location
                         self.rootList.append(newRootItem)
+                        rootPath = os.path.join(path, "ROOT")
                         if "ROOT" not in os.listdir(path):
                             createRoot = True
-                            os.mkdir(os.path.join(path, "ROOT"))
+                            os.mkdir(rootPath)
+                        dbPath = os.path.join(rootPath, "db.json")
+                        if not os.path.isfile(dbPath):
+                            self.dumpHierarchy(pathStr=rootPath)
                         # remember setting
                         with open(self.configPath, "w") as file:
                             json.dump(
@@ -491,11 +502,12 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     self.updateTreeFilter()
                     # Restore expand state and selected item
                     self.restoreExpandedState(expanded, selectedItemPath)
+                    # add folder in the db.json
+                    self.addItemInDb(path, None)
             else:
                 QtWidgets.QMessageBox.about(
                     self, "Abort action", "Folder name must not be empty."
                 )
-        # TODO add folder in the db.json
 
     def restoreExpandedState(self, expanded, selectedItemPath):
         """Expand items corresponding to given list of treeModel item indexes"""
@@ -689,7 +701,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             space_data=self.context["space_data"],
             window=self.context["window"],
         ):
-            stamp = "Q:/TOOLS/arnaudc/gaolib/"
+            # stamp = "Q:/TOOLS/arnaudc/gaolib/"
+            stamp = os.path.dirname(os.path.abspath(__file__)) + "/"
             if itemType == "ANIMATION":
                 self.generateAnimItemData()
                 itemTypeStr = "anim"
@@ -1044,26 +1057,30 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         # save this item in the db.json
         self.addItemInDb(jsonFile, data)
 
-    def addItemInDb(self, jsonFile, data):
+    def addItemInDb(self, itemPath, data):
         n = None
-        dbPath = Path("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json")
+        dbPath = Path(os.path.join(self.rootPath, "db.json"))
         # use a lock for the whole operation to avoid concurrence
         with Lock(dbPath):
             # reload the database to have the latest
             with open(dbPath, "r") as f:
                 n = json.loads(f.read())
             # find the dict to update
-            parentDir = os.path.dirname(jsonFile)
-            elementPath = parentDir.replace("\\", "/").split("ROOT/")[-1]
+            if os.path.isfile(itemPath):
+                itemDir = os.path.dirname(itemPath)
+            else:
+                itemDir = itemPath
+            elementPath = itemDir.replace("\\", "/").split("ROOT/")[-1]
             foldersList = elementPath.split("/")
             current = n["children"]
-            baseFolderPath = "Q:/TOOLS/GAOLIB_ANIM/ROOT/"
+            baseFolderPath = self.rootPath + "/"
+            currentFolderPath = baseFolderPath
             for idx, folder in enumerate(foldersList):
-                currentFolderPath = baseFolderPath + folder + "/"
-                if idx == len(foldersList) - 1:
+                currentFolderPath += folder + "/"
+                if idx == len(foldersList) - 1 and data is not None:
                     current[data["metadata"]["name"].split(".")[0]] = {
                         "type": data["metadata"]["type"],
-                        "path": parentDir,
+                        "path": itemDir,
                         "user": data["metadata"]["user"],
                         "date": data["metadata"]["date"],
                         "content": data["metadata"]["content"],
@@ -1072,7 +1089,11 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     }
                     break
                 elif folder not in current.keys():
-                    current[folder] = {'type': 'FOLDER', 'path': currentFolderPath, 'children': {}}
+                    current[folder] = {
+                        "type": "FOLDER",
+                        "path": currentFolderPath,
+                        "children": {},
+                    }
                 if "children" in current[folder].keys():
                     current = current[folder]["children"]
             # save the new database
@@ -1267,7 +1288,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         space.shading.show_shadows = False
         space.shading.show_cavity = False
         # Render
-        print("Render animation")
         bpy.ops.render.opengl("INVOKE_DEFAULT", animation=True, write_still=True)
         return True
 
@@ -1822,10 +1842,22 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.items = self.getListItems()
         self.setListView()
         self.filterList()
-        if len(selectedItem.ancestors) > 1:
-            self.rootPath = selectedItem.ancestors[1].path
-        else:
-            self.rootPath = selectedItem.path
+
+        currentItem = selectedItem
+        while currentItem.parent != self.treeroot and currentItem.parent is not None:
+            currentItem = currentItem.parent
+        self.rootPath = currentItem.path
+
+        # if len(selectedItem.ancestors) > 1:
+        #     # self.rootPath = selectedItem.ancestors[1].path
+        #     print("SET ROOT PATH ")
+        #     self.rootPath = selectedItem.ancestors[
+        #         0
+        #     ].path  # FISRT ANCESTOR BC global root elem has been deleted (cf setTreeView old)
+        #     print("ancestors " + str(selectedItem.ancestors))
+        #     print("SET ROOT PATH " + str(self.rootPath))
+        # else:
+        #     self.rootPath = selectedItem.path
         if selectListItem:
             model = self.listView.model()
             for row in range(model.rowCount()):
@@ -1876,6 +1908,21 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
                 self.recursivelyPopulateTreeView(item, directoryPath, step=step + 1)
 
+    def refreshDataBase(self, index):
+        item = self.hierarchyTreeView.model().data(index, QtCore.Qt.UserRole)
+        rootPath = item.path
+        # create database
+        self.dumpHierarchy(pathStr=rootPath)
+        self.setTreeView()
+
+    def showTreeItemMenu(self, pos):
+        index = self.hierarchyTreeView.indexAt(pos)
+        menu = QtWidgets.QMenu(self.hierarchyTreeView)
+        item = self.hierarchyTreeView.model().data(index, QtCore.Qt.UserRole)
+        if item.parent == self.treeroot:
+            menu.addAction("Refresh library", lambda: self.refreshDataBase(index))
+        menu.exec(self.hierarchyTreeView.viewport().mapToGlobal(pos))
+
     def onThumbLoaded(self, key):
         # refresh the view when thumbnail is loaded from cache
         model = self.listView.model()
@@ -1892,20 +1939,31 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
             self.recursiveListItems(itemList, child)
         return itemList
 
-    def getListItems(self, forceRefresh=False):
+    def getListItems(self, forceRefresh=False, treeItem=None):
         items = {}
+        if treeItem:
+            treeElement = treeItem
+        else:
+            treeElement = self.currentTreeElement
         QtGui.QPixmapCache.setCacheLimit(102400)
         if forceRefresh:
-            dbPath = Path("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json")
+            dbPath = Path(os.path.join(self.rootPath, "db.json"))
             with open(dbPath, "r") as f:
                 n = json.loads(f.read())
-            parentDir = self.currentTreeElement.path
+
+            # parentDir = self.currentTreeElement.path
+            parentDir = treeElement.path
+
             elementPath = parentDir.split("ROOT/")[-1]
             foldersList = elementPath.split("/")
             current = n["children"]
             for folder in foldersList:
-                current = current[folder]["children"]
-            self.currentTreeElement.gaolibItems = []
+                if len(folder):
+                    current = current[folder]["children"]
+
+            # self.currentTreeElement.gaolibItems = []
+            treeElement.gaolibItems = []
+
             for childName, childDict in current.items():
                 if childDict["type"] == "FOLDER":
                     continue
@@ -1918,7 +1976,8 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                     content=childDict["content"],
                     frameRange=childDict["frameRange"],
                     objects=childDict["objects"],
-                    parent=self.currentTreeElement,
+                    # parent=self.currentTreeElement,
+                    parent=treeElement,
                 )
         if self.recursiveDisplayMode:
             itemList = self.recursiveListItems([], self.currentTreeElement)
@@ -2114,7 +2173,6 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
         self.treeroot = GaoLibTreeItem("root")
         rootName = None
         for rootItem in self.rootList:
-            # self.treeroot = GaoLibTreeItem("Root", path=self.rootPath)
             rootPath = rootItem["path"]
             rootName = rootItem["name"]
             if not self.currentTreeElement:
@@ -2140,20 +2198,34 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
 
     def setTreeView(self):
         self.readConfig()
-        n = None
-        with open("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json", "r") as f:
-            n = json.loads(f.read())
-        self.treeroot = GaoLibTreeItem(
-            "ROOT", parent=None, path="Q:/TOOLS/GAOLIB_ANIM/ROOT"
-        )
-        self.createHierarchy("ROOT", n, self.treeroot)
+        # create global root
+        self.treeroot = GaoLibTreeItem("root")
+        # parse each root folder
+        rootName = None
+        for rootItem in self.rootList:
+            rootPath = os.path.join(rootItem["path"], "ROOT")
+            rootName = rootItem["name"]
+            n = None
+            dbPath = os.path.join(rootPath, "db.json")
+            # create database if does not exist
+            if not os.path.isfile(dbPath):
+                self.dumpHierarchy(pathStr=rootPath)
+            with open(dbPath, "r") as f:
+                n = json.loads(f.read())
+            # rootItem = GaoLibTreeItem(rootName, parent=self.treeroot, path=rootPath)
+            self.createHierarchy(rootName, n, parent=self.treeroot)
+        # set treeModel
         self.treeModel = GaoLibTreeItemModel(self.treeroot, projName=self.projName)
         self.updateTreeFilter()
-        rootIdx = self.hierarchyTreeView.model().index(
-            0, 0, self.hierarchyTreeView.rootIndex()
-        )
-        self.treeSelectionModel.select(rootIdx, QtCore.QItemSelectionModel.Select)
-        self.hierarchyTreeView.expand(rootIdx)
+        # select first ROOT directory
+        if rootName:
+            rootIdx = self.hierarchyTreeView.model().index(
+                0, 0, self.hierarchyTreeView.rootIndex()
+            )
+            self.treeSelectionModel.select(rootIdx, QtCore.QItemSelectionModel.Select)
+            self.hierarchyTreeView.expand(rootIdx)
+        else:
+            self.items = {}
         self.setListView()
 
     def createHierarchy(self, name, node, parent=None):
@@ -2178,7 +2250,37 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                         )
             return item
 
-    def dumpHierarchy(self, pathStr="Q:/TOOLS/GAOLIB_ANIM/ROOT"):
+    # def dumpHierarchy(self, pathStr=None):
+    #     if not pathStr:
+    #         pathStr = self.rootPath
+    #     path = Path(pathStr)
+    #     node = {"type": "FOLDER", "path": path.as_posix(), "children": {}}
+    #     for child in path.iterdir():
+    #         if child.is_dir():
+    #             node["children"][child.stem] = self.buildHierarchy(child)
+    #         elif child.is_file():
+    #             if child.suffix == ".json" and child.stem != "db":
+    #                 with child.open("r") as f:
+    #                     infoDict = json.load(f)
+    #                     print(child.as_posix())
+    #                     node = {
+    #                         "type": child.stem.upper().replace("_", " "),
+    #                         "path": path.as_posix(),
+    #                         "user": infoDict["metadata"]["user"],
+    #                         "date": infoDict["metadata"]["date"],
+    #                         "content": infoDict["metadata"]["content"],
+    #                         "frameRange": infoDict["metadata"]["frameRange"],
+    #                         "objects": infoDict["metadata"]["objects"],
+    #                     }
+    #     dbPath = os.path.join(pathStr, "db.json")
+    #     # with open("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json", "w") as f:
+    #     with open(dbPath, "w") as f:
+    #         f.write(json.dumps(node))
+    #     return node
+
+    def buildHierarchy(self, pathStr=None):
+        if not pathStr:
+            pathStr = self.rootPath
         path = Path(pathStr)
         node = {"type": "FOLDER", "path": path.as_posix(), "children": {}}
         for child in path.iterdir():
@@ -2198,9 +2300,16 @@ class GaoLib(QtWidgets.QMainWindow, GaolibMainWindow):
                             "frameRange": infoDict["metadata"]["frameRange"],
                             "objects": infoDict["metadata"]["objects"],
                         }
-        with open("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json", "w") as f:
-            f.write(json.dumps(node))
         return node
+
+    def dumpHierarchy(self, pathStr=None):
+        print("dumpHierarchy " + str(pathStr))
+        if not pathStr:
+            pathStr = self.rootPath
+        n = self.buildHierarchy(pathStr=pathStr)
+        dbPath = os.path.join(pathStr, "db.json")
+        with open(dbPath, "w") as f:
+            f.write(json.dumps(n))
 
     def initUi(self):
         """INIT"""

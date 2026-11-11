@@ -680,18 +680,19 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
             #         os.remove(os.path.join(path, "thumbnail.png"))
             #     return
             allDeleted = True
-            for f in os.listdir(path):
-                try:
-                    print("removing ", f)
-                    os.remove(path + "/" + f)
-                except:
-                    # if some files could not be deleted, write a todelete file to flag the folder as to be deleted at next startup
-                    allDeleted = False
-                    with open(path + "/todelete", "w") as f:
-                        f.write("")
-            # if all files have been deleted, remove the folder as well
-            if allDeleted:
-                shutil.rmtree(path)
+            if os.path.isdir(path):
+                for f in os.listdir(path):
+                    try:
+                        print("removing ", f)
+                        os.remove(path + "/" + f)
+                    except:
+                        # if some files could not be deleted, write a todelete file to flag the folder as to be deleted at next startup
+                        allDeleted = False
+                        with open(path + "/todelete", "w") as f:
+                            f.write("")
+                # if all files have been deleted, remove the folder as well
+                if allDeleted:
+                    shutil.rmtree(path)
 
             # remove element in db.json as well
             self.removeItemInDb(path)
@@ -712,12 +713,16 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 # Restore expand state and selected item
                 self.mainWindow.restoreExpandedState(expanded, selectedItemPath)
             if self.item.itemType != "FOLDER":
-                self.mainWindow.items = self.mainWindow.getListItems(forceRefresh=True)
+                parentFolder = self.item.parent
+                self.mainWindow.items = self.mainWindow.getListItems(
+                    forceRefresh=True, treeItem=parentFolder
+                )
+                # self.mainWindow.items = self.mainWindow.getListItems(forceRefresh=True)
                 self.mainWindow.setListView()
 
     def removeItemInDb(self, path):
         n = None
-        dbPath = Path("Q:/TOOLS/GAOLIB_ANIM/ROOT/db.json")
+        dbPath = Path(os.path.join(self.mainWindow.rootPath), "db.json")
         # use a lock for the whole operation to avoid concurrence
         with Lock(dbPath):
             # reload the database to have the latest
@@ -731,7 +736,7 @@ class GaoLibInfoWidget(QtWidgets.QWidget, InfoWidget):
                 if idx == len(foldersList) - 1:
                     current.pop(folder)
                 else:
-                    current = current[folder]['children']
+                    current = current[folder]["children"]
             # save the new database
             with open(dbPath, "w") as f:
                 f.write(json.dumps(n))
